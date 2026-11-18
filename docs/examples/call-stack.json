@@ -34,6 +34,7 @@
         "action": "push",
         "from": "main",
         "to": "total",
+        "title": "calcTotal 호출",
         "label": "calcTotal(cart)",
         "caption": "main이 calcTotal을 호출합니다. calcTotal이 스택에 쌓입니다.",
         "danger": false
@@ -42,6 +43,7 @@
         "action": "push",
         "from": "total",
         "to": "price",
+        "title": "getPrice 호출",
         "label": "getPrice(item)",
         "caption": "calcTotal이 getPrice를 호출합니다. 맨 위에 있는 getPrice가 지금 실행 중인 함수입니다.",
         "danger": false
@@ -50,6 +52,7 @@
         "action": "pop",
         "from": "price",
         "to": "total",
+        "title": "getPrice 반환",
         "label": "return 1200",
         "caption": "getPrice가 끝나면 스택에서 빠지고, 결과를 calcTotal에 돌려줍니다.",
         "danger": false
@@ -58,6 +61,7 @@
         "action": "pop",
         "from": "total",
         "to": "main",
+        "title": "calcTotal 반환",
         "label": "return 3600",
         "caption": "calcTotal도 끝나 스택에서 빠지고, 실행이 main으로 돌아갑니다.",
         "danger": false

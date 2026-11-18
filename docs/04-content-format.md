@@ -19,7 +19,7 @@
     "playerType": "flow",                // flow | stack | lock
     "actors": [ { "id": "user", "name": "사용자", "role": "user" } ],
     "steps": [
-      { "action": "send", "from": "user", "to": "bank", "label": "POST /login",
+      { "action": "send", "from": "user", "to": "bank", "title": "정상 로그인", "label": "POST /login",
         "caption": "자막 한두 문장", "danger": false }
     ]
   },
@@ -46,6 +46,7 @@
 | `scenario.steps` | O | 2~10개 권장. 순서대로 재생 |
 | `steps[].action` | O | `playerType`별 허용 값만 (아래 표) |
 | `steps[].from`, `steps[].to` | O | `actors`에 있는 `id`만 |
+| `steps[].title` | O | 단계 이름(예: "위조된 송금 요청"). 자막 위 제목, 홈의 단계 목록에 쓴다 |
 | `steps[].label` | O | 화살표 위에 표시되는 짧은 문구 |
 | `steps[].caption` | O | 자막. 애니메이션을 안 봐도 이해되게 쓴다 |
 | `steps[].danger` | | 위험 단계 강조. 기본값 `false` |

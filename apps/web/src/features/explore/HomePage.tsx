@@ -40,7 +40,7 @@ function FeaturedCard({ entry }: { entry: IndexEntry }) {
           {term.scenario.steps.map((step, i) => (
             <li key={i} className={i + 1 === blockedAt ? "is-blocked" : step.danger ? "is-danger" : undefined}>
               <span className="step-no">{String(i + 1).padStart(2, "0")}</span>
-              <span>{step.label}</span>
+              <span>{step.title}</span>
             </li>
           ))}
         </ol>

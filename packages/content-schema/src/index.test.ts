@@ -26,6 +26,7 @@ describe("termSchema", () => {
 
   const broken: [string, (t: any) => void, string][] = [
     ["필수 필드 누락", (t) => delete t.summary, "summary"],
+    ["단계 제목 누락", (t) => delete t.scenario.steps[2].title, "scenario.steps.2.title"],
     ["허용되지 않은 카테고리", (t) => (t.category = "crypto"), "category"],
     ["잘못된 id 형식", (t) => (t.id = "CSRF Attack"), "id"],
     ["모르는 필드(오타)", (t) => (t.scenario.steps[0].dangr = true), "scenario.steps.0"],

@@ -38,6 +38,7 @@
         "action": "acquire",
         "from": "p1",
         "to": "r1",
+        "title": "A가 프린터 차지",
         "label": "프린터 잡음",
         "caption": "A가 프린터를 먼저 차지합니다.",
         "danger": false
@@ -46,6 +47,7 @@
         "action": "acquire",
         "from": "p2",
         "to": "r2",
+        "title": "B가 스캐너 차지",
         "label": "스캐너 잡음",
         "caption": "B가 스캐너를 먼저 차지합니다.",
         "danger": false
@@ -54,6 +56,7 @@
         "action": "wait",
         "from": "p1",
         "to": "r2",
+        "title": "A가 스캐너 대기",
         "label": "스캐너 대기",
         "caption": "A는 스캐너가 필요하지만 B가 쥐고 있어 기다립니다.",
         "danger": true
@@ -62,6 +65,7 @@
         "action": "wait",
         "from": "p2",
         "to": "r1",
+        "title": "B가 프린터 대기",
         "label": "프린터 대기",
         "caption": "B도 프린터가 필요해 A를 기다립니다. 둘 다 영원히 멈춥니다.",
         "danger": true

@@ -14,6 +14,7 @@ const stepSchema = z.strictObject({
   action: z.enum(["send", "push", "pop", "acquire", "wait", "release"]),
   from: text,
   to: text,
+  title: text,
   label: text,
   caption: text,
   danger: z.boolean().default(false),

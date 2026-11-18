@@ -47,7 +47,7 @@ export default function PlayerPlaceholder({ term }: { term: Term }) {
       </div>
 
       <div className="caption" aria-live="polite">
-        <div className={`caption-title${step.danger ? " is-danger" : ""}`}>1. {step.label}</div>
+        <div className={`caption-title${step.danger ? " is-danger" : ""}`}>1. {step.title}</div>
         <p className="caption-text">{step.caption}</p>
       </div>
 
