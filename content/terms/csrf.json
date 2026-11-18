@@ -2,9 +2,7 @@
   "id": "csrf",
   "name": "CSRF",
   "englishName": "Cross-Site Request Forgery",
-  "aliases": [
-    "사이트 간 요청 위조"
-  ],
+  "aliases": ["사이트 간 요청 위조"],
   "category": "web-security",
   "summary": "로그인된 사용자의 브라우저를 이용해 사용자가 의도하지 않은 요청을 보내게 하는 공격",
   "description": "사용자가 어떤 사이트에 로그인해 있으면, 브라우저는 그 사이트로 가는 요청에 쿠키를 자동으로 붙인다. 공격자는 이 점을 이용해 다른 사이트에서 몰래 요청을 보내게 만든다. 서버는 쿠키가 붙어 있으니 사용자가 직접 보낸 요청과 구분하지 못한다.",
@@ -12,81 +10,105 @@
   "scenario": {
     "playerType": "flow",
     "actors": [
+      { "id": "browser", "name": "사용자 브라우저", "role": "user", "kind": "browser", "zone": "client", "site": "browser" },
       {
-        "id": "user",
-        "name": "사용자",
-        "role": "user"
+        "id": "bankTab",
+        "name": "은행 탭",
+        "role": "user",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "bank.example",
+        "screen": { "title": "내 계좌", "lines": ["잔액 1,250,000원", "송금하기 폼"] }
       },
       {
-        "id": "bank",
-        "name": "은행 서버",
-        "role": "server"
+        "id": "evilTab",
+        "name": "함정 탭",
+        "role": "attacker",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "evil.example",
+        "tone": "attack",
+        "screen": { "title": "새 탭", "lines": [] },
+        "back": { "title": "숨은 폼", "lines": ["POST bank.example/transfer", "1,000,000원 → 공격자", "페이지가 열리면 자동 제출"] }
       },
-      {
-        "id": "attacker",
-        "name": "공격자",
-        "role": "attacker"
-      },
-      {
-        "id": "evil",
-        "name": "함정 사이트",
-        "role": "server"
-      }
+      { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
+      { "id": "bank", "name": "은행 서버", "role": "server", "kind": "server", "zone": "server", "site": "bank.example", "gate": true, "balance": 1250000 },
+      { "id": "evil", "name": "함정 사이트 서버", "role": "server", "kind": "server", "zone": "server", "site": "evil.example", "tone": "attack" },
+      { "id": "attacker", "name": "공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
     ],
     "steps": [
       {
         "action": "send",
-        "from": "user",
+        "from": "bankTab",
         "to": "bank",
         "title": "정상 로그인",
         "label": "POST /login",
-        "caption": "사용자가 은행 사이트에 로그인합니다.",
-        "danger": false
+        "caption": "사용자가 은행 탭에서 로그인합니다. 요청은 인터넷을 건너 은행 검문소를 지나 서버에 도착합니다."
       },
       {
         "action": "send",
         "from": "bank",
-        "to": "user",
+        "to": "bankTab",
         "title": "세션 쿠키 발급",
         "label": "Set-Cookie: session",
-        "caption": "은행이 세션 쿠키를 발급하고, 브라우저가 이 쿠키를 저장합니다.",
-        "danger": false
+        "caption": "은행이 세션 쿠키를 보내고, 브라우저는 이 쿠키를 bank.example용 보관함에 넣어 둡니다. 이 보관함은 탭과 상관없이 브라우저 전체가 함께 씁니다.",
+        "effects": [{ "type": "store", "item": "cookie", "into": "jar" }]
       },
       {
         "action": "send",
         "from": "attacker",
-        "to": "user",
+        "to": "evilTab",
         "title": "함정 링크 전송",
         "label": "이벤트 당첨 링크",
-        "caption": "공격자가 함정 사이트로 이어지는 링크를 보냅니다.",
-        "danger": true
+        "caption": "공격자가 \"이벤트 당첨\" 링크를 보냅니다. 사용자가 링크를 열면 같은 브라우저에 새 탭이 생깁니다.",
+        "danger": true,
+        "effects": [{ "type": "appear", "target": "evilTab" }]
       },
       {
         "action": "send",
-        "from": "user",
+        "from": "evilTab",
         "to": "evil",
         "title": "함정 사이트 접속",
         "label": "GET /event",
-        "caption": "사용자가 링크를 눌러 함정 사이트를 엽니다. 은행에는 여전히 로그인된 상태입니다.",
-        "danger": true
+        "caption": "함정 탭이 이벤트 페이지를 불러옵니다. 그런데 페이지 뒷면에는 은행으로 송금을 요청하는 숨은 폼이 붙어 있습니다.",
+        "danger": true,
+        "roundTrip": true,
+        "returnLabel": "이벤트 페이지",
+        "effects": [
+          { "type": "rewrite", "target": "evilTab", "screen": { "title": "이벤트 당첨!", "lines": ["지금 바로 상품을 받으세요"] } },
+          { "type": "flip", "target": "evilTab" }
+        ]
       },
       {
         "action": "send",
-        "from": "evil",
+        "from": "evilTab",
         "to": "bank",
         "title": "위조된 송금 요청",
-        "label": "POST /transfer + Cookie",
-        "caption": "함정 사이트가 몰래 송금 요청을 보내고, 브라우저가 은행 쿠키를 자동으로 붙입니다.",
-        "danger": true
+        "label": "POST /transfer",
+        "caption": "숨은 폼이 자동으로 제출됩니다. 브라우저는 목적지가 bank.example인 것만 보고 보관함의 은행 쿠키를 붙입니다. 검문소는 쿠키만 확인하고 통과시킵니다.",
+        "danger": true,
+        "effects": [
+          { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" },
+          {
+            "type": "inspect",
+            "at": "bank",
+            "contents": ["POST /transfer", "Cookie: session=a91f…", "to=attacker  amount=1,000,000", "보낸 곳: evil.example 탭"],
+            "checks": [
+              { "name": "쿠키", "result": "있음", "status": "ok" },
+              { "name": "CSRF 토큰", "result": "검사 안 함", "status": "skip" }
+            ]
+          }
+        ]
       },
       {
         "action": "send",
         "from": "bank",
-        "to": "evil",
+        "to": "evilTab",
         "title": "송금 완료",
         "label": "200 OK · 송금 완료",
-        "caption": "서버는 정상 요청으로 판단해 송금을 처리합니다. 사용자는 아무것도 누르지 않았습니다.",
-        "danger": true
+        "caption": "은행은 본인이 보낸 요청이라고 판단해 송금을 처리하고, 응답은 요청을 보낸 함정 탭으로 돌아갑니다. 금고의 돈은 공격자에게 빠져나갑니다. 사용자는 아무것도 누르지 않았습니다.",
+        "danger": true,
+        "effects": [{ "type": "transfer", "item": "coin", "from": "bank", "to": "attacker", "amount": 1000000 }]
       }
     ]
   },
@@ -96,16 +118,64 @@
       "kind": "defense",
       "description": "서버가 폼마다 예측할 수 없는 토큰을 넣어 두고, 요청에 같은 토큰이 있는지 확인합니다. 함정 사이트는 이 값을 알 수 없어 위조 요청이 거부됩니다.",
       "blockedAtStep": 5,
-      "blockedLabel": "토큰 없음 → 403",
-      "blockedCaption": "요청에 CSRF 토큰이 없어 서버가 거부합니다. 송금은 일어나지 않습니다."
+      "blockedTitle": "위조 요청 차단",
+      "blockedLabel": "403 · 토큰 없음",
+      "blockedCaption": "검문소가 봉투를 열어 봅니다. 쿠키는 있지만 CSRF 토큰이 없습니다. 토큰은 은행 탭 안에만 있어서 함정 탭은 알 수 없습니다. 403으로 거부합니다.",
+      "overrides": [
+        {
+          "step": 2,
+          "title": "세션 쿠키 + CSRF 토큰 발급",
+          "caption": "은행이 세션 쿠키를 보내고, 은행 탭의 송금 폼 안에는 CSRF 토큰(열쇠)을 넣어 둡니다. 쿠키는 보관함에, 토큰은 은행 탭 안에만 있습니다.",
+          "effects": [
+            { "type": "store", "item": "cookie", "into": "jar" },
+            { "type": "give", "item": "token", "from": "bank", "to": "bankTab", "label": "CSRF 토큰" }
+          ]
+        },
+        {
+          "step": 5,
+          "effects": [
+            { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" },
+            {
+              "type": "inspect",
+              "at": "bank",
+              "contents": ["POST /transfer", "Cookie: session=a91f…", "csrf_token: (비어 있음)", "보낸 곳: evil.example 탭"],
+              "checks": [
+                { "name": "쿠키", "result": "있음", "status": "ok" },
+                { "name": "CSRF 토큰", "result": "없음", "status": "fail" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "SameSite 쿠키",
       "kind": "defense",
       "description": "쿠키에 SameSite=Lax 또는 Strict를 지정하면, 다른 사이트에서 시작된 요청에는 브라우저가 쿠키를 붙이지 않습니다.",
       "blockedAtStep": 5,
-      "blockedLabel": "쿠키 없이 전송 → 401",
-      "blockedCaption": "다른 사이트에서 시작된 요청이라 브라우저가 쿠키를 붙이지 않고, 서버는 로그인되지 않은 요청으로 거부합니다."
+      "blockedTitle": "쿠키 없는 요청 거부",
+      "blockedLabel": "401 · 로그인 필요",
+      "blockedCaption": "요청이 함정 사이트에서 시작됐기 때문에 브라우저가 은행 쿠키를 붙이지 않습니다. 검문소는 로그인하지 않은 요청으로 보고 401로 거부합니다.",
+      "overrides": [
+        {
+          "step": 2,
+          "title": "SameSite 쿠키 발급",
+          "caption": "은행이 SameSite=Lax 표시를 붙인 세션 쿠키를 보냅니다. 브라우저는 다른 사이트에서 시작된 요청에는 이 쿠키를 붙이지 않습니다.",
+          "effects": [{ "type": "store", "item": "cookie", "into": "jar", "label": "SameSite=Lax" }]
+        },
+        {
+          "step": 5,
+          "effects": [
+            { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie", "refused": true, "reason": "다른 사이트에서 시작된 요청" },
+            {
+              "type": "inspect",
+              "at": "bank",
+              "contents": ["POST /transfer", "Cookie: (없음)", "to=attacker  amount=1,000,000", "보낸 곳: evil.example 탭"],
+              "checks": [{ "name": "쿠키", "result": "없음", "status": "fail" }]
+            }
+          ]
+        }
+      ]
     }
   ],
   "references": [
@@ -113,13 +183,11 @@
       "title": "OWASP Cross-Site Request Forgery Prevention Cheat Sheet",
       "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
     },
+    { "title": "OWASP Cross Site Request Forgery (CSRF)", "url": "https://owasp.org/www-community/attacks/csrf" },
     {
-      "title": "OWASP Cross Site Request Forgery (CSRF)",
-      "url": "https://owasp.org/www-community/attacks/csrf"
+      "title": "MDN · Set-Cookie의 SameSite 속성",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
     }
   ],
-  "related": [
-    "xss",
-    "session-hijacking"
-  ]
+  "related": ["xss", "session-hijacking"]
 }
