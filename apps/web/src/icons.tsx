@@ -59,6 +59,19 @@ export const PlayIcon = () => (
   </Icon>
 );
 
+export const PauseIcon = () => (
+  <Icon size={16} viewBox="0 0 14 14">
+    <rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor" />
+    <rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor" />
+  </Icon>
+);
+
+export const OrbitIcon = () => (
+  <Icon size={16}>
+    <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6" {...stroke} />
+  </Icon>
+);
+
 export const LogoMark = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
     <rect className="logo-mark-bg" width="28" height="28" rx="9" />
