@@ -67,7 +67,8 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, 재생 속도, 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 1단계 완료, 2단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
+**현재 단계: 2단계 완료(로컬), 3단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
+2단계 남은 일: CSRF 자막 수정안 사용자 검수 → `npm run deploy`(사용자 지시 후). 3단계 용어 4개는 docs/04의 효과 어휘로 작성하고, rewrite·run·give(from packet)·via·internal 구역 연출은 그때 처음 실제로 재생해 확인할 것.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 2단계 주의: 403/404→index.html 때문에 없는 `/content/terms/<id>.json`도 HTML 200이 오므로 상세 페이지는 JSON 파싱 실패를 "없는 용어"로 처리할 것. CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
