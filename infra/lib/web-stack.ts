@@ -11,8 +11,11 @@ import {
 } from "aws-cdk-lib/aws-cloudfront";
 import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
-import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
+import { BucketDeployment, CacheControl, Source } from "aws-cdk-lib/aws-s3-deployment";
 import type { Construct } from "constructs";
+
+/** 배포 때 CloudFront에서 비우는 경로. "/"는 기본 루트 객체(index.html)의 캐시 키가 따로라서 함께 넣는다. 해시 파일은 이름이 바뀌므로 비울 필요가 없다 */
+export const INVALIDATION_PATHS = ["/", "/index.html", "/content/*"];
 
 // 5단계에서 Cognito·API 도메인을 connect-src에 추가한다
 export const CSP = [
@@ -70,11 +73,34 @@ export class WebStack extends Stack {
       errorResponses: [spaFallback(403), spaFallback(404)],
     });
 
-    new BucketDeployment(this, "DeploySite", {
-      sources: [Source.asset(props.distPath)],
+    // 캐시 정책별로 나눠 올린다. exclude된 파일은 sync 대상도 prune 대상도 아니라서 세 배포가 서로의 파일을 건드리지 않는다
+    const source = [Source.asset(props.distPath)];
+    // 해시 파일: 지우지 않는다(prune: false). 배포 전에 받은 옛 index.html·메인 JS가 옛 청크를 불러도 있어야 한다
+    const assets = new BucketDeployment(this, "DeployAssets", {
+      sources: source,
       destinationBucket: bucket,
+      exclude: ["*"],
+      include: ["assets/*"],
+      prune: false,
+      cacheControl: [CacheControl.setPublic(), CacheControl.maxAge(Duration.days(365)), CacheControl.immutable()],
+    });
+    // 진입 HTML과 콘텐츠: 매번 다시 확인(no-cache). 새 청크가 먼저 올라간 뒤에 바꾼다
+    const pages = new BucketDeployment(this, "DeployPages", {
+      sources: source,
+      destinationBucket: bucket,
+      exclude: ["*"],
+      include: ["index.html", "content/*"],
+      cacheControl: [CacheControl.noCache()],
       distribution,
-      distributionPaths: ["/*"],
+      distributionPaths: INVALIDATION_PATHS,
+    });
+    pages.node.addDependency(assets);
+    // 나머지(robots.txt 등): 1시간
+    new BucketDeployment(this, "DeployRest", {
+      sources: source,
+      destinationBucket: bucket,
+      exclude: ["assets/*", "index.html", "content/*"],
+      cacheControl: [CacheControl.setPublic(), CacheControl.maxAge(Duration.hours(1))],
     });
 
     new CfnOutput(this, "SiteUrl", { value: `https://${distribution.distributionDomainName}` });

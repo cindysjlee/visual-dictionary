@@ -15,10 +15,12 @@ import Layout from "./Layout.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
 import HomePage from "./features/explore/HomePage.tsx";
 import TermPage from "./features/term/TermPage.tsx";
+import { installStaleChunkReload } from "./reloadOnStaleChunk.ts";
 import { applyTheme, initialTheme } from "./theme.ts";
 
 // 첫 렌더 전에 테마를 정한다 (CSP가 인라인 스크립트를 막으므로 index.html에서 할 수 없다)
 applyTheme(initialTheme());
+installStaleChunkReload();
 
 const router = createBrowserRouter([
   {

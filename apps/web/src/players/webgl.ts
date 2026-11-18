@@ -3,7 +3,9 @@ export function canUseWebGL(): boolean {
   if (new URLSearchParams(location.search).has("no3d")) return false;
   try {
     const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext(); // 확인용 컨텍스트를 바로 돌려준다(브라우저의 동시 컨텍스트 수 제한)
+    return Boolean(gl);
   } catch {
     return false;
   }

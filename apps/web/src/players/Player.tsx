@@ -25,6 +25,9 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   static getDerivedStateFromError() {
     return { failed: true };
   }
+  componentDidCatch(error: unknown) {
+    console.error("3D 장면을 띄우지 못해 2D 대체 화면으로 바꿉니다:", error);
+  }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }

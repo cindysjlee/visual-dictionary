@@ -32,6 +32,21 @@ check(robots.status === 200 && (robots.headers.get("content-type") ?? "").starts
 const json = await fetch(`${base}/content/terms/csrf.json`);
 check(json.status === 200 && (json.headers.get("content-type") ?? "").includes("application/json"), `/content/terms/csrf.json → ${json.status} ${json.headers.get("content-type")}`);
 
+// 캐시 정책 (infra/lib/web-stack.ts): 진입 HTML·콘텐츠는 no-cache, 해시 파일은 immutable, 나머지는 1시간
+const cacheOf = (r: Response) => r.headers.get("cache-control") ?? "(없음)";
+const homeHtml = await home.text();
+check(cacheOf(home) === "no-cache", `/ (index.html) cache-control: ${cacheOf(home)}`);
+for (const [path, res] of [["/content/terms/csrf.json", json], ["/content/index.json", await fetch(`${base}/content/index.json`)]] as const) {
+  check(cacheOf(res) === "no-cache", `${path} cache-control: ${cacheOf(res)}`);
+}
+const assetPath = homeHtml.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
+const asset = assetPath ? await fetch(`${base}${assetPath}`) : undefined;
+check(
+  Boolean(asset?.ok && (asset.headers.get("content-type") ?? "").includes("javascript") && cacheOf(asset).includes("immutable") && cacheOf(asset).includes("max-age=31536000")),
+  `${assetPath ?? "/assets/*.js(index.html에서 못 찾음)"} cache-control: ${asset ? cacheOf(asset) : "-"}`,
+);
+check(cacheOf(robots) === "public, max-age=3600", `/robots.txt cache-control: ${cacheOf(robots)}`);
+
 for (const [ok, what] of results) console.log(`${ok ? "통과" : "실패"}  ${what}`);
 const failed = results.filter(([ok]) => !ok).length;
 console.log(failed ? `smoke:prod 실패 ${failed}건 (${base})` : `smoke:prod 통과 ${results.length}건 (${base})`);
