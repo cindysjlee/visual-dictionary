@@ -81,7 +81,7 @@ export default function PlayerShell({ term, playback, view, autoplay, freeView, 
         </div>
       )}
 
-      <div ref={stageRef} className={`stage-slot ${stageClassName ?? ""}`} tabIndex={0} aria-label={stageHelp}>
+      <div ref={stageRef} className={`stage-slot ${stageClassName ?? ""}`} tabIndex={0} role="group" aria-label={stageHelp}>
         {children}
       </div>
 

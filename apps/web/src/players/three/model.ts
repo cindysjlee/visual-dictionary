@@ -205,13 +205,17 @@ export class SceneModel {
           }
           labelY = 3.2;
         } else {
-          this.mesh(new BoxGeometry(2.4, 0.25, 1.6), this.std("objectDim"), [0, 0.42, 0], group);
-          for (const x of [-0.8, -0.27, 0.27, 0.8]) this.mesh(new CylinderGeometry(0.11, 0.11, 1.1, 16), this.std("object"), [x, 1.08, 0.45], group);
-          this.mesh(new BoxGeometry(2.2, 1.1, 1.1), this.std("object"), [0, 1.08, -0.15], group);
-          const roof = this.mesh(new ConeGeometry(1.75, 0.7, 4), this.std("objectDim"), [0, 2.0, 0], group);
-          roof.rotation.y = Math.PI / 4;
-          roof.scale.set(1, 1, 0.65);
-          labelY = 2.8;
+          // 신전형 건물: 바닥판 → 기둥·본체 → 기둥을 받치는 판 → 지붕. 폭 2.6, 깊이 1.7로 위아래를 맞춘다
+          this.mesh(new BoxGeometry(2.6, 0.24, 1.7), this.std("objectDim"), [0, 0.42, 0], group);
+          this.mesh(new BoxGeometry(2.0, 1.1, 0.9), this.std("object"), [0, 1.09, -0.3], group);
+          for (const x of [-1.0, -0.34, 0.34, 1.0]) this.mesh(new CylinderGeometry(0.11, 0.11, 1.1, 16), this.std("object"), [x, 1.09, 0.5], group);
+          this.mesh(new BoxGeometry(2.6, 0.2, 1.7), this.std("objectDim"), [0, 1.74, 0], group);
+          // 사각뿔을 도형 단계에서 45° 돌려 변을 축에 맞춘 뒤 깊이만 줄인다(메시 회전 + 크기 조정은 찌그러진다)
+          const roofGeo = new ConeGeometry(1.3 * Math.SQRT2, 0.6, 4);
+          roofGeo.rotateY(Math.PI / 4);
+          const roof = this.mesh(roofGeo, this.std("objectDim"), [0, 2.14, 0], group);
+          roof.scale.set(1, 1, 1.7 / 2.6);
+          labelY = 2.9;
         }
         if (placed.gate) node.gate = this.buildGate(placed, group);
         break;
