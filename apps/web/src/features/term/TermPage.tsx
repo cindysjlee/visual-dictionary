@@ -5,7 +5,10 @@ import NotFoundPage from "../../NotFoundPage.tsx";
 import { ShieldIcon } from "../../icons.tsx";
 import { useJson } from "../../useJson.ts";
 import { termMeta } from "../explore/HomePage.tsx";
-import PlayerPlaceholder from "./PlayerPlaceholder.tsx";
+import { Suspense, lazy } from "react";
+
+// 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
+const Player = lazy(() => import("../../players/Player.tsx"));
 
 function TermDetail({ term }: { term: Term }) {
   const index = useJson<IndexEntry[]>("/content/index.json");
@@ -40,7 +43,10 @@ function TermDetail({ term }: { term: Term }) {
         </div>
       </section>
 
-      <PlayerPlaceholder term={term} />
+      {/* 끝까지 봄(onComplete) → 읽음 저장은 6단계에서 연결한다 */}
+      <Suspense fallback={<section className="glass card player" aria-label="애니메이션 플레이어"><p className="muted">플레이어를 불러오는 중…</p></section>}>
+        <Player term={term} />
+      </Suspense>
 
       <section className="bento">
         {term.defenses.length > 0 && (

@@ -702,96 +702,6 @@ button:disabled {
   color: var(--text-sub);
 }
 
-.stage {
-  padding: 28px 16px 8px;
-  border-radius: var(--radius);
-  background: var(--stage-bg);
-  border: 1px solid var(--line);
-  box-shadow: var(--stage-inset);
-}
-
-.actors {
-  display: grid;
-  grid-template-columns: repeat(var(--actor-count, 4), minmax(0, 1fr));
-  gap: 12px;
-}
-
-.actor {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 18px 6px 14px;
-  border-radius: 22px;
-  text-align: center;
-  background: var(--actor-off);
-  box-shadow: 0 0 0 1px var(--line);
-  opacity: 0.75;
-}
-
-.actor.is-active {
-  background: var(--actor-on);
-  box-shadow: 0 0 0 2px var(--step-color), 0 14px 34px var(--raised-shadow);
-  opacity: 1;
-}
-
-.actor-icon {
-  width: 54px;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  background: var(--soft);
-  color: var(--text-sub);
-}
-
-.actor.is-active .actor-icon {
-  background: var(--step-color);
-  color: var(--on-color);
-}
-
-.actor-name {
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.actor-role {
-  font-family: var(--font-num);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.stage-track {
-  position: relative;
-  height: 84px;
-  margin-top: 10px;
-}
-
-.stage-track::before {
-  content: "";
-  position: absolute;
-  left: var(--track-inset, 12.5%);
-  right: var(--track-inset, 12.5%);
-  top: 52px;
-  height: 2px;
-  background: var(--track);
-}
-
-.packet {
-  position: absolute;
-  top: 31px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-family: var(--font-num);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--on-color);
-  background: var(--step-color);
-}
-
 .step-neutral {
   --step-color: var(--neutral);
 }
@@ -897,4 +807,232 @@ button:disabled {
   align-items: center;
   text-align: center;
   gap: 18px;
+}
+
+/* ---------- 플레이어 (PlayerShell, 3D 무대, 2D 대체 화면) ---------- */
+.player-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.defense-chips {
+  align-items: center;
+}
+
+.stage-slot {
+  position: relative;
+  border-radius: var(--radius);
+  background: var(--stage-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--stage-inset);
+  overflow: hidden;
+}
+
+.stage-slot.is-3d {
+  height: clamp(340px, 46vw, 540px);
+}
+
+.stage-slot.is-2d {
+  padding: 16px;
+}
+
+.stage-slot:focus-visible {
+  outline: 2px solid var(--defense);
+  outline-offset: 3px;
+}
+
+.stage-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.scene3d,
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: var(--glass-fallback);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+  transition: opacity 0.2s; /* 장식(나타남·사라짐)만 CSS */
+}
+
+.scene-label strong {
+  font-weight: 700;
+}
+
+.scene-label small {
+  font-family: var(--font-num);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scene-label.tone-neutral {
+  background: var(--neutral);
+  color: var(--on-color);
+  font-family: var(--font-num);
+}
+
+.scene-label.tone-attack {
+  background: var(--attack);
+  color: var(--on-color);
+  border-color: transparent;
+  font-family: var(--font-num);
+}
+
+.scene-label.tone-defense {
+  background: var(--defense);
+  color: var(--on-color);
+  border-color: transparent;
+}
+
+.scene-label.has-rows {
+  min-width: 170px;
+}
+
+.scene-check {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scene-check em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.scene-check.is-ok em {
+  color: var(--text-sub);
+}
+
+.scene-check.is-skip em {
+  color: var(--attack-text);
+}
+
+.scene-check.is-fail {
+  color: var(--defense-text);
+  font-weight: 700;
+}
+
+.scene-hint {
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.caption-title.tone-attack {
+  color: var(--attack-text);
+}
+
+.caption-title.tone-defense {
+  color: var(--defense-text);
+}
+
+.step-pos {
+  color: var(--step-color);
+}
+
+.step-seg-btn {
+  flex: 1;
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.step-seg-btn .step-seg {
+  flex: 1;
+}
+
+.step-seg.is-done {
+  background: var(--text-sub);
+}
+
+.steps2d {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.steps2d-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--soft);
+  color: var(--text-sub);
+}
+
+.steps2d-item.is-current {
+  background: var(--actor-on);
+  box-shadow: 0 0 0 2px var(--step-color, var(--neutral));
+  color: var(--text);
+}
+
+.steps2d-item.tone-attack {
+  --step-color: var(--attack);
+}
+
+.steps2d-item.tone-defense {
+  --step-color: var(--defense);
+}
+
+.steps2d-item.tone-neutral {
+  --step-color: var(--neutral);
+}
+
+.steps2d-title {
+  font-weight: 700;
+}
+
+.steps2d-label {
+  grid-column: 2;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.steps2d-item.tone-defense .steps2d-label {
+  color: var(--defense-text);
+  font-weight: 700;
+}
+
+.scene-label.tone-attack small,
+.scene-label.tone-defense small,
+.scene-label.tone-neutral small {
+  color: inherit;
+  opacity: 0.85;
 }

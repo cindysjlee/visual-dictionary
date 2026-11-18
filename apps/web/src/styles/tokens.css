@@ -55,6 +55,16 @@
   --blob-3: rgba(167, 123, 255, 0.5);
   --blob-4: rgba(79, 209, 197, 0.45);
 
+  /* 3D 장면 면 색 (useSceneTokens가 런타임에 읽어 재질에 넣는다. 반드시 #rrggbb) */
+  --scene-object: #f3f5fb;
+  --scene-object-dim: #d3d9e8;
+  --scene-object-attack: #3a2f3a;
+  --scene-villain: #2a2e3e;
+  --scene-grid: #9aa3bf;
+  --scene-paper: #ffffff;
+  --scene-gold: #d99a1e;
+  --scene-island: #dce2f0;
+
   --font-sans: "Noto Sans KR", system-ui, sans-serif;
   --font-num: "Sora", "Noto Sans KR", system-ui, sans-serif;
 
@@ -115,6 +125,15 @@
   --blob-2: rgba(60, 120, 255, 0.45);
   --blob-3: rgba(150, 90, 255, 0.38);
   --blob-4: rgba(40, 190, 180, 0.28);
+
+  --scene-object: #3e4566;
+  --scene-object-dim: #2c3250;
+  --scene-object-attack: #3a2a33;
+  --scene-villain: #6a7190;
+  --scene-grid: #3b4366;
+  --scene-paper: #e9edf7;
+  --scene-gold: #f2c14e;
+  --scene-island: #20263d;
 }
 
 /* 공격·방어 연한 바탕: 각 색의 12%(라이트)·16%(다크) */
