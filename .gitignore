@@ -4,3 +4,5 @@ dist/
 apps/web/generated/
 # CDK synth 산출물
 cdk.out/
+test-results/
+playwright-report/

@@ -44,7 +44,7 @@ function TermDetail({ term }: { term: Term }) {
       </section>
 
       {/* 끝까지 봄(onComplete) → 읽음 저장은 6단계에서 연결한다 */}
-      <Suspense fallback={<section className="glass card player" aria-label="애니메이션 플레이어"><p className="muted">플레이어를 불러오는 중…</p></section>}>
+      <Suspense fallback={<PlayerSkeleton />}>
         <Player term={term} />
       </Suspense>
 
@@ -87,11 +87,32 @@ function TermDetail({ term }: { term: Term }) {
   );
 }
 
+/** 불러오는 동안에도 상세·플레이어 카드 크기만큼 자리를 잡아 레이아웃이 밀리지 않게 한다(CLS) */
+const PlayerSkeleton = () => (
+  <section className="glass card player player-skeleton" aria-label="애니메이션 플레이어" aria-busy="true">
+    <p className="muted">플레이어를 불러오는 중…</p>
+  </section>
+);
+
+function TermSkeleton() {
+  return (
+    <>
+      <section className="detail-top" aria-busy="true">
+        <div className="glass card card-lg detail-skeleton">
+          <p className="muted">불러오는 중…</p>
+        </div>
+        <div className="glass card card-lg detail-skeleton" />
+      </section>
+      <PlayerSkeleton />
+    </>
+  );
+}
+
 export default function TermPage() {
   const { id } = useParams();
   const load = useJson<Term>(`/content/terms/${id}.json`);
 
-  if (load.state === "loading") return <p className="muted">불러오는 중…</p>;
+  if (load.state === "loading") return <TermSkeleton />;
   if (load.state === "notfound") return <NotFoundPage message="찾는 용어가 없습니다." />;
   if (load.state === "error") return <p role="alert">용어를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
   return <TermDetail term={load.data} />;

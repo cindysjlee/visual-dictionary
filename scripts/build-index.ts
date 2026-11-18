@@ -1,7 +1,7 @@
 // 검증을 통과한 용어로 /content/index.json과 /content/terms/<id>.json을 만든다 (FR-CNT-03, 04)
 // 사용: node scripts/build-index.ts [--include-drafts]  (--include-drafts는 개발 서버 전용)
 // 출력: generated/build (published만, vite build의 publicDir) / generated/dev (draft 포함, 개발 서버의 publicDir)
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IndexEntry, Term } from "@app/content-schema";
@@ -36,6 +36,8 @@ if (import.meta.main) {
   mkdirSync(join(dir, "terms"), { recursive: true });
   writeFileSync(join(dir, "index.json"), JSON.stringify(terms.map(toIndexEntry)));
   for (const term of terms) writeFileSync(join(dir, "terms", `${term.id}.json`), JSON.stringify(term));
+  // publicDir이 generated/<모드>라서 정적 파일(robots.txt)도 여기로 복사한다
+  copyFileSync(fileURLToPath(new URL("../apps/web/static/robots.txt", import.meta.url)), join(dir, "..", "robots.txt"));
 
   console.log(`인덱스 생성: ${terms.length}개 용어${includeDrafts ? " (draft 포함, 개발용)" : ""}`);
 }

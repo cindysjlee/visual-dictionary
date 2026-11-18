@@ -1036,3 +1036,12 @@ button:disabled {
   color: inherit;
   opacity: 0.85;
 }
+
+/* 불러오는 동안 자리 잡기(CLS): 3D 플레이어 = 무대 높이 + 머리·자막·컨트롤 */
+.player-skeleton {
+  min-height: calc(clamp(340px, 46vw, 540px) + 270px);
+}
+
+.detail-skeleton {
+  min-height: 300px;
+}

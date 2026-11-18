@@ -57,4 +57,20 @@ describe("WebStack", () => {
     });
     expect(CSP).toContain("frame-ancestors 'none'");
   });
+
+  it("nosniff·HSTS 하위 도메인, 배포가 OAC로 버킷에 붙는다", () => {
+    template.hasResourceProperties("AWS::CloudFront::ResponseHeadersPolicy", {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        SecurityHeadersConfig: Match.objectLike({
+          ContentTypeOptions: { Override: true },
+          StrictTransportSecurity: Match.objectLike({ IncludeSubdomains: true, Override: true }),
+        }),
+      }),
+    });
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: Match.objectLike({
+        Origins: [Match.objectLike({ OriginAccessControlId: Match.anyValue(), S3OriginConfig: Match.objectLike({ OriginAccessIdentity: "" }) })],
+      }),
+    });
+  });
 });
