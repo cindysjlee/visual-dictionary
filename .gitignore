@@ -8,3 +8,5 @@ test-results/
 playwright-report/
 # graphify 지식 그래프 산출물 (로컬 전용)
 graphify-out/
+# Git Bash 충돌 덤프
+*.stackdump
