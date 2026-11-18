@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# build-index 산출물 (generated/dev는 draft 포함이라 커밋하지 않음)
+apps/web/generated/

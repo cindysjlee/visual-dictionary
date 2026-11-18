@@ -1,0 +1,23 @@
+/* 디자인 토큰은 이 파일 한 곳에서만 정한다. 값의 출처: docs/05-ui-design.md (Packet Lab) */
+:root {
+  color-scheme: dark;
+
+  --color-bg: #0e141b;
+  --color-surface: #16202b;
+  --color-stage: #121b24;
+  --color-border: #2b3a4a;
+  --color-text: #e6edf3;
+  --color-text-sub: #c9d3dd;
+  --color-text-meta: #9aa8b6;
+  --color-danger: #f5a04a; /* 공격·위험 (주황) */
+  --color-defense: #5cb3ff; /* 방어·차단, 링크, 읽음 (파랑) */
+  --color-step: #8fa3b8; /* 일반 단계 */
+
+  --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius: 8px;
+  --gutter: 16px;
+  --content-max: 1120px;
+  --tap-min: 44px;
+}

@@ -1,0 +1,88 @@
+{
+  "id": "deadlock",
+  "name": "데드락",
+  "englishName": "Deadlock",
+  "aliases": [
+    "교착 상태"
+  ],
+  "category": "os",
+  "summary": "두 작업이 서로 상대가 가진 자원을 기다리며 영원히 멈추는 상태",
+  "description": "작업 A는 자원 1을 가진 채 자원 2를 기다리고, 작업 B는 자원 2를 가진 채 자원 1을 기다리면, 둘 다 상대가 자원을 놓기를 기다리기만 하고 아무도 진행하지 못한다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "lock",
+    "actors": [
+      {
+        "id": "p1",
+        "name": "프로세스 A",
+        "role": "process"
+      },
+      {
+        "id": "p2",
+        "name": "프로세스 B",
+        "role": "process"
+      },
+      {
+        "id": "r1",
+        "name": "프린터",
+        "role": "resource"
+      },
+      {
+        "id": "r2",
+        "name": "스캐너",
+        "role": "resource"
+      }
+    ],
+    "steps": [
+      {
+        "action": "acquire",
+        "from": "p1",
+        "to": "r1",
+        "label": "프린터 잡음",
+        "caption": "A가 프린터를 먼저 차지합니다.",
+        "danger": false
+      },
+      {
+        "action": "acquire",
+        "from": "p2",
+        "to": "r2",
+        "label": "스캐너 잡음",
+        "caption": "B가 스캐너를 먼저 차지합니다.",
+        "danger": false
+      },
+      {
+        "action": "wait",
+        "from": "p1",
+        "to": "r2",
+        "label": "스캐너 대기",
+        "caption": "A는 스캐너가 필요하지만 B가 쥐고 있어 기다립니다.",
+        "danger": true
+      },
+      {
+        "action": "wait",
+        "from": "p2",
+        "to": "r1",
+        "label": "프린터 대기",
+        "caption": "B도 프린터가 필요해 A를 기다립니다. 둘 다 영원히 멈춥니다.",
+        "danger": true
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "자원 요청 순서 정하기",
+      "kind": "solution",
+      "description": "모든 프로세스가 프린터 → 스캐너 순서로만 자원을 요청하게 하면, 서로 상대를 기다리는 순환이 생기지 않습니다.",
+      "blockedAtStep": 2,
+      "blockedLabel": "프린터부터 요청 → 대기",
+      "blockedCaption": "B도 프린터부터 요청해야 하므로 A가 끝날 때까지 기다립니다. A는 스캐너까지 얻어 작업을 마치고, 데드락이 생기지 않습니다."
+    }
+  ],
+  "references": [
+    {
+      "title": "Operating System Concepts (Silberschatz), Ch. Deadlocks",
+      "url": "https://www.os-book.com/"
+    }
+  ],
+  "related": []
+}

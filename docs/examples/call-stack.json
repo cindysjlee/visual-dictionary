@@ -1,0 +1,75 @@
+{
+  "id": "call-stack",
+  "name": "콜 스택",
+  "englishName": "Call Stack",
+  "aliases": [
+    "호출 스택",
+    "call stack"
+  ],
+  "category": "runtime",
+  "summary": "함수가 호출될 때 쌓이고 끝나면 빠지는, 실행 중인 함수들의 목록",
+  "description": "함수를 호출하면 그 함수의 실행 정보가 스택 맨 위에 쌓이고, 함수가 끝나면 맨 위에서 빠진다. 맨 위에 있는 함수가 지금 실행 중인 함수이며, 나중에 호출된 함수가 먼저 끝난다(LIFO).",
+  "status": "draft",
+  "scenario": {
+    "playerType": "stack",
+    "actors": [
+      {
+        "id": "main",
+        "name": "main()",
+        "role": "function"
+      },
+      {
+        "id": "total",
+        "name": "calcTotal()",
+        "role": "function"
+      },
+      {
+        "id": "price",
+        "name": "getPrice()",
+        "role": "function"
+      }
+    ],
+    "steps": [
+      {
+        "action": "push",
+        "from": "main",
+        "to": "total",
+        "label": "calcTotal(cart)",
+        "caption": "main이 calcTotal을 호출합니다. calcTotal이 스택에 쌓입니다.",
+        "danger": false
+      },
+      {
+        "action": "push",
+        "from": "total",
+        "to": "price",
+        "label": "getPrice(item)",
+        "caption": "calcTotal이 getPrice를 호출합니다. 맨 위에 있는 getPrice가 지금 실행 중인 함수입니다.",
+        "danger": false
+      },
+      {
+        "action": "pop",
+        "from": "price",
+        "to": "total",
+        "label": "return 1200",
+        "caption": "getPrice가 끝나면 스택에서 빠지고, 결과를 calcTotal에 돌려줍니다.",
+        "danger": false
+      },
+      {
+        "action": "pop",
+        "from": "total",
+        "to": "main",
+        "label": "return 3600",
+        "caption": "calcTotal도 끝나 스택에서 빠지고, 실행이 main으로 돌아갑니다.",
+        "danger": false
+      }
+    ]
+  },
+  "defenses": [],
+  "references": [
+    {
+      "title": "MDN Web Docs: Call stack",
+      "url": "https://developer.mozilla.org/en-US/docs/Glossary/Call_stack"
+    }
+  ],
+  "related": []
+}

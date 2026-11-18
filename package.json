@@ -1,0 +1,25 @@
+{
+  "name": "security-cs-visual-dictionary",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.2"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "validate": "node scripts/validate-content.ts",
+    "build:content": "node scripts/build-index.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "npm run typecheck && npm run build -w apps/web",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
