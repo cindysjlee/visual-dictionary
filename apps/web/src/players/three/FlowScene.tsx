@@ -6,7 +6,7 @@ import { Raycaster, Spherical, Vector3, type Material, type Mesh, type Perspecti
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
-import { CameraRig, buildStep } from "./director.ts";
+import { CameraRig, buildStep, sideStamp } from "./director.ts";
 import { LabelLayer } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
@@ -99,7 +99,8 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       const focusId = view.blocked ? blockTarget(view) : inspect && inspect.type === "inspect" ? inspect.at : (lastTarget ?? view.to);
       const placed = layout.get(focusId)!;
       if (view.blocked) {
-        const at = new Vector3(...(placed.gate?.mid ?? placed.anchor)).add(new Vector3(0, 1.4, 0.4));
+        // 검문소면 그 앞, 아니면 대상 옆 (director와 같은 위치)
+        const at = placed.gate && inspect ? new Vector3(...placed.gate.mid).add(new Vector3(0, 1.4, 0.4)) : sideStamp(new Vector3(...placed.anchor)).at;
         model.setGateTone(focusId, "defense");
         model.showStamp(view.blockedLabel ?? "차단", at);
         model.stamp.scale.set(1, 1, 1);
@@ -110,7 +111,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
           });
         }
       }
-      rig.shot(new Vector3(...(placed.gate?.mid ?? placed.anchor)), "mid");
+      rig.shot(view.blocked && !(placed.gate && inspect) ? sideStamp(new Vector3(...placed.anchor)).focus : new Vector3(...(placed.gate?.mid ?? placed.anchor)), "mid");
       jump.current = true;
       timeline.current = new Timeline().wait(holdMs(view, false)).call(done);
     } else {

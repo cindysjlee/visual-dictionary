@@ -60,6 +60,15 @@ export class CameraRig {
   }
 }
 
+/**
+ * 검사 없는 차단의 도장 위치: 대상 옆(장면 가운데 쪽). 위에 두면 대상·부모의 이름 라벨(HTML, 캔버스 위)과 겹친다.
+ * focus는 대상과 도장이 함께 보이는 카메라 초점
+ */
+export function sideStamp(anchor: Vector3) {
+  const side = anchor.x > 0.5 ? -2.7 : 2.7;
+  return { at: anchor.clone().add(new Vector3(side, 0.6, 0.4)), focus: anchor.clone().add(new Vector3(side / 2, 0.4, 0)) };
+}
+
 /* ---------- 단계 연출 ---------- */
 export type DirectorContext = {
   term: Term;
@@ -361,12 +370,12 @@ export function buildStep(ctx: DirectorContext): Timeline {
 
   // 검사 없이 막히는 차단(실행·읽기·엿보기가 거부됨): 단계를 끝까지 보여 준 뒤 거부된 곳에 도장 (docs/04 방어 모드 동작)
   if (blockedWithoutInspect) {
-    const at = anchor(blockTarget(view));
+    const stamp = sideStamp(anchor(blockTarget(view)));
     tl.call(() => {
       labels.show(NOTE, false);
       model.setEnvelopeTone("defense");
-      model.showStamp(view.blockedLabel ?? "차단", at.clone().add(new Vector3(0, 1.3, 0.4)));
-      rig.shot(at, "near");
+      model.showStamp(view.blockedLabel ?? "차단", stamp.at);
+      rig.shot(stamp.focus, "near");
     });
     tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);
   }

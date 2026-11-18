@@ -19,18 +19,22 @@ export const BROWSER_SIZE: Vec3 = [6, 3, 2.8];
 const spread = (n: number, min: number, max: number): number[] =>
   n === 0 ? [] : n === 1 ? [(min + max) / 2] : Array.from({ length: n }, (_, i) => min + ((max - min) * i) / (n - 1));
 
-/** between(사용자와 서버 사이의 길목)이 있으면 그 자리만큼 서버·사내망 줄을 뒤로 민다 */
+/**
+ * between(사용자와 서버 사이의 길목)이 있으면 그 자리만큼 서버·사내망 줄을 뒤로 민다.
+ * 서버·사내망 줄에 하나뿐이면 좌우로 비켜 놓는다(서버 왼쪽, 사내망 오른쪽): 모두 x=0이면 앞에서 볼 때 한 줄로 겹친다.
+ * 길목이 하나면 바깥(공격자) 쪽으로 비켜 선다: 가운데면 브라우저 상자 뒤에 가려진다
+ */
 const BETWEEN_DEPTH = 2.6;
 const zoneRow = (zone: Zone, n: number, push: number): Vec3[] => {
   switch (zone) {
     case "client":
       return spread(n, -(n - 1) * 3.5, (n - 1) * 3.5).map((x): Vec3 => [x, 0, 2.2]);
     case "between":
-      return spread(n, -(n - 1) * 3, (n - 1) * 3).map((x): Vec3 => [x, 0, -1.2]);
+      return (n === 1 ? [4] : spread(n, -(n - 1) * 3, (n - 1) * 3)).map((x): Vec3 => [x, 0, -1.2]);
     case "server":
-      return spread(n, -5, 5).map((x): Vec3 => [x, 0, -4.2 - push]);
+      return (n === 1 ? [-3] : spread(n, -5, 5)).map((x): Vec3 => [x, 0, -4.2 - push]);
     case "internal":
-      return spread(n, -4, 4).map((x): Vec3 => [x, 0, -9.5 - push]);
+      return (n === 1 ? [3] : spread(n, -4, 4)).map((x): Vec3 => [x, 0, -9.5 - push]);
     case "outside":
       return spread(n, 1.6, 1.6 - (n - 1) * 4).map((z): Vec3 => [8.6, 0, z]);
   }
@@ -76,7 +80,8 @@ export function layoutScene(actors: readonly Actor[]): Map<string, Placed> {
     const children = actors.filter((a) => a.parent === parent.id);
     const [px, , pz] = parent.position;
     const tabs = children.filter((c) => kindOf(c) === "tab");
-    const tabX = spread(tabs.length, px - 1.45, px + 1.45);
+    // 탭이 하나면 왼쪽 자리(가운데면 브라우저 이름 라벨과 겹친다)
+    const tabX = tabs.length === 1 ? [px - 1.45] : spread(tabs.length, px - 1.45, px + 1.45);
     let stacked = 0;
     for (const child of children) {
       const kind = kindOf(child);

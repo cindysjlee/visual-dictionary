@@ -914,6 +914,17 @@ button:disabled {
   color: var(--text-muted);
 }
 
+/* 휴대폰: 장면은 작아지는데 HTML 라벨은 그대로라 겹친다. 라벨을 줄이고 주소 줄은 숨긴다(탭 화면에 주소가 있음) */
+@media (max-width: 639px) {
+  .scene-label {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+  .scene-label:not(.has-rows) small {
+    display: none;
+  }
+}
+
 .scene-label.tone-neutral {
   background: var(--neutral);
   color: var(--on-color);

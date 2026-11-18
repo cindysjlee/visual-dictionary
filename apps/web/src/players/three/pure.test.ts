@@ -45,7 +45,8 @@ describe("layoutScene", () => {
       },
     }).scenario.actors;
     const p = layoutScene(actors);
-    expect(p.get("wifi")!.position).toEqual([0, 0, -1.2]);
+    expect(p.get("wifi")!.position).toEqual([4, 0, -1.2]);
+    expect(p.get("db")!.position[0]).toBe(3); // 사내망에 하나뿐이면 오른쪽으로 비켜 선다
     expect(p.get("bank")!.position[2]).toBeCloseTo(-6.8);
     expect(p.get("db")!.position[2]).toBeCloseTo(-12.1);
     expect(p.get("jar")!.zone).toBe("client");
