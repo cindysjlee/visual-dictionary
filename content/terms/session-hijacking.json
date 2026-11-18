@@ -1,0 +1,133 @@
+{
+  "id": "session-hijacking",
+  "name": "세션 하이재킹",
+  "englishName": "Session Hijacking",
+  "aliases": ["세션 가로채기", "쿠키 하이재킹"],
+  "category": "web-security",
+  "summary": "로그인한 사용자의 세션 쿠키를 훔쳐, 비밀번호 없이 그 사용자로 행세하는 공격",
+  "description": "로그인한 뒤 서버는 세션 쿠키 값만 보고 사용자를 알아본다. 그래서 공격자가 이 값을 손에 넣으면 비밀번호 없이도 그 사용자로 인정받는다. 쿠키는 암호화되지 않은 통신을 엿보거나, XSS로 스크립트가 읽어 내는 방법 등으로 샌다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      { "id": "browser", "name": "피해자 브라우저", "role": "user", "kind": "browser", "zone": "client", "site": "browser" },
+      {
+        "id": "bankTab",
+        "name": "은행 탭",
+        "role": "user",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "bank.example",
+        "screen": { "title": "내 계좌", "lines": ["잔액 1,250,000원"] }
+      },
+      { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
+      { "id": "wifi", "name": "공용 와이파이", "role": "network", "kind": "network", "zone": "between", "site": "cafe-free-wifi" },
+      { "id": "bank", "name": "은행 서버", "role": "server", "kind": "server", "zone": "server", "site": "bank.example", "gate": true },
+      { "id": "attacker", "name": "같은 와이파이의 공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "bankTab",
+        "to": "bank",
+        "via": "wifi",
+        "title": "공용 와이파이에서 로그인",
+        "label": "POST /login",
+        "caption": "카페의 공용 와이파이로 은행에 로그인합니다. 이 은행은 HTTP를 써서 내용을 암호화하지 않으므로, 같은 와이파이에 있는 사람은 오가는 내용을 그대로 볼 수 있습니다. 비밀번호도 그대로 보입니다."
+      },
+      {
+        "action": "send",
+        "from": "bank",
+        "to": "bankTab",
+        "via": "wifi",
+        "title": "세션 쿠키 발급",
+        "label": "Set-Cookie: session=7c2e…",
+        "caption": "은행이 로그인 상태를 나타내는 세션 쿠키를 보내고, 브라우저는 보관함에 넣어 둡니다. 이 쿠키 값만 있으면 은행은 누구든 이 사용자로 인정합니다.",
+        "effects": [{ "type": "store", "item": "cookie", "into": "jar" }]
+      },
+      {
+        "action": "send",
+        "from": "bankTab",
+        "to": "bank",
+        "via": "wifi",
+        "title": "쿠키를 엿봄",
+        "label": "GET /account",
+        "caption": "계좌를 볼 때마다 브라우저는 세션 쿠키를 붙여 보냅니다. 요청이 와이파이를 지나는 순간, 옆의 공격자가 암호화되지 않은 쿠키 값을 그대로 복사합니다.",
+        "danger": true,
+        "effects": [
+          { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" },
+          { "type": "give", "item": "cookie", "from": "packet", "to": "attacker", "label": "엿본 세션 쿠키" }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "attacker",
+        "to": "bank",
+        "title": "훔친 쿠키로 요청",
+        "label": "GET /account",
+        "caption": "공격자가 자기 브라우저에 훔친 쿠키 값을 넣고 은행에 요청합니다. 검문소는 세션 쿠키가 유효한지만 확인하므로 통과시킵니다.",
+        "danger": true,
+        "effects": [
+          { "type": "attach", "item": "cookie", "from": "attacker", "label": "Cookie(훔친 값)", "note": "훔친 쿠키 값을 직접 넣음" },
+          {
+            "type": "inspect",
+            "at": "bank",
+            "contents": ["GET /account", "Cookie: session=7c2e…", "보낸 곳: 공격자 브라우저"],
+            "checks": [
+              { "name": "세션 쿠키", "result": "유효함", "status": "ok" },
+              { "name": "원래 사용자인지", "result": "알 수 없음", "status": "skip" }
+            ]
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "bank",
+        "to": "attacker",
+        "title": "피해자로 인정",
+        "label": "200 OK · 피해자 계좌",
+        "caption": "은행은 쿠키만 보고 피해자 본인이라고 판단해 계좌 정보를 보여 줍니다. 공격자는 비밀번호 없이 피해자의 세션을 가로챘습니다.",
+        "danger": true,
+        "effects": [{ "type": "store", "item": "data", "into": "attacker", "label": "피해자 계좌 정보" }]
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "HTTPS + Secure 쿠키",
+      "kind": "defense",
+      "description": "사이트 전체를 HTTPS로 암호화하면 중간에서 엿봐도 내용이 암호문으로만 보입니다. 쿠키에 Secure를 지정하면 브라우저가 HTTPS 요청에만 그 쿠키를 붙여, 실수로 http:// 주소로 접속해도 쿠키가 평문으로 나가지 않습니다. HSTS 헤더를 보내면 브라우저가 이 사이트를 기억해 이후 http://로 접속해도 HTTPS로 바꿔 보냅니다(맨 처음 접속까지 보호하려면 HSTS preload 목록에 등록합니다). 쿠키가 새더라도 쓸 수 있는 시간을 줄이도록 로그인 직후 세션 ID를 새로 발급하고, 서버에서 짧은 만료·유휴 시간 제한을 둡니다. HttpOnly는 엿보기와는 관계없고, XSS로 스크립트가 쿠키를 읽는 것을 막는 설정입니다.",
+      "blockedAtStep": 3,
+      "blockedTitle": "암호문이라 엿봐도 소용없음",
+      "blockedLabel": "HTTPS · 암호문만 보임",
+      "blockedCaption": "요청이 와이파이를 지나는 것은 같지만, HTTPS로 암호화되어 있어 공격자에게는 알아볼 수 없는 암호문만 보입니다. 쿠키 값을 복사할 수 없으니 세션을 가로챌 수 없습니다.",
+      "overrides": [
+        {
+          "step": 1,
+          "title": "HTTPS로 로그인",
+          "caption": "같은 공용 와이파이로 로그인하지만, 은행이 HTTPS를 써서 브라우저와 은행 사이의 내용이 모두 암호화됩니다. 옆 사람에게는 비밀번호도 암호문으로만 보입니다."
+        },
+        {
+          "step": 2,
+          "title": "Secure 세션 쿠키 발급",
+          "caption": "은행이 Secure를 지정한 세션 쿠키를 보냅니다. 브라우저는 이 쿠키를 HTTPS 요청에만 붙입니다.",
+          "effects": [{ "type": "store", "item": "cookie", "into": "jar", "label": "Secure" }]
+        },
+        {
+          "step": 3,
+          "effects": [
+            { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" },
+            { "type": "give", "item": "cookie", "from": "packet", "to": "attacker", "label": "엿본 세션 쿠키", "refused": true, "reason": "암호문이라 읽을 수 없음" }
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    { "title": "OWASP Session hijacking attack", "url": "https://community.owasp.org/attacks/Session_hijacking_attack" },
+    { "title": "OWASP Session Management Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html" },
+    { "title": "MDN · Set-Cookie의 Secure 속성", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" },
+    { "title": "MDN · Strict-Transport-Security (HSTS)", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" }
+  ],
+  "related": ["xss", "csrf"]
+}

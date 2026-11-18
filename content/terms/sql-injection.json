@@ -1,0 +1,139 @@
+{
+  "id": "sql-injection",
+  "name": "SQL 인젝션",
+  "englishName": "SQL Injection",
+  "aliases": ["SQL 삽입", "SQLi"],
+  "category": "web-security",
+  "summary": "입력값이 쿼리 문장의 일부가 되어, 공격자가 데이터베이스에 보낼 명령을 바꾸는 공격",
+  "description": "서버가 사용자의 입력을 SQL 문장에 그대로 이어 붙이면, 입력 속의 따옴표나 키워드가 문장의 구조를 바꿀 수 있다. 공격자는 이를 이용해 로그인 검사를 건너뛰거나 다른 사람의 데이터를 읽고 바꾼다. 쿼리 틀과 입력값을 따로 보내는 파라미터화 쿼리가 기본 방어다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      { "id": "browser", "name": "공격자 브라우저", "role": "attacker", "kind": "browser", "zone": "client", "site": "browser", "tone": "attack" },
+      {
+        "id": "loginTab",
+        "name": "로그인 탭",
+        "role": "attacker",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "shop.example",
+        "tone": "attack",
+        "screen": { "title": "로그인", "lines": ["아이디:", "비밀번호:"] }
+      },
+      {
+        "id": "web",
+        "name": "쇼핑몰 서버",
+        "role": "server",
+        "kind": "server",
+        "zone": "server",
+        "site": "shop.example",
+        "screen": { "title": "쿼리 틀", "lines": ["SELECT * FROM users", "WHERE id = '[아이디]'", "AND pw = '[비밀번호]'"] }
+      },
+      {
+        "id": "db",
+        "name": "회원 DB",
+        "role": "database",
+        "kind": "database",
+        "zone": "internal",
+        "screen": { "title": "users", "lines": ["admin | ****", "kim | ****", "lee | ****"] }
+      }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "loginTab",
+        "to": "loginTab",
+        "title": "공격자가 로그인 폼에 입력",
+        "label": "아이디: ' OR '1'='1' -- ",
+        "caption": "공격자가 자기 브라우저에서 쇼핑몰 로그인 폼을 열고, 아이디 칸에 ' OR '1'='1' -- 를 입력합니다. 비밀번호는 아무거나 넣습니다.",
+        "danger": true,
+        "effects": [{ "type": "rewrite", "target": "loginTab", "screen": { "title": "로그인", "lines": ["아이디: ' OR '1'='1' -- ", "비밀번호: 1234"] } }]
+      },
+      {
+        "action": "send",
+        "from": "loginTab",
+        "to": "web",
+        "title": "문자열을 이어 붙여 쿼리 조립",
+        "label": "POST /login",
+        "caption": "서버가 입력을 쿼리 틀에 그대로 이어 붙입니다. 입력의 '가 아이디 문자열을 닫고 OR '1'='1'이 조건으로 끼어듭니다. -- 뒤는 주석이라 비밀번호 검사가 사라집니다(MySQL은 -- 뒤에 공백이 있어야 주석).",
+        "danger": true,
+        "effects": [
+          {
+            "type": "rewrite",
+            "target": "web",
+            "screen": { "title": "이어 붙인 쿼리", "lines": ["SELECT * FROM users", "WHERE id = '' OR '1'='1' -- '", "AND pw = '1234'  ← 주석"] }
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "web",
+        "to": "db",
+        "title": "바뀐 쿼리 실행",
+        "label": "WHERE id='' OR '1'='1'",
+        "caption": "DB는 받은 문장을 그대로 실행합니다. '1'='1'은 항상 참이므로, 조건이 모든 회원 행에 대해 참이 됩니다.",
+        "danger": true
+      },
+      {
+        "action": "send",
+        "from": "db",
+        "to": "web",
+        "title": "모든 행이 돌아옴",
+        "label": "users 전체 3행",
+        "caption": "DB가 회원 표의 모든 행을 돌려줍니다. 서버는 결과가 있으니 로그인에 성공했다고 보고, 첫 행인 admin 계정으로 로그인시킵니다.",
+        "danger": true,
+        "effects": [{ "type": "store", "item": "data", "into": "web", "label": "첫 행: admin" }]
+      },
+      {
+        "action": "send",
+        "from": "web",
+        "to": "loginTab",
+        "title": "로그인 우회",
+        "label": "200 OK · admin으로 로그인",
+        "caption": "공격자는 비밀번호를 몰라도 관리자 계정으로 들어왔습니다. 같은 방법으로 다른 표를 읽거나 데이터를 바꾸는 문장도 끼워 넣을 수 있습니다.",
+        "danger": true,
+        "effects": [{ "type": "rewrite", "target": "loginTab", "screen": { "title": "관리자 페이지", "lines": ["환영합니다, admin"] } }]
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "파라미터화 쿼리",
+      "kind": "defense",
+      "description": "쿼리 틀(SQL 문장)과 입력값을 따로 DB에 보냅니다(Prepared Statement). DB는 틀을 먼저 해석하고 입력값은 끝까지 데이터로만 다루므로, ' OR '1'='1' -- 같은 입력은 조건이 되지 못하고 그 글자 그대로의 아이디로 검색됩니다.",
+      "blockedAtStep": 3,
+      "blockedTitle": "입력이 끝까지 데이터로 남음",
+      "blockedLabel": "0행 · 일치하는 아이디 없음",
+      "blockedCaption": "DB는 쿼리 틀의 구조를 바꾸지 않고, 값 1을 글자 그대로의 아이디로 찾습니다. 아이디가 \"' OR '1'='1' -- \"인 회원은 없으므로 결과는 0행이고, 로그인은 실패합니다.",
+      "overrides": [
+        {
+          "step": 2,
+          "title": "틀과 값을 따로 보내는 쿼리",
+          "caption": "서버는 입력을 이어 붙이지 않고, 자리표시자(?)가 있는 쿼리 틀과 입력값을 따로 DB에 보냅니다. 입력은 문장의 일부가 아니라 값 칸에만 들어갑니다.",
+          "effects": [
+            {
+              "type": "rewrite",
+              "target": "web",
+              "screen": { "title": "준비된 쿼리", "lines": ["SELECT * FROM users", "WHERE id = ? AND pw = ?", "값 1: ' OR '1'='1' -- ", "값 2: 1234"] }
+            }
+          ]
+        },
+        {
+          "step": 3,
+          "effects": [{ "type": "rewrite", "target": "db", "screen": { "title": "검색 결과", "lines": ["id = \"' OR '1'='1' -- \"", "→ 0행"] } }]
+        }
+      ]
+    },
+    {
+      "name": "보조 방어: 입력 검증·최소 권한",
+      "kind": "defense",
+      "description": "입력 형식(길이·허용 문자)을 허용 목록으로 검사하면 이상한 입력을 일찍 걸러 낼 수 있지만, 파라미터화 쿼리를 대신하지 못하고 보완할 뿐입니다. 정렬 기준이나 표 이름처럼 매개변수로 넣을 수 없는 부분은 미리 정해 둔 값 중에서만 고르게 합니다. DB 계정에는 필요한 권한만 주면(최소 권한) 뚫리더라도 피해가 줄어듭니다."
+    }
+  ],
+  "references": [
+    { "title": "OWASP SQL Injection Prevention Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" },
+    { "title": "OWASP SQL Injection", "url": "https://community.owasp.org/attacks/SQL_Injection" }
+  ],
+  "related": []
+}

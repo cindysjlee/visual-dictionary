@@ -341,7 +341,7 @@
     },
     {
       "title": "OWASP Cross Site Request Forgery (CSRF)",
-      "url": "https://owasp.org/www-community/attacks/csrf"
+      "url": "https://community.owasp.org/attacks/csrf"
     },
     {
       "title": "MDN · Set-Cookie의 SameSite 속성",
