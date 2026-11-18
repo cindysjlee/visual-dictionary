@@ -65,8 +65,8 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, 재생 속도, 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 1단계 진행 중 — 로컬 작업 완료, S3+CloudFront 첫 배포만 남음.** 단계를 끝내면 이 줄을 갱신할 것.
-남은 일: 콘솔에서 S3(비공개)+CloudFront(OAC, 403/404→/index.html 200, 응답 헤더 정책) 만들고 `npm run build` 결과 `apps/web/dist`를 업로드. 403/404→index.html 때문에 없는 `/content/terms/<id>.json`도 HTML 200이 오므로, 2단계 상세 페이지는 JSON 파싱 실패를 "없는 용어"로 처리할 것.
+**현재 단계: 1단계 완료, 2단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
+배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 2단계 주의: 403/404→index.html 때문에 없는 `/content/terms/<id>.json`도 HTML 200이 오므로 상세 페이지는 JSON 파싱 실패를 "없는 용어"로 처리할 것. CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
 

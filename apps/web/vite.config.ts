@@ -9,5 +9,6 @@ export default defineConfig(({ command }) => {
   if (command === "build" && !existsSync(`${publicDir}/content/index.json`)) {
     throw new Error(`${publicDir}/content가 없습니다. npm run build로 빌드하세요 (콘텐츠 생성이 먼저 실행됨).`);
   }
-  return { plugins: [react()], publicDir };
+  // assetsInlineLimit 0: 작은 글꼴을 data: URI로 넣으면 CSP font-src 'self'에 막힌다
+  return { plugins: [react()], publicDir, build: { assetsInlineLimit: 0 } };
 });
