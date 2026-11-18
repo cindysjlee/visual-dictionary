@@ -837,6 +837,29 @@ button:disabled {
   padding: 16px;
 }
 
+/* 상세 진입 직후 무대 가운데의 큰 재생 버튼 (누르면 사라진다) */
+.stage-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 0;
+  background: var(--cta);
+  color: var(--cta-text);
+  box-shadow: 0 12px 32px var(--raised-shadow);
+  cursor: pointer;
+}
+
+.stage-play svg {
+  width: 36px;
+  height: 36px;
+}
+
 .stage-slot:focus-visible {
   outline: 2px solid var(--defense);
   outline-offset: 3px;

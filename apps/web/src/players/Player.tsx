@@ -33,7 +33,7 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
 export default function Player({ term, onComplete }: { term: Term; onComplete?: () => void }) {
   const reducedMotion = useReducedMotionPref();
   const [use3d] = useState(() => term.scenario.playerType === "flow" && canUseWebGL());
-  const playback = usePlayback(term, { autoplay: !reducedMotion, onComplete });
+  const playback = usePlayback(term, onComplete);
   const [freeView, setFreeView] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const { state, dispatch } = playback;
@@ -49,7 +49,6 @@ export default function Player({ term, onComplete }: { term: Term; onComplete?: 
         term={term}
         playback={playback}
         view={view}
-        autoplay={!reducedMotion}
         freeView={freeView}
         onFreeViewChange={use3d ? setFreeView : undefined}
         stageRef={stageRef}

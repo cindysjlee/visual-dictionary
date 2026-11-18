@@ -1,5 +1,5 @@
 // 플레이어 E2E: 3D 화면 모양이 아니라 자막·단계 번호·차단 표시로 확인한다.
-// 자동 재생 끝까지는 CSRF만, 나머지 용어는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다)
+// 재생 버튼을 눌러 끝까지는 CSRF만, 나머지 용어는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다)
 import { readdirSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { termSchema, type Term } from "../../packages/content-schema/src/index.ts";
@@ -18,14 +18,52 @@ const player = (page: Page) => page.getByRole("region", { name: "애니메이션
 const stepPos = (page: Page) => player(page).locator(".step-pos");
 const captionTitle = (page: Page) => player(page).locator(".caption-title");
 const playButton = (page: Page) => player(page).locator(".play-btn");
+const stagePlay = (page: Page) => player(page).locator(".stage-play");
 
 async function open(page: Page, id: string, query = "") {
   await page.goto(`/terms/${id}${query}`);
   await expect(playButton(page)).toBeVisible();
 }
 
-test("CSRF 공격 흐름: 자동 재생으로 6단계까지 자막과 단계 번호가 맞고 멈춘다", async ({ page }) => {
+test("상세 진입: 1단계에서 멈춰 있고, 무대 가운데 재생 버튼을 누르면 사라지며 재생된다", async ({ page }) => {
   await open(page, "csrf");
+  await expect(stagePlay(page)).toHaveAttribute("aria-label", "재생");
+  await expect(playButton(page)).toHaveAttribute("aria-label", "재생");
+  await page.waitForTimeout(6000); // 기다려도 넘어가지 않는다
+  await expect(stepPos(page)).toHaveText(/^1 \//);
+  await stagePlay(page).click();
+  await expect(stagePlay(page)).toHaveCount(0);
+  await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
+  await expect(player(page).locator(".stage-slot")).toBeFocused();
+});
+
+test("아래 재생 버튼·스페이스로 시작해도 가운데 버튼이 사라진다", async ({ page }) => {
+  await open(page, "csrf");
+  await playButton(page).click();
+  await expect(stagePlay(page)).toHaveCount(0);
+  await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
+
+  await open(page, "csrf");
+  await player(page).locator(".stage-slot").focus();
+  await page.keyboard.press("Space");
+  await expect(stagePlay(page)).toHaveCount(0);
+  await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
+});
+
+test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", async ({ page }) => {
+  await open(page, "csrf");
+  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await expect(stagePlay(page)).toBeVisible();
+  await expect(playButton(page)).toHaveAttribute("aria-label", "재생");
+  await stagePlay(page).click();
+  await player(page).getByRole("button", { name: "공격 흐름" }).click();
+  await expect(stepPos(page)).toHaveText(/^1 \//);
+  await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
+});
+
+test("CSRF 공격 흐름: 재생 버튼을 누르면 6단계까지 자막과 단계 번호가 맞고 멈춘다", async ({ page }) => {
+  await open(page, "csrf");
+  await stagePlay(page).click();
   const last = lastStepIndex(csrf, null);
   for (let i = 0; i <= last; i++) {
     await expect(stepPos(page)).toHaveText(`${i + 1} / ${last + 1} 단계`, { timeout: 20_000 });
@@ -38,8 +76,9 @@ test("CSRF 공격 흐름: 자동 재생으로 6단계까지 자막과 단계 번
 test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에서 차단된다", async ({ page }) => {
   await open(page, "csrf");
   await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await stagePlay(page).click();
   const blocked = csrf.defenses[TOKEN]!.blockedAtStep!;
-  await expect(stepPos(page)).toHaveText(`${blocked} / ${blocked} 단계`, { timeout: 60_000 });
+  await expect(stepPos(page)).toHaveText(`${blocked} / ${blocked} 단계`, { timeout: 90_000 });
   await expect(playButton(page)).toHaveAttribute("aria-label", "재생", { timeout: 20_000 });
   await expect(captionTitle(page)).toHaveText(`${blocked}. ${csrf.defenses[TOKEN]!.blockedTitle}`);
   await expect(player(page).locator(".step-seg-btn")).toHaveCount(blocked);
@@ -66,7 +105,6 @@ test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", asy
 for (const term of published) {
   test(`${term.id}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, async ({ page }) => {
     await open(page, term.id);
-    await player(page).getByRole("button", { name: "1단계로 이동" }).click(); // 자동 재생을 멈추고 1단계부터
     const last = lastStepIndex(term, null);
     for (let i = 0; i <= last; i++) {
       await expect(stepPos(page)).toHaveText(`${i + 1} / ${last + 1} 단계`);

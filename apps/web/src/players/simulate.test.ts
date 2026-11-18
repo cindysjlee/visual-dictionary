@@ -23,7 +23,7 @@ describe.each(terms.map((t) => [t.id, t] as const))("용어 %s", (_, term) => {
   });
 
   it.each(modes.map((m) => [m === null ? "공격 흐름" : term.defenses[m]!.name, m] as const))("%s: 끝까지 재생된다", (_, mode) => {
-    let { state } = reduce(config, initialState(true), { type: "setDefense", defense: mode, autoplay: true });
+    let { state } = reduce(config, reduce(config, initialState(), { type: "play" }).state, { type: "setDefense", defense: mode });
     for (let guard = 0; state.playing && guard < 100; guard++) {
       const view = stepView(term, mode, state.step);
       for (const e of view.effects) {

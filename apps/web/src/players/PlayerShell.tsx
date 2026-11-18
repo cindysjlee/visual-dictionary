@@ -12,7 +12,6 @@ type Props = {
   term: Term;
   playback: Playback;
   view: StepView;
-  autoplay: boolean;
   freeView: boolean;
   onFreeViewChange?: (on: boolean) => void; // 없으면 자유 시점 버튼을 숨긴다(2D)
   stageRef: RefObject<HTMLDivElement | null>;
@@ -20,10 +19,10 @@ type Props = {
   children: ReactNode;
 };
 
-export default function PlayerShell({ term, playback, view, autoplay, freeView, onFreeViewChange, stageRef, stageClassName, children }: Props) {
+export default function PlayerShell({ term, playback, view, freeView, onFreeViewChange, stageRef, stageClassName, children }: Props) {
   const { state, dispatch, last } = playback;
   const defenses = blockingDefenses(term);
-  const setDefense = (defense: number | null) => dispatch({ type: "setDefense", defense, autoplay });
+  const setDefense = (defense: number | null) => dispatch({ type: "setDefense", defense });
 
   // 단축키는 플레이어 안에 포커스가 있을 때만. 스페이스는 버튼의 기본 동작과 겹치지 않게 무대에서만 쓴다
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
@@ -83,6 +82,24 @@ export default function PlayerShell({ term, playback, view, autoplay, freeView, 
 
       <div ref={stageRef} className={`stage-slot ${stageClassName ?? ""}`} tabIndex={0} role="group" aria-label={stageHelp}>
         {children}
+        <AnimatePresence>
+          {!state.started && (
+            <motion.button
+              type="button"
+              className="stage-play"
+              aria-label="재생"
+              initial={false}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                dispatch({ type: "play" });
+                stageRef.current?.focus(); // 버튼이 사라져도 스페이스·화살표가 이어서 동작하게
+              }}
+            >
+              <PlayIcon />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="caption" aria-live="polite">

@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Raycaster, Spherical, Vector3, type Material, type Mesh, type PerspectiveCamera } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { HOLD_MS, REDUCED_HOLD_MS, type StageProps } from "../stage.ts";
+import { holdMs, type StageProps } from "../stage.ts";
 import { CameraRig, buildStep } from "./director.ts";
 import { LabelLayer } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
@@ -77,6 +77,16 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     model.applyState(before);
     refreshLabels(before);
 
+    if (!state.started) {
+      // 상세 진입 직후: 1단계 장면 전체를 보여 주고 멈춘다. 재생을 누르면 이 effect가 다시 돌아 1단계부터 연출한다
+      timeline.current = null;
+      rig.setAspect(size.width / Math.max(1, size.height)); // useFrame보다 먼저 돌므로 화면 비율을 여기서 넣는다(휴대폰에서 잘리지 않게)
+      rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => new Vector3(...p.anchor)));
+      jump.current = true;
+      wake();
+      return;
+    }
+
     if (reducedMotion) {
       // 동작 줄이기: 날아가기·카메라 이동 없이 이 단계의 결과 상태로 바로
       const after = sceneStateAt(term, state.defense, state.step + 1);
@@ -101,7 +111,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       }
       rig.shot(new Vector3(...(placed.gate?.mid ?? placed.anchor)), "mid");
       jump.current = true;
-      timeline.current = new Timeline().wait(REDUCED_HOLD_MS).call(done);
+      timeline.current = new Timeline().wait(holdMs(view, false)).call(done);
     } else {
       timeline.current = buildStep({
         term,
@@ -110,14 +120,14 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         model,
         labels: labels.current!,
         rig,
-        hold: HOLD_MS,
+        hold: holdMs(view, true),
         onDone: done,
         onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1)),
       });
     }
     wake();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- view는 term·defense·step에서 나온다
-  }, [model, term, state.defense, state.step, reducedMotion]);
+  }, [model, term, state.defense, state.step, state.started, reducedMotion]);
 
   // 연출이 끝난 뒤 재생을 누르면 바로 다음 단계로
   useEffect(() => {

@@ -1,10 +1,10 @@
 // WebGL을 쓸 수 없을 때의 무대: 단계 목록 + 현재 단계 강조 + 차단 표시. 방어 모드도 같은 규칙(stepView)으로 동작한다
 import { lastStepIndex, stepView } from "@app/content-schema/scene";
-import type { StageProps } from "./stage.ts";
+import { holdMs, type StageProps } from "./stage.ts";
 import { useHold } from "./useHold.ts";
 
-export default function StepList2D({ term, state, reducedMotion, onStepDone }: StageProps) {
-  useHold(reducedMotion ? 3200 : 2700, state.playing, `${state.defense}-${state.step}`, onStepDone);
+export default function StepList2D({ term, state, view, onStepDone }: StageProps) {
+  useHold(holdMs(view, false), state.playing, `${state.defense}-${state.step}`, onStepDone);
   const last = lastStepIndex(term, state.defense);
 
   return (
