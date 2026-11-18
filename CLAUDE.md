@@ -70,7 +70,7 @@ docs/                     설계 문서
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, 재생 속도, 자동 배포 | 요구사항의 "선택" 항목 |
 
 **현재 단계: 3단계 완료(보안 용어 5개 published), 4단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
-3단계 결과: 흐름형 어휘 보강(via·between·internal·서버 화면판·제자리 단계·검사 없는 차단 도장), draft E2E(`npm run test:e2e:drafts`). Vite 개발 서버가 OneDrive 폴더의 파일 변경을 놓칠 때가 있어, 화면이 안 바뀌면 개발 서버를 다시 띄울 것.
+3단계 결과: 흐름형 어휘 보강(via·between·internal·서버 화면판·제자리 단계·검사 없는 차단 도장), draft E2E(`npm run test:e2e:drafts`).
 4단계 시작 전 할 일:
 - 가림 투명·빌보드가 `FlowScene.tsx`의 `SceneRoot` 안에 있음. StackScene·LockScene이 같이 쓰도록 `players/three/` 공통 모듈로 분리할 것.
 - 다른 공통 부분(layout, sceneState, timeline, camera, tokens, labels)도 FlowScene에 묶인 게 있는지 그때 같이 확인할 것.
