@@ -1,18 +1,8 @@
 // 용어 JSON의 유일한 스키마. 빌드 검증기(scripts)와 프론트엔드(apps/web)가 함께 쓴다. 규칙: docs/04-content-format.md
 import { z } from "zod";
+import { ACTIONS_BY_PLAYER } from "./labels.ts";
 
-export const CATEGORY_LABELS = {
-  "web-security": "웹 보안",
-  network: "네트워크",
-  os: "운영체제",
-  runtime: "자료구조·런타임",
-} as const;
-
-export const ACTIONS_BY_PLAYER = {
-  flow: ["send"],
-  stack: ["push", "pop"],
-  lock: ["acquire", "wait", "release"],
-} as const;
+export { ACTIONS_BY_PLAYER, CATEGORY_LABELS, PLAYER_LABELS } from "./labels.ts";
 
 const id = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "소문자·숫자·하이픈만 쓸 수 있습니다");
 const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
@@ -108,4 +98,6 @@ export type PlayerType = Term["scenario"]["playerType"];
 /** /content/index.json의 항목 하나 */
 export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | "category" | "summary"> & {
   playerType: PlayerType;
+  stepCount: number;
+  defenseCount: number;
 };

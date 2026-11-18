@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { termSchema } from "@app/content-schema";
 import { loadTerms } from "./validate-content.ts";
-import { selectTerms } from "./build-index.ts";
+import { selectTerms, toIndexEntry } from "./build-index.ts";
 
 const csrfPath = new URL("../content/terms/csrf.json", import.meta.url);
 const tempDir = () => mkdtempSync(join(tmpdir(), "terms-"));
@@ -47,5 +47,9 @@ describe("selectTerms", () => {
 
   it("개발 서버는 draft까지, retired는 항상 제외", () => {
     expect(selectTerms(terms, true).map((t) => t.id)).toEqual(["published", "draft"]);
+  });
+
+  it("index 항목에 단계 수와 방어 수가 들어간다", () => {
+    expect(toIndexEntry(base)).toMatchObject({ id: "csrf", playerType: "flow", stepCount: 6, defenseCount: 2 });
   });
 });

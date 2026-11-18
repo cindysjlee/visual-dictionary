@@ -1,23 +1,125 @@
-/* 디자인 토큰은 이 파일 한 곳에서만 정한다. 값의 출처: docs/05-ui-design.md (Packet Lab) */
+/* 디자인 토큰은 이 파일 한 곳에서만 정한다. 출처: docs/05-ui-design.md (Bento Glass), 시안 docs/design/C2-*.
+   라이트 = :root, 다크 = [data-theme="dark"]. 기본 테마는 theme.ts가 prefers-color-scheme으로 정한다. */
 :root {
+  color-scheme: light;
+
+  --bg: #e8ebf4;
+  --text: #121624;
+  --text-sub: #3d4560;
+  --text-muted: #646c86;
+  --attack: #d9480f;
+  --attack-text: #b23e0a;
+  --defense: #1864ab;
+  --defense-text: #1864ab;
+  --neutral: #5c6378;
+  --on-color: #ffffff;
+  --soft: rgba(255, 255, 255, 0.45);
+  --line: rgba(18, 22, 36, 0.08);
+  --track: rgba(18, 22, 36, 0.1);
+  --cta: #121624;
+  --cta-text: #ffffff;
+  --soft-mix: 12%;
+
+  /* 카테고리 태그 글자색 (바탕은 같은 색을 --soft-mix만큼) */
+  --cat-web-security: var(--attack-text);
+  --cat-network: var(--defense-text);
+  --cat-runtime: #5b3bb8;
+  --cat-os: #1d6b50;
+
+  /* 유리 카드 */
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28));
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+  --glass-shadow: 0 20px 50px rgba(40, 50, 90, 0.14);
+  --glass-sheen: rgba(255, 255, 255, 0.55);
+  --glass-fallback: rgba(255, 255, 255, 0.85);
+  --tint-attack-bg: linear-gradient(135deg, rgba(255, 226, 210, 0.72), rgba(255, 255, 255, 0.3));
+  --tint-attack-border: rgba(255, 255, 255, 0.8);
+  --tint-defense-bg: linear-gradient(135deg, rgba(214, 232, 255, 0.75), rgba(255, 255, 255, 0.3));
+  --tint-defense-border: rgba(255, 255, 255, 0.8);
+
+  /* 입력창, 플레이어 무대, 행위자, 탭 */
+  --field-bg: rgba(255, 255, 255, 0.7);
+  --field-border: rgba(255, 255, 255, 0.75);
+  --field-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --stage-bg: rgba(255, 255, 255, 0.35);
+  --stage-inset: inset 0 2px 12px rgba(40, 50, 90, 0.06);
+  --actor-on: rgba(255, 255, 255, 0.85);
+  --actor-off: rgba(255, 255, 255, 0.4);
+  --raised-shadow: rgba(40, 50, 90, 0.16);
+  --tab-on: rgba(255, 255, 255, 0.9);
+
+  /* 배경 빛 (주황·파랑·보라·청록) */
+  --blob-1: rgba(255, 138, 92, 0.75);
+  --blob-2: rgba(77, 139, 255, 0.65);
+  --blob-3: rgba(167, 123, 255, 0.5);
+  --blob-4: rgba(79, 209, 197, 0.45);
+
+  --font-sans: "Noto Sans KR", system-ui, sans-serif;
+  --font-num: "Sora", "Noto Sans KR", system-ui, sans-serif;
+
+  --radius-lg: 30px;
+  --radius: 26px;
+  --radius-btn: 14px;
+  --gap: 16px;
+  --gutter: 32px;
+  --content-max: 1160px;
+  --tap-min: 44px;
+}
+
+[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-bg: #0e141b;
-  --color-surface: #16202b;
-  --color-stage: #121b24;
-  --color-border: #2b3a4a;
-  --color-text: #e6edf3;
-  --color-text-sub: #c9d3dd;
-  --color-text-meta: #9aa8b6;
-  --color-danger: #f5a04a; /* 공격·위험 (주황) */
-  --color-defense: #5cb3ff; /* 방어·차단, 링크, 읽음 (파랑) */
-  --color-step: #8fa3b8; /* 일반 단계 */
+  --bg: #090c17;
+  --text: #eef1fa;
+  --text-sub: #b3bbd2;
+  --text-muted: #8089a5;
+  --attack: #ff9b5c;
+  --attack-text: #ffb27f;
+  --defense: #6cb6ff;
+  --defense-text: #8cc6ff;
+  --neutral: #a3adc8;
+  --on-color: #090c17;
+  --soft: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.1);
+  --track: rgba(255, 255, 255, 0.1);
+  --cta: #eef1fa;
+  --cta-text: #090c17;
+  --soft-mix: 16%;
 
-  --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --cat-runtime: #c3b2ff;
+  --cat-os: #8be3c6;
 
-  --radius: 8px;
-  --gutter: 16px;
-  --content-max: 1120px;
-  --tap-min: 44px;
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.03));
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --glass-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --glass-sheen: rgba(255, 255, 255, 0.1);
+  --glass-fallback: rgba(24, 29, 48, 0.6);
+  --tint-attack-bg: linear-gradient(135deg, rgba(255, 155, 92, 0.2), rgba(255, 255, 255, 0.03));
+  --tint-attack-border: rgba(255, 155, 92, 0.3);
+  --tint-defense-bg: linear-gradient(135deg, rgba(108, 182, 255, 0.2), rgba(255, 255, 255, 0.03));
+  --tint-defense-border: rgba(108, 182, 255, 0.32);
+
+  --field-bg: rgba(0, 0, 0, 0.25);
+  --field-border: rgba(255, 255, 255, 0.14);
+  --field-inset: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --stage-bg: rgba(0, 0, 0, 0.22);
+  --stage-inset: inset 0 2px 12px rgba(0, 0, 0, 0.35);
+  --actor-on: rgba(255, 255, 255, 0.12);
+  --actor-off: rgba(255, 255, 255, 0.04);
+  --raised-shadow: rgba(0, 0, 0, 0.45);
+  --tab-on: rgba(255, 255, 255, 0.14);
+
+  --blob-1: rgba(255, 120, 70, 0.42);
+  --blob-2: rgba(60, 120, 255, 0.45);
+  --blob-3: rgba(150, 90, 255, 0.38);
+  --blob-4: rgba(40, 190, 180, 0.28);
+}
+
+/* 공격·방어 연한 바탕: 각 색의 12%(라이트)·16%(다크) */
+:root,
+[data-theme="dark"] {
+  --attack-soft: color-mix(in srgb, var(--attack) var(--soft-mix), transparent);
+  --defense-soft: color-mix(in srgb, var(--defense) var(--soft-mix), transparent);
 }

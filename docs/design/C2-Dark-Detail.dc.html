@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C v2 · 다크 CSRF 상세</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;family=Sora:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#090C17}
+a{color:#8CC6FF}
+.glass{position:relative;background:linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.14);box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),inset 0 -1px 0 rgba(255,255,255,0.04),0 24px 60px rgba(0,0,0,0.45);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,0.10) 0%,rgba(255,255,255,0) 38%)}
+.glass>*{position:relative}
+.tint-def{background:linear-gradient(135deg,rgba(108,182,255,0.2),rgba(255,255,255,0.03));border-color:rgba(108,182,255,0.32)}
+.ibtn{width:48px;height:48px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.07);color:#EEF1FA;display:flex;align-items:center;justify-content:center;cursor:pointer}
+@keyframes floatA{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,30px)}}
+@keyframes floatB{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,40px)}}
+@keyframes pop{0%{transform:scale(0.6);opacity:0}100%{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1200px; overflow: hidden; background: #090C17; color: #EEF1FA; font-family: 'Noto Sans KR', sans-serif; word-break: keep-all">
+  <div aria-hidden="true" style="position: absolute; left: -140px; top: -180px; width: 620px; height: 620px; border-radius: 50%; background: radial-gradient(circle, rgba(255,120,70,0.42), transparent 65%); filter: blur(10px); animation: floatA 20s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; right: -160px; top: 260px; width: 680px; height: 680px; border-radius: 50%; background: radial-gradient(circle, rgba(60,120,255,0.45), transparent 65%); filter: blur(10px); animation: floatB 24s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; left: 22%; top: 520px; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(150,90,255,0.38), transparent 65%); filter: blur(10px); animation: floatA 28s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; left: -80px; bottom: -160px; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(40,190,180,0.28), transparent 65%); filter: blur(10px)"></div>
+
+  <div style="position: relative; max-width: 1160px; margin: 0 auto; padding: 22px 32px 56px; display: flex; flex-direction: column; gap: 16px">
+
+    <header class="glass" style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 8px 8px 8px 18px; border-radius: 22px">
+      <a href="C2-Dark-Home.dc.html" style="display: flex; align-items: center; gap: 10px; color: #EEF1FA; text-decoration: none; font-weight: 800; font-size: 16px">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="9" fill="#EEF1FA"></rect><circle cx="9" cy="14" r="3" fill="#FF9B5C"></circle><path d="M12 14h4" stroke="#090C17" stroke-width="2" stroke-linecap="round"></path><circle cx="19" cy="14" r="3" fill="#6CB6FF"></circle></svg>
+        시각화 사전
+      </a>
+      <div style="flex: 1 1 auto; font-size: 14px; color: #8089A5"><a href="C2-Dark-Home.dc.html" style="color: #8089A5; text-decoration: none">용어</a> <span style="margin: 0 6px">/</span> 웹 보안 <span style="margin: 0 6px">/</span> <span style="color: #EEF1FA; font-weight: 700">CSRF</span></div>
+      <a href="C2-Light-Detail.dc.html" aria-label="라이트 모드로 보기" style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.07); color: #EEF1FA"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg></a>
+      <button type="button" style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 6px; border-radius: 14px; border: 0; background: rgba(255,255,255,0.07); color: #EEF1FA; font: inherit; font-size: 14px; cursor: pointer">
+        <span style="width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, #FF9B5C, #6CB6FF); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #FFFFFF">C</span>cindy
+      </button>
+    </header>
+
+    <section style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px">
+      <div class="glass" style="padding: 28px; border-radius: 30px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; gap: 8px"><span style="padding: 4px 10px; border-radius: 999px; background: rgba(255,155,92,0.16); color: #FFB27F; font-size: 12px; font-weight: 700">웹 보안</span><span style="padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.07); color: #B3BBD2; font-size: 12px; font-weight: 700">흐름형 · 6단계</span></div>
+        <h1 style="margin: 0; font-size: 46px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em">CSRF</h1>
+        <div style="font-family: 'Sora', sans-serif; font-size: 14px; color: #8089A5">Cross-Site Request Forgery · 사이트 간 요청 위조</div>
+        <p style="margin: 4px 0 0; font-size: 16px; line-height: 1.75; color: #B3BBD2">로그인된 브라우저는 그 사이트로 가는 요청에 쿠키를 자동으로 붙여요. 공격자는 이 점을 이용해 다른 사이트에서 몰래 요청을 보내게 만들고, 서버는 사용자가 보낸 요청과 구분하지 못해요.</p>
+      </div>
+      <div class="glass" style="padding: 24px; border-radius: 30px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px">
+        <div style="font-size: 14px; font-weight: 700; color: #B3BBD2">학습 상태</div>
+        <div style="font-size: 15px; line-height: 1.6; color: #B3BBD2">끝까지 재생하면 자동으로 읽음 처리돼요.</div>
+        <button type="button" onClick="{{toggleRead}}" aria-pressed="{{readPressed}}" style="{{readStyle}}">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{readLabel}}
+        </button>
+      </div>
+    </section>
+
+    <section aria-label="애니메이션 플레이어" class="glass" style="padding: 22px; border-radius: 34px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+        <div role="group" aria-label="재생 모드" style="display: flex; padding: 4px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1)">
+          <button type="button" onClick="{{setAttack}}" aria-pressed="{{atkPressed}}" style="{{atkTab}}">공격 흐름</button>
+          <button type="button" onClick="{{setDefense}}" aria-pressed="{{defPressed}}" style="{{defTab}}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>방어 모드 · CSRF 토큰</button>
+        </div>
+        <div style="font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700; color: {{tintText}}">{{stepNo}}</div>
+      </div>
+
+      <div style="position: relative; padding: 28px 16px 8px; border-radius: 26px; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 2px 12px rgba(0,0,0,0.35)">
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+          <sc-for list="{{actors}}" as="a" hint-placeholder-count="4">
+            <div style="{{a.style}}">
+              <div style="{{a.iconWrap}}">
+                <sc-if value="{{a.isAtk}}" hint-placeholder-val="{{false}}"><svg width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M8 34c0-8 5-13 12-13s12 5 12 13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path><path d="M11 18c0-7 4-12 9-12s9 5 9 12c-2 2-5 3-9 3s-7-1-9-3z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"></path></svg></sc-if>
+                <sc-if value="{{a.isUser}}" hint-placeholder-val="{{false}}"><svg width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="5" y="8" width="30" height="20" rx="4" stroke="currentColor" stroke-width="2.4"></rect><path d="M14 33h12M20 28v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path></svg></sc-if>
+                <sc-if value="{{a.isTrap}}" hint-placeholder-val="{{false}}"><svg width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="5" y="7" width="30" height="26" rx="4" stroke="currentColor" stroke-width="2.4"></rect><path d="M5 14h30M20 19v6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path><circle cx="20" cy="29" r="1.5" fill="currentColor"></circle></svg></sc-if>
+                <sc-if value="{{a.isBank}}" hint-placeholder-val="{{false}}"><svg width="28" height="28" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M6 15L20 7l14 8" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"></path><path d="M10 17v12M17 17v12M23 17v12M30 17v12M6 33h28" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path></svg></sc-if>
+              </div>
+              <div style="font-weight: 700; font-size: 15px">{{a.name}}</div>
+              <div style="font-family: 'Sora', sans-serif; font-size: 12px; color: #8089A5">{{a.sub}}</div>
+              <sc-if value="{{a.blocked}}" hint-placeholder-val="{{false}}">
+                <div style="position: absolute; top: -12px; right: -6px; display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; background: #6CB6FF; color: #090C17; font-size: 12px; font-weight: 800; box-shadow: 0 6px 18px rgba(108,182,255,0.45); animation: pop .35s ease-out"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" fill="currentColor"></path></svg>차단</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="position: relative; height: 84px; margin-top: 10px">
+          <div style="position: absolute; left: 12.5%; right: 12.5%; top: 52px; height: 2px; background: rgba(255,255,255,0.1)"></div>
+          <div style="{{lineStyle}}"></div>
+          <div style="{{packetStyle}}">{{packet}}</div>
+        </div>
+      </div>
+
+      <div aria-live="polite" style="display: flex; flex-direction: column; gap: 4px; padding: 4px 6px">
+        <div style="font-size: 14px; font-weight: 800; color: {{tintText}}">{{stepTitle}}</div>
+        <div style="font-size: 19px; line-height: 1.6; color: #EEF1FA">{{caption}}</div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+        <button type="button" class="ibtn" onClick="{{prev}}" aria-label="이전 단계"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button type="button" onClick="{{togglePlay}}" aria-label="{{playLabel}}" style="width: 56px; height: 56px; border-radius: 20px; border: 0; background: #EEF1FA; color: #090C17; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 28px rgba(0,0,0,0.5)">
+          <sc-if value="{{playing}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"></rect><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"></rect></svg></sc-if>
+          <sc-if value="{{paused}}" hint-placeholder-val="{{true}}"><svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"></path></svg></sc-if>
+        </button>
+        <button type="button" class="ibtn" onClick="{{next}}" aria-label="다음 단계"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M7 4l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <div style="flex: 1 1 260px; display: flex; gap: 6px">
+          <sc-for list="{{dots}}" as="d" hint-placeholder-count="6">
+            <button type="button" onClick="{{d.go}}" aria-label="{{d.label}}" style="flex: 1; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center"><span style="{{d.style}}"></span></button>
+          </sc-for>
+        </div>
+        <button type="button" onClick="{{replay}}" style="height: 48px; padding: 0 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.07); color: #EEF1FA; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">다시 보기</button>
+      </div>
+      <sc-if value="{{showToast}}" hint-placeholder-val="{{false}}">
+        <div style="align-self: flex-start; padding: 10px 14px; border-radius: 14px; background: rgba(108,182,255,0.16); color: #8CC6FF; font-size: 14px; font-weight: 700">끝까지 봤어요 · 읽음으로 기록했어요</div>
+      </sc-if>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+      <div class="glass tint-def" style="grid-column: span 2; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: center; gap: 8px; color: #8CC6FF; font-weight: 800; font-size: 16px"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>CSRF 토큰 <span style="font-size: 12px; font-weight: 700; opacity: 0.8">· 5단계에서 차단</span></div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #B3BBD2">서버가 폼마다 예측할 수 없는 토큰을 넣고, 요청에 같은 토큰이 있는지 확인해요. 함정 사이트는 이 값을 알 수 없어서 위조 요청이 거부돼요.</p>
+      </div>
+      <div class="glass" style="grid-column: span 2; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: center; gap: 8px; color: #8CC6FF; font-weight: 800; font-size: 16px"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>SameSite 쿠키</div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #B3BBD2">SameSite=Lax 또는 Strict면 다른 사이트에서 시작된 요청에는 브라우저가 쿠키를 붙이지 않아요.</p>
+      </div>
+      <div class="glass" style="grid-column: span 3; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 14px; font-weight: 700; color: #B3BBD2">참고 자료</div>
+        <a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html" style="font-size: 15px">OWASP · CSRF Prevention Cheat Sheet</a>
+        <a href="https://owasp.org/www-community/attacks/csrf" style="font-size: 15px">OWASP · Cross Site Request Forgery</a>
+      </div>
+      <div class="glass" style="grid-column: span 1; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 14px; font-weight: 700; color: #B3BBD2">관련 용어</div>
+        <a href="C2-Dark-Home.dc.html" style="color: #EEF1FA; text-decoration: none; font-weight: 700; font-size: 16px">XSS</a>
+        <a href="C2-Dark-Home.dc.html" style="color: #EEF1FA; text-decoration: none; font-weight: 700; font-size: 16px">세션 하이재킹</a>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 0, phase: 1, playing: true, defense: false, read: false, toast: false };
+  }
+  componentDidMount() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) this.setState({ playing: false });
+    this.timer = setInterval(() => {
+      if (!this.state.playing) return;
+      if (this.state.step >= this.lastIndex()) {
+        this.setState({ playing: false });
+        if (!this.state.defense) this.setState({ read: true, toast: true });
+        return;
+      }
+      this.goTo(this.state.step + 1);
+    }, 2700);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.t2); }
+  lastIndex() { return this.state.defense ? 4 : 5; }
+  goTo(n) {
+    n = Math.max(0, Math.min(this.lastIndex(), n));
+    this.setState({ step: n, phase: 0 });
+    clearTimeout(this.t2);
+    this.t2 = setTimeout(() => this.setState({ phase: 1 }), 60);
+  }
+  setMode(def) { this.setState({ defense: def, playing: true, toast: false }); setTimeout(() => this.goTo(0), 0); }
+  renderVals() {
+    var T = {"atk": "#FF9B5C", "safe": "#A3ADC8", "atkText": "#FFB27F", "defText": "#8CC6FF", "sub": "#B3BBD2", "muted": "#8089A5", "text": "#EEF1FA", "atkSoft": "rgba(255,155,92,0.16)", "defSoft": "rgba(108,182,255,0.16)", "soft": "rgba(255,255,255,0.07)", "line": "rgba(255,255,255,0.12)", "track": "rgba(255,255,255,0.1)", "done": "#EEF1FA", "navOnBg": "#EEF1FA", "navOnText": "#090C17", "onColor": "#090C17", "actorOn": "rgba(255,255,255,0.12)", "actorOff": "rgba(255,255,255,0.04)", "actorShadow": "rgba(0,0,0,0.45)", "tabOn": "rgba(255,255,255,0.14)", "tags": {"웹 보안": ["rgba(255,155,92,0.16)", "#FFB27F"], "네트워크": ["rgba(108,182,255,0.16)", "#8CC6FF"], "런타임": ["rgba(170,140,255,0.18)", "#C3B2FF"], "운영체제": ["rgba(80,210,170,0.16)", "#8BE3C6"]}, "def": "#6CB6FF"};
+    var ATK = T.atk, DEF = T.def, SAFE = T.safe;
+    var X = [12.5, 37.5, 62.5, 87.5];
+    var steps = [
+      { f: 1, t: 3, title: '1. 정상 로그인', label: 'POST /login', cap: '사용자가 은행 사이트에 로그인합니다.', danger: false },
+      { f: 3, t: 1, title: '2. 세션 쿠키 발급', label: 'Set-Cookie: session', cap: '은행이 세션 쿠키를 발급하고, 브라우저가 이 쿠키를 저장합니다.', danger: false },
+      { f: 0, t: 1, title: '3. 함정 링크 전송', label: '이벤트 당첨 링크', cap: '공격자가 함정 사이트로 이어지는 링크를 보냅니다.', danger: true },
+      { f: 1, t: 2, title: '4. 함정 사이트 접속', label: 'GET /event', cap: '사용자가 링크를 눌러 함정 사이트를 엽니다. 은행에는 여전히 로그인된 상태입니다.', danger: true },
+      { f: 2, t: 3, title: '5. 위조된 송금 요청', label: 'POST /transfer + Cookie', cap: '함정 사이트가 몰래 송금 요청을 보내고, 브라우저가 은행 쿠키를 자동으로 붙입니다.', danger: true,
+        bLabel: '토큰 없음 → 403', bTitle: '5. 위조 요청 차단', bCap: '요청에 CSRF 토큰이 없어서 서버가 거부합니다. 송금은 일어나지 않습니다.' },
+      { f: 3, t: 2, title: '6. 송금 완료', label: '200 OK · 송금 완료', cap: '서버는 정상 요청으로 판단해 송금을 처리합니다. 사용자는 아무것도 누르지 않았습니다.', danger: true }
+    ];
+    var s = this.state.step, cur = steps[s], last = this.lastIndex();
+    var blocked = this.state.defense && !!cur.bLabel;
+    var color = blocked ? DEF : (cur.danger ? ATK : SAFE);
+    var tintText = blocked ? T.defText : (cur.danger ? T.atkText : T.sub);
+    var from = X[cur.f], to = blocked ? X[cur.f] + (X[cur.t] - X[cur.f]) * 0.78 : X[cur.t];
+    var pos = this.state.phase ? to : from;
+    var lo = Math.min(X[cur.f], X[cur.t]), hi = Math.max(X[cur.f], X[cur.t]);
+    var names = [['공격자', 'attacker', 'isAtk'], ['사용자', 'browser', 'isUser'], ['함정 사이트', 'evil.example', 'isTrap'], ['은행 서버', 'bank.example', 'isBank']];
+    var actors = names.map((n, i) => {
+      var active = i === cur.f || i === cur.t;
+      var o = { name: n[0], sub: n[1], isAtk: false, isUser: false, isTrap: false, isBank: false, blocked: blocked && i === 3 && this.state.phase === 1 };
+      o[n[2]] = true;
+      o.style = 'position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 6px 14px;border-radius:22px;transition:all .35s;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);' +
+        (active ? 'background:' + T.actorOn + ';box-shadow:0 0 0 2px ' + color + ',0 14px 34px ' + T.actorShadow : 'background:' + T.actorOff + ';box-shadow:0 0 0 1px ' + T.line + ';opacity:0.75');
+      o.iconWrap = 'width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:all .35s;color:' + (active ? T.onColor : T.sub) + ';background:' + (active ? color : T.soft);
+      return o;
+    });
+    var dots = [];
+    for (var i = 0; i <= last; i++) {
+      ((k) => dots.push({ label: (k + 1) + '단계로 이동', go: () => { this.setState({ playing: false }); this.goTo(k); },
+        style: 'display:block;width:100%;height:8px;border-radius:4px;transition:background .3s;background:' + (k < s ? T.done : k === s ? color : T.track) }))(i);
+    }
+    var tab = (on, c) => 'height:44px;display:flex;align-items:center;gap:6px;padding:0 16px;border-radius:12px;border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:700;transition:all .25s;' + (on ? 'background:' + T.tabOn + ';color:' + c + ';box-shadow:0 4px 14px ' + T.actorShadow : 'background:transparent;color:' + T.muted);
+    return {
+      actors: actors, dots: dots, tintText: tintText,
+      lineStyle: 'position:absolute;top:51px;height:4px;border-radius:2px;left:' + lo + '%;width:' + (hi - lo) + '%;background:' + color + ';opacity:0.45;transition:all .45s',
+      packetStyle: 'position:absolute;top:31px;left:' + pos + '%;transform:translateX(-50%);white-space:nowrap;padding:8px 14px;border-radius:12px;font-family:Sora,sans-serif;font-size:13px;font-weight:700;color:' + T.onColor + ';background:' + color + ';box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 10px 26px ' + color + '66;' + (this.state.phase ? 'transition:left 1s cubic-bezier(.22,.8,.2,1),background .3s' : ''),
+      packet: blocked ? cur.bLabel : cur.label,
+      stepNo: (s + 1) + ' / ' + (last + 1) + ' 단계',
+      stepTitle: blocked ? cur.bTitle : cur.title,
+      caption: blocked ? cur.bCap : cur.cap,
+      playing: this.state.playing, paused: !this.state.playing,
+      playLabel: this.state.playing ? '일시정지' : '재생',
+      showToast: this.state.toast,
+      togglePlay: () => { if (!this.state.playing && s >= last) this.goTo(0); this.setState({ playing: !this.state.playing }); },
+      prev: () => { this.setState({ playing: false }); this.goTo(s - 1); },
+      next: () => { this.setState({ playing: false }); this.goTo(s + 1); },
+      replay: () => { this.setState({ playing: true, toast: false }); this.goTo(0); },
+      setAttack: () => this.setMode(false),
+      setDefense: () => this.setMode(true),
+      atkPressed: this.state.defense ? 'false' : 'true',
+      defPressed: this.state.defense ? 'true' : 'false',
+      atkTab: tab(!this.state.defense, T.atkText),
+      defTab: tab(this.state.defense, T.defText),
+      toggleRead: () => this.setState({ read: !this.state.read }),
+      readPressed: this.state.read ? 'true' : 'false',
+      readLabel: this.state.read ? '읽음' : '읽음으로 표시',
+      readStyle: 'height:48px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;cursor:pointer;font:inherit;font-size:14px;font-weight:700;' +
+        (this.state.read ? 'border:0;background:' + DEF + ';color:' + T.onColor : 'border:1px solid ' + T.line + ';background:' + T.soft + ';color:' + T.text)
+    };
+  }
+}
+</script>
+</body>
+</html>

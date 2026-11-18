@@ -1,36 +1,152 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
-import type { IndexEntry } from "@app/content-schema";
+import type { Category, IndexEntry, Term } from "@app/content-schema";
+import { CATEGORY_LABELS, PLAYER_LABELS } from "@app/content-schema/labels";
+import { ArrowIcon, SearchIcon, ShieldIcon } from "../../icons.tsx";
+import { useJson } from "../../useJson.ts";
 
-// shortcut: 이름 링크만 나열한다. 3단계에서 카드·카테고리 필터·검색으로 바꾼다
-export default function HomePage() {
-  const [terms, setTerms] = useState<IndexEntry[] | null>(null);
-  const [failed, setFailed] = useState(false);
+const CATEGORY_FILTERS: [Category | "all", string][] = [["all", "전체"], ...(Object.entries(CATEGORY_LABELS) as [Category, string][])];
 
-  useEffect(() => {
-    fetch("/content/index.json")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<IndexEntry[]>;
-      })
-      .then(setTerms)
-      .catch(() => setFailed(true));
-  }, []);
+const matches = (term: IndexEntry, query: string) => {
+  const q = query.trim().toLowerCase();
+  return !q || [term.name, term.englishName ?? "", term.summary, ...term.aliases].some((s) => s.toLowerCase().includes(q));
+};
 
-  if (failed) return <p role="alert">용어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
-  if (!terms) return <p>불러오는 중…</p>;
+export const termMeta = (t: Pick<IndexEntry, "playerType" | "stepCount" | "defenseCount" | "category">) => {
+  const defense = t.defenseCount === 0 ? "개념 설명" : `${t.category === "web-security" ? "방어" : "해결"} ${t.defenseCount}개`;
+  return `${PLAYER_LABELS[t.playerType]} · ${t.stepCount}단계 · ${defense}`;
+};
+
+// 비회원에게는 "이어서 볼 용어" 대신 첫 용어를 보여 준다. 로그인 후 최근 본 용어로 바꾼다(6~7단계)
+function FeaturedCard({ entry }: { entry: IndexEntry }) {
+  const load = useJson<Term>(`/content/terms/${entry.id}.json`);
+  const term = load.state === "ok" ? load.data : null;
+  const blockedAt = term?.defenses.find((d) => d.blockedAtStep)?.blockedAtStep;
 
   return (
-    <section>
-      <h1>용어</h1>
-      <ul className="term-list">
-        {terms.map((term) => (
-          <li key={term.id}>
-            <Link to={`/terms/${term.id}`}>{term.name}</Link>
-            <p>{term.summary}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Link to={`/terms/${entry.id}`} className="glass tint-attack card featured span-2 row-2">
+      <div className="featured-head">
+        <span className="tag tag-plain">처음 볼 용어</span>
+        <span>
+          {CATEGORY_LABELS[entry.category]} · {PLAYER_LABELS[entry.playerType]}
+        </span>
+      </div>
+      <div>
+        <div className="featured-name">{entry.name}</div>
+        <p className="muted">{entry.summary}</p>
+      </div>
+      {term && (
+        <ol className="step-list" aria-label={`${entry.name} 진행 단계`}>
+          {term.scenario.steps.map((step, i) => (
+            <li key={i} className={i + 1 === blockedAt ? "is-blocked" : step.danger ? "is-danger" : undefined}>
+              <span className="step-no">{String(i + 1).padStart(2, "0")}</span>
+              <span>{step.label}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="featured-foot">
+        {blockedAt && (
+          <span className="defense-note">
+            <ShieldIcon />
+            방어 모드에서는 {blockedAt}단계에서 차단
+          </span>
+        )}
+        <span className="go-mark">
+          <ArrowIcon />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+export default function HomePage() {
+  const load = useJson<IndexEntry[]>("/content/index.json");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<Category | "all">("all");
+
+  if (load.state === "loading") return <p className="muted">불러오는 중…</p>;
+  if (load.state !== "ok") return <p role="alert">용어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
+
+  const terms = load.data;
+  const shown = terms.filter((t) => (category === "all" || t.category === category) && matches(t, query));
+  const reset = () => {
+    setQuery("");
+    setCategory("all");
+  };
+
+  return (
+    <>
+      <section className="bento">
+        <div className="glass card card-lg hero span-2 row-2">
+          <div className="stack">
+            <p className="eyebrow">보안 · CS 개념 시각화 사전</p>
+            <h1>
+              공격이 흘러가는 길과
+              <br />
+              막히는 지점을
+              <br />
+              한 장면씩 봐요
+            </h1>
+          </div>
+          <label className="search">
+            <SearchIcon />
+            <input
+              type="search"
+              name="q"
+              placeholder="CSRF, 데드락처럼 용어로 검색"
+              aria-label="용어 검색"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+        </div>
+
+        {terms[0] && <FeaturedCard entry={terms[0]} />}
+
+        <div className="glass card span-2">
+          <h2 className="card-title">내 진행률</h2>
+          <p className="muted">로그인하면 읽은 용어와 분야별 진행률이 여기에 표시돼요.</p>
+        </div>
+
+        <div className="glass card span-2" role="group" aria-label="카테고리">
+          <div className="chips">
+            {CATEGORY_FILTERS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="chip"
+                aria-pressed={category === value}
+                onClick={() => setCategory(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bento" aria-label="용어 목록">
+        {shown.length === 0 ? (
+          <div className="glass card card-lg notice span-all">
+            <p>찾는 용어가 없어요{query.trim() && <> · ‘{query.trim()}’</>}</p>
+            <button type="button" className="btn btn-cta" onClick={reset}>
+              전체 목록 보기
+            </button>
+          </div>
+        ) : (
+          shown.map((t, i) => (
+            <Link key={t.id} to={`/terms/${t.id}`} className={`glass card term-card${i === 0 ? " span-2" : ""}`}>
+              <span>
+                <span className={`tag tag-${t.category}`}>{CATEGORY_LABELS[t.category]}</span>
+              </span>
+              <span className="term-card-name">{t.name}</span>
+              <span className="term-card-desc">{t.summary}</span>
+              <span className="meta">{termMeta(t)}</span>
+            </Link>
+          ))
+        )}
+      </section>
+    </>
   );
 }

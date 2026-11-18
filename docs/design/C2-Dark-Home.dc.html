@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C v2 · 다크 홈</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;family=Sora:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#090C17}
+.glass{position:relative;background:linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.14);box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),inset 0 -1px 0 rgba(255,255,255,0.04),0 24px 60px rgba(0,0,0,0.45);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,0.10) 0%,rgba(255,255,255,0) 38%)}
+.glass>*{position:relative}
+.tint-atk{background:linear-gradient(135deg,rgba(255,155,92,0.2),rgba(255,255,255,0.03));border-color:rgba(255,155,92,0.3)}
+.chip{height:44px;padding:0 16px;border-radius:14px;cursor:pointer;font:inherit;font-size:14px;font-weight:600;transition:all .2s}
+@keyframes floatA{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,30px)}}
+@keyframes floatB{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,40px)}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1000px; overflow: hidden; background: #090C17; color: #EEF1FA; font-family: 'Noto Sans KR', sans-serif; word-break: keep-all">
+  <div aria-hidden="true" style="position: absolute; left: -140px; top: -180px; width: 620px; height: 620px; border-radius: 50%; background: radial-gradient(circle, rgba(255,120,70,0.42), transparent 65%); filter: blur(10px); animation: floatA 20s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; right: -160px; top: 40px; width: 680px; height: 680px; border-radius: 50%; background: radial-gradient(circle, rgba(60,120,255,0.45), transparent 65%); filter: blur(10px); animation: floatB 24s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; left: 28%; top: 420px; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(150,90,255,0.38), transparent 65%); filter: blur(10px); animation: floatA 28s ease-in-out infinite"></div>
+  <div aria-hidden="true" style="position: absolute; left: -60px; bottom: -200px; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(40,190,180,0.28), transparent 65%); filter: blur(10px)"></div>
+
+  <div style="position: relative; max-width: 1160px; margin: 0 auto; padding: 22px 32px 56px; display: flex; flex-direction: column; gap: 18px">
+
+    <header class="glass" style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 8px 8px 8px 18px; border-radius: 22px">
+      <a href="C2-Dark-Home.dc.html" style="display: flex; align-items: center; gap: 10px; color: #EEF1FA; text-decoration: none; font-weight: 800; font-size: 16px">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><rect width="28" height="28" rx="9" fill="#EEF1FA"></rect><circle cx="9" cy="14" r="3" fill="#FF9B5C"></circle><path d="M12 14h4" stroke="#090C17" stroke-width="2" stroke-linecap="round"></path><circle cx="19" cy="14" r="3" fill="#6CB6FF"></circle></svg>
+        시각화 사전
+      </a>
+      <nav style="display: flex; gap: 2px; font-size: 14px">
+        <a href="C2-Dark-Home.dc.html" style="padding: 10px 14px; border-radius: 12px; background: #EEF1FA; color: #090C17; text-decoration: none; font-weight: 700">용어</a>
+        <a href="C2-Dark-Home.dc.html" style="padding: 10px 14px; border-radius: 12px; color: #B3BBD2; text-decoration: none">내 학습</a>
+      </nav>
+      <div style="flex: 1 1 auto"></div>
+      <a href="C2-Light-Home.dc.html" aria-label="라이트 모드로 보기" style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.07); color: #EEF1FA"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.7"></circle><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg></a>
+      <button type="button" style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 6px; border-radius: 14px; border: 0; background: rgba(255,255,255,0.07); color: #EEF1FA; font: inherit; font-size: 14px; cursor: pointer">
+        <span style="width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, #FF9B5C, #6CB6FF); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #FFFFFF">C</span>cindy
+      </button>
+    </header>
+
+    <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(150px, auto); gap: 16px">
+
+      <div class="glass" style="grid-column: span 2; grid-row: span 2; padding: 32px; border-radius: 30px; display: flex; flex-direction: column; justify-content: space-between; gap: 24px">
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div style="font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; color: #8089A5">보안 · CS 개념 시각화 사전</div>
+          <h1 style="margin: 0; font-size: 42px; line-height: 1.22; font-weight: 800; letter-spacing: -0.02em">공격이 흘러가는 길과<br>막히는 지점을<br>한 장면씩 봐요</h1>
+        </div>
+        <label style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 18px; border-radius: 18px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.22); color: #8089A5">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"></circle><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+          <input type="search" placeholder="CSRF, 데드락처럼 용어로 검색" aria-label="용어 검색" style="flex: 1; border: 0; outline: 0; background: transparent; color: #EEF1FA; font: inherit; font-size: 16px">
+        </label>
+      </div>
+
+      <a href="C2-Dark-Detail.dc.html" class="glass tint-atk" style="grid-column: span 2; grid-row: span 2; padding: 26px 28px; border-radius: 30px; text-decoration: none; color: #EEF1FA; display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.07); font-size: 13px; font-weight: 700">이어서 보기</span>
+          <span style="font-size: 13px; color: #B3BBD2">웹 보안 · 흐름형</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 40px; font-weight: 800; letter-spacing: -0.02em">CSRF</div>
+          <div style="font-size: 15px; color: #B3BBD2">로그인된 브라우저가 모르는 사이 요청을 보내게 만드는 공격</div>
+        </div>
+        <ol aria-label="CSRF 진행 단계" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{flow}}" as="f" hint-placeholder-count="6">
+            <li style="{{f.style}}"><span style="font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; opacity: 0.8">{{f.no}}</span><span>{{f.name}}</span></li>
+          </sc-for>
+        </ol>
+        <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 12px">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #8CC6FF; font-weight: 700"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>방어 모드에서는 5단계에서 차단</span>
+          <span style="width: 48px; height: 48px; flex: none; border-radius: 16px; background: #EEF1FA; color: #090C17; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12L12 4M6 4h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+        </div>
+      </a>
+
+      <div class="glass" style="grid-column: span 1; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px">
+        <div style="font-size: 14px; font-weight: 700; color: #B3BBD2">내 진행률</div>
+        <div style="display: flex; align-items: center; gap: 14px">
+          <div style="width: 66px; height: 66px; border-radius: 50%; background: conic-gradient(#6CB6FF 0 37.5%, rgba(255,255,255,0.1) 37.5% 100%); display: flex; align-items: center; justify-content: center"><div style="width: 50px; height: 50px; border-radius: 50%; background: #141829; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px">38%</div></div>
+          <div style="font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 700">3<span style="font-size: 16px; color: #8089A5"> / 8</span></div>
+        </div>
+      </div>
+
+      <div class="glass" style="grid-column: span 1; padding: 22px; border-radius: 26px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #B3BBD2">
+        <div style="font-size: 14px; font-weight: 700">분야별</div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between"><span>웹 보안</span><span>2/5</span></div><div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1)"><div style="width: 40%; height: 6px; border-radius: 3px; background: #6CB6FF"></div></div></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between"><span>네트워크</span><span>1/1</span></div><div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1)"><div style="width: 100%; height: 6px; border-radius: 3px; background: #6CB6FF"></div></div></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between"><span>운영체제·런타임</span><span>0/2</span></div><div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1)"></div></div>
+      </div>
+
+      <div class="glass" style="grid-column: span 2; padding: 18px 20px; border-radius: 26px; display: flex; flex-direction: column; justify-content: center; gap: 12px">
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <sc-for list="{{cats}}" as="c" hint-placeholder-count="5">
+            <button type="button" class="chip" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="{{c.style}}">{{c.name}}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 6px">
+          <button type="button" onClick="{{showAll}}" style="{{allStyle}}">전체</button>
+          <button type="button" onClick="{{showUnread}}" style="{{unreadStyle}}">안 읽음만</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+      <sc-for list="{{terms}}" as="t" hint-placeholder-count="7">
+        <a href="C2-Dark-Detail.dc.html" class="glass" style="{{t.card}}">
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <span style="{{t.tag}}">{{t.cat}}</span>
+            <sc-if value="{{t.read}}" hint-placeholder-val="{{false}}"><span style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #8CC6FF"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>읽음</span></sc-if>
+          </div>
+          <div style="font-size: 19px; font-weight: 800; letter-spacing: -0.01em">{{t.name}}</div>
+          <div style="font-size: 14px; line-height: 1.6; color: #B3BBD2">{{t.desc}}</div>
+          <div style="margin-top: auto; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: #8089A5"><span>{{t.type}}</span><span>·</span><span>{{t.def}}</span></div>
+        </a>
+      </sc-for>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { cat: '전체', unread: false }; }
+  renderVals() {
+    var T = {"atk": "#FF9B5C", "safe": "#A3ADC8", "atkText": "#FFB27F", "defText": "#8CC6FF", "sub": "#B3BBD2", "muted": "#8089A5", "text": "#EEF1FA", "atkSoft": "rgba(255,155,92,0.16)", "defSoft": "rgba(108,182,255,0.16)", "soft": "rgba(255,255,255,0.07)", "line": "rgba(255,255,255,0.12)", "track": "rgba(255,255,255,0.1)", "done": "#EEF1FA", "navOnBg": "#EEF1FA", "navOnText": "#090C17", "onColor": "#090C17", "actorOn": "rgba(255,255,255,0.12)", "actorOff": "rgba(255,255,255,0.04)", "actorShadow": "rgba(0,0,0,0.45)", "tabOn": "rgba(255,255,255,0.14)", "tags": {"웹 보안": ["rgba(255,155,92,0.16)", "#FFB27F"], "네트워크": ["rgba(108,182,255,0.16)", "#8CC6FF"], "런타임": ["rgba(170,140,255,0.18)", "#C3B2FF"], "운영체제": ["rgba(80,210,170,0.16)", "#8BE3C6"]}, "def": "#6CB6FF"};
+    var all = [
+      { name: 'XSS', cat: '웹 보안', type: '흐름형 · 5단계', def: '방어 3개', desc: '페이지에 심은 스크립트가 다른 사용자 브라우저에서 실행', read: true },
+      { name: 'SQL 인젝션', cat: '웹 보안', type: '흐름형 · 5단계', def: '방어 2개', desc: '입력값으로 쿼리 구조를 바꿔 데이터를 빼내거나 조작', read: false },
+      { name: 'TCP 3-way 핸드셰이크', cat: '네트워크', type: '흐름형 · 3단계', def: '개념 설명', desc: 'SYN, SYN-ACK, ACK로 연결을 여는 과정', read: true },
+      { name: '콜 스택', cat: '런타임', type: '스택형 · 7단계', def: '개념 설명', desc: '함수 호출이 쌓이고 반환되며 빠지는 순서', read: false },
+      { name: '데드락', cat: '운영체제', type: '점유형 · 6단계', def: '해결 2개', desc: '서로 상대의 자원을 기다리며 멈춘 상태', read: false },
+      { name: '세션 하이재킹', cat: '웹 보안', type: '흐름형 · 5단계', def: '방어 2개', desc: '탈취한 세션 ID로 다른 사람 행세를 하는 공격', read: false },
+      { name: 'SSRF', cat: '웹 보안', type: '흐름형 · 5단계', def: '방어 2개', desc: '서버가 내부 주소로 요청을 보내도록 속이는 공격', read: false }
+    ];
+    var flow = ['로그인', '쿠키 발급', '함정 링크', '함정 사이트 접속', '위조 요청', '송금 완료'].map((n, i) => ({
+      no: '0' + (i + 1), name: n,
+      style: 'display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;font-size:13px;font-weight:600;' +
+        (i === 4 ? 'background:' + T.defSoft + ';color:' + T.defText + ';box-shadow:inset 0 0 0 1px ' + T.def
+         : i >= 2 ? 'background:' + T.atkSoft + ';color:' + T.atkText : 'background:' + T.soft + ';color:' + T.sub)
+    }));
+    var names = ['전체', '웹 보안', '네트워크', '운영체제', '런타임'];
+    var cats = names.map((n) => {
+      var on = this.state.cat === n;
+      return { name: n, pressed: on ? 'true' : 'false', pick: () => this.setState({ cat: n }),
+        style: on ? 'border:0;background:' + T.navOnBg + ';color:' + T.navOnText : 'border:1px solid ' + T.line + ';background:' + T.soft + ';color:' + T.sub };
+    });
+    var terms = all.filter((t) => (this.state.cat === '전체' || t.cat === this.state.cat) && (!this.state.unread || !t.read)).map((t, i) => Object.assign({}, t, {
+      card: 'display:flex;flex-direction:column;gap:10px;min-height:170px;padding:20px;border-radius:26px;text-decoration:none;color:' + T.text + ';' + (i === 0 ? 'grid-column:span 2' : ''),
+      tag: 'padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:' + T.tags[t.cat][0] + ';color:' + T.tags[t.cat][1]
+    }));
+    var seg = (on) => 'height:36px;padding:0 12px;border-radius:10px;cursor:pointer;font:inherit;font-size:13px;' + (on ? 'border:1px solid ' + T.def + ';background:' + T.defSoft + ';color:' + T.defText + ';font-weight:700' : 'border:1px solid ' + T.line + ';background:transparent;color:' + T.muted);
+    return { flow: flow, cats: cats, terms: terms, showAll: () => this.setState({ unread: false }), showUnread: () => this.setState({ unread: true }), allStyle: seg(!this.state.unread), unreadStyle: seg(this.state.unread) };
+  }
+}
+</script>
+</body>
+</html>

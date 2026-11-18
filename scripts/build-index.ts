@@ -14,7 +14,7 @@ const outDir = (includeDrafts: boolean) =>
 export const selectTerms = (terms: Term[], includeDrafts: boolean) =>
   terms.filter((t) => t.status === "published" || (includeDrafts && t.status === "draft"));
 
-export const toIndexEntry = ({ id, name, englishName, aliases, category, summary, scenario }: Term): IndexEntry => ({
+export const toIndexEntry = ({ id, name, englishName, aliases, category, summary, scenario, defenses }: Term): IndexEntry => ({
   id,
   name,
   englishName,
@@ -22,6 +22,8 @@ export const toIndexEntry = ({ id, name, englishName, aliases, category, summary
   category,
   summary,
   playerType: scenario.playerType,
+  stepCount: scenario.steps.length,
+  defenseCount: defenses.length,
 });
 
 if (import.meta.main) {
