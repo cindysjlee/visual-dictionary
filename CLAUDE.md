@@ -35,7 +35,8 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 - Frontend: React 19, Vite 8, React Router 8 (data mode), SVG, Framer Motion(`motion` 패키지), Zod 4, TypeScript 6, Amplify Auth(Cognito), TanStack Query, Vitest
 - Backend: Node.js 22 on AWS Lambda, API Gateway HTTP API(JWT 인가), EventBridge + SQS DLQ(회원 탈퇴 이벤트)
 - Database: DynamoDB (`LearningRecord`: PK userId, SK termId / `RecentView`: 같은 키 + TTL)
-- Infra: AWS CDK(TypeScript), GitHub Actions
+- Infra: AWS CDK(TypeScript, 1단계부터), GitHub Actions. 배포는 `npm run deploy` (빌드 → `cdk deploy --profile vd`)
+- AWS 접속: 프로필 `vd`(`aws login` 임시 자격 증명). 만료되면 직접 해결하지 말고 사용자에게 `aws login --profile vd`를 요청한다. 계정 ID·사용자 이름·자격 증명은 어떤 파일에도 적지 않는다
 - AWS 리전: **서울 `ap-northeast-2`**. 단, CloudFront용 ACM 인증서만 `us-east-1`
 
 ## 권장 폴더 구조
@@ -48,7 +49,7 @@ packages/content-schema/  Zod 스키마와 타입 (web, scripts가 함께 사용
 content/terms/            용어 JSON 원본
 scripts/                  validate-content, build-index
 services/api/             Lambda 핸들러 (account, progress, activity) — 5단계부터
-infra/                    CDK 스택 — 5단계부터 (1~4단계는 S3+CloudFront만)
+infra/                    CDK 스택 — 1단계: S3+CloudFront(WebStack), 5단계부터 Cognito·API 추가
 docs/                     설계 문서
 ```
 

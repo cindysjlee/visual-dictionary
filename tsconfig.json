@@ -6,5 +6,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["scripts", "packages"]
+  "include": ["scripts", "packages", "infra/bin", "infra/lib", "infra/test"]
 }

@@ -51,7 +51,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 
 | 단계 | 서브시스템 | 구현 범위 | 완료 기준 |
 | --- | --- | --- | --- |
-| 1 | S1 공통, S2 콘텐츠 | 프로젝트 생성, 화면 틀, 시나리오 스키마와 검증기, CSRF 데이터 1개, S3·CloudFront 최초 배포 | 배포 주소에 빈 화면이 뜨고, 형식이 틀린 데이터는 빌드에서 거부된다 |
+| 1 | S1 공통, S2 콘텐츠 | 프로젝트 생성, 화면 틀, 시나리오 스키마와 검증기, CSRF 데이터 1개, CDK로 S3·CloudFront 최초 배포 | 배포 주소에 빈 화면이 뜨고, 형식이 틀린 데이터는 빌드에서 거부된다 |
 | 2 | S4 시각화 (흐름형) | 상세 페이지, 재생 엔진, 흐름형 플레이어, 컨트롤·자막, 방어 모드 | CSRF가 끝까지 재생되고, 방어 모드에서 5단계에서 차단된다 |
 | 3 | S3 탐색, S2 확장 | 목록, 카테고리 필터, 검색, 보안 용어 4개 데이터 추가 | 플레이어 코드를 고치지 않고 데이터만 추가해 새 용어가 재생된다 |
 | 4 | S4 확장 | 스택형·점유형 플레이어, CS 용어 3개 | 초기 용어 8개가 모두 재생된다. 여기까지 비회원 기능 완성 |
@@ -77,7 +77,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | Backend API | Amazon API Gateway (HTTP API), JWT 인가 | Cognito 토큰을 게이트웨이에서 검증하고, Lambda는 토큰의 사용자 ID로만 대상을 정한다 (NFR-01) |
 | 서비스 간 이벤트 | Amazon EventBridge, SQS DLQ | 탈퇴 이벤트를 Progress·Activity가 각자 처리. 실패한 이벤트는 DLQ에 남겨 다시 처리 |
 | Database | Amazon DynamoDB | 회원의 기록을 회원 ID로만 조회하므로 키-값 구조가 맞고, 사용한 만큼만 과금된다 |
-| 인프라 코드·배포 | AWS CDK (TypeScript), GitHub Actions | 인프라를 코드로 관리하고, 반영 시 검증·빌드·배포를 자동화 (FR-DEP-05) |
+| 인프라 코드·배포 | AWS CDK (TypeScript), GitHub Actions | 1단계부터 S3·CloudFront를 CDK로 만들고 배포한다(`infra/`, `npm run deploy`). 7단계에서 GitHub Actions로 자동화 (FR-DEP-05) |
 
 DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 ID, 정렬 키가 용어 ID이다. 키 자체가 회원과 용어의 쌍이므로, 클래스 다이어그램의 "회원·용어 쌍마다 학습 기록 하나" 제약이 저장 구조로 지켜지고, 같은 요청이 두 번 와도 같은 항목을 덮어쓸 뿐이다. **RecentView**는 같은 키 구조에 열람 시각을 저장하고, TTL로 일정 기간이 지난 항목을 자동 삭제한다.
 
@@ -95,7 +95,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
 | 이벤트 | Amazon EventBridge + SQS DLQ | 회원 탈퇴 이벤트 전달과 실패 이벤트 보관 |
 | 모니터링 | Amazon CloudWatch | Lambda 로그, 오류율 알람 |
-| 배포 | GitHub Actions | 콘텐츠 검증 → 빌드 → S3 업로드 → CloudFront 캐시 무효화, 백엔드는 CDK 배포 |
+| 배포 | AWS CDK (7단계부터 GitHub Actions에서 실행) | 콘텐츠 검증 → 빌드 → `cdk deploy`가 S3 업로드와 CloudFront 캐시 무효화까지 수행. 백엔드도 같은 CDK 앱으로 배포 |
 
 ### 2.3 운영 환경 배치 아키텍처
 
@@ -107,6 +107,6 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 2. **로그인**: 브라우저 → Cognito. 로그인하면 토큰을 받아 이후 API 요청에 붙인다.
 3. **학습 기록 저장·조회**: 브라우저 → API Gateway(토큰 검증) → progress Lambda → DynamoDB.
 4. **회원 탈퇴**: 브라우저 → API Gateway → account Lambda가 Cognito 사용자를 삭제하고 탈퇴 이벤트를 보낸다. progress·activity Lambda가 이벤트를 받아 각자의 기록을 지운다.
-5. **배포**: 저장소에 반영하면 GitHub Actions가 웹·콘텐츠는 S3에 올리고 CloudFront 캐시를 비우며, 백엔드는 CDK로 배포한다.
+5. **배포**: `npm run deploy`(7단계부터는 GitHub Actions)가 빌드한 뒤 CDK로 배포한다. 웹·콘텐츠는 S3에 올리고 CloudFront 캐시를 비우며, 백엔드도 같은 CDK 앱으로 배포한다.
 
-그림은 7단계까지 끝난 최종 형태다. 4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 오른쪽 백엔드 영역은 5단계부터 차례로 추가된다.
+그림은 7단계까지 끝난 최종 형태다. 4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 오른쪽 백엔드 영역은 5단계부터 차례로 추가된다. 인프라는 1단계부터 CDK(`infra/`, 리전 ap-northeast-2)로 관리한다.
