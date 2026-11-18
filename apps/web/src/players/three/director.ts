@@ -1,7 +1,7 @@
 // 한 단계의 연출을 타임라인으로 만든다. 효과 어휘(docs/04)만 보고 순서를 정하므로 용어별 코드가 없다 (docs/06 2·3절)
 import { QuadraticBezierCurve3, Vector3, type Object3D, type PerspectiveCamera } from "three";
 import type { Effect, Term } from "@app/content-schema";
-import { blockTarget, type StepView } from "@app/content-schema/scene";
+import { blockTarget, passesGate, type StepView } from "@app/content-schema/scene";
 import type { LabelLayer, LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
@@ -171,7 +171,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
 
   // 2) 본 비행: 검문소가 있으면 검문소에 먼저 들른다
   const target = layout.get(view.to)!;
-  const gate = target.gate && view.from !== view.to ? target.gate : undefined;
+  const gate = passesGate(ctx.term, view.from, view.to) ? target.gate : undefined;
   const blockedWithoutInspect = view.blocked && !inspect;
   let ended = false;
 

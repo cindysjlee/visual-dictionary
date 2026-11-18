@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema, type Term } from "./index.ts";
-import { blockTarget, blockingDefenses, hasPanel, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
+import { blockTarget, blockingDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
 
 const raw = () => JSON.parse(readFileSync(new URL("../../../content/terms/csrf.json", import.meta.url), "utf8"));
 const csrf: Term = termSchema.parse(raw());
@@ -118,6 +118,17 @@ describe("checkScene (검증기)", () => {
     expect(issuePaths((t) => (t.scenario.steps[3].effects = [{ type: "inspect", at: "evil", checks: [{ name: "a", result: "b", status: "ok" }] }]))).toContain(
       "scenario.steps.3.effects.0.at: inspect는 검문소(gate)가 있는 목적지에서만 그려집니다: evil",
     );
+  });
+
+  it("검문소는 앞에서 오는 봉투만 지난다(사내망에서 오는 응답은 아님)", () => {
+    const t = termSchema.parse({
+      ...raw(),
+      scenario: { ...raw().scenario, actors: [...raw().scenario.actors, { id: "meta", name: "내부", role: "server", zone: "internal" }] },
+    });
+    expect(passesGate(t, "bankTab", "bank")).toBe(true);
+    expect(passesGate(t, "meta", "bank")).toBe(false);
+    expect(passesGate(t, "bank", "bank")).toBe(false);
+    expect(passesGate(t, "bankTab", "evil")).toBe(false);
   });
 
   it("차단 도장 위치: 검사한 곳 → 거부된 효과의 대상 → 목적지", () => {

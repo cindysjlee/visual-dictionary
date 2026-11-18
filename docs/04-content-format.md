@@ -88,7 +88,7 @@
 | `parent` | 행위자 id | 그 안에 들어감(예: 탭·쿠키 보관함 → 브라우저) |
 | `site` | 문자열 | 이름 옆에 작게 쓰는 주소(예: `bank.example`) |
 | `tone` | `attack` `neutral` | 공격 쪽 물체 표시 |
-| `gate` | `true` | 서버 앞 검문소 |
+| `gate` | `true` | 서버 앞(사용자 쪽) 검문소. 더 깊은 구역(사내망 등)에서 오는 봉투는 검문소를 지나지 않는다 |
 | `balance` | 정수 | 잔액 라벨. `transfer`(coin)로 바뀜 |
 | `screen` / `back` | `{ title?, lines[] }` | 화면판의 앞면 / 뒤집으면 보이는 뒷면 글자. 탭은 항상 화면판이 있고, `server`·`database`는 `screen`이 있을 때 옆에 화면판이 선다(만들어진 쿼리, 미리보기 결과처럼 서버 안에서 일어나는 일) |
 

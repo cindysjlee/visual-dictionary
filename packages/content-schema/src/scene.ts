@@ -18,6 +18,15 @@ export function zoneOf(actor: Actor, actors: readonly Actor[], depth = 0): Zone 
   return ZONE_BY_ROLE[actor.role] ?? "client";
 }
 
+/** 구역의 깊이(사용자 쪽 0 → 사내망 3). 검문소는 서버 앞에 서므로 더 깊은 구역에서 오는 봉투는 검문소를 지나지 않는다 */
+export const ZONE_DEPTH: Record<Zone, number> = { client: 0, outside: 0, between: 1, server: 2, internal: 3 };
+export const passesGate = (term: Term, from: string, to: string) => {
+  const { actors } = term.scenario;
+  const a = actors.find((x) => x.id === from);
+  const b = actors.find((x) => x.id === to);
+  return Boolean(a && b && b.gate && from !== to && ZONE_DEPTH[zoneOf(a, actors)] <= ZONE_DEPTH[zoneOf(b, actors)]);
+};
+
 /** 화면판이 있는 행위자: 탭은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
 export const hasPanel = (actor: Actor) => {
   const kind = kindOf(actor);
@@ -158,6 +167,7 @@ export function checkScene(term: Term): Issue[] {
       if (e.type === "inspect" && step && byId.has(step.to)) {
         if (e.at !== step.to) issues.push({ path: [...path, "at"], message: `inspect.at은 이 단계의 목적지(${step.to})여야 합니다` });
         else if (!byId.get(step.to)!.gate) issues.push({ path: [...path, "at"], message: `inspect는 검문소(gate)가 있는 목적지에서만 그려집니다: ${step.to}` });
+        else if (!passesGate(term, step.from, step.to)) issues.push({ path: [...path, "at"], message: `뒤쪽 구역에서 오는 봉투는 ${step.to}의 검문소를 지나지 않습니다` });
       }
       if (e.type === "flip" && target && !target.back) {
         issues.push({ path: [...path, "target"], message: `뒤집을 ${e.target}에 back 화면이 없습니다` });
