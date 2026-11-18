@@ -13,6 +13,7 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 | `docs/03-architecture.md` | 서브시스템, 계층 구조, 기술 스택, AWS 배치, 구현 단계 |
 | `docs/04-content-format.md` | 용어 JSON 형식과 검증 규칙 (**콘텐츠 작업 전 필독**) |
 | `docs/05-ui-design.md` | 화면 구조(IA), 디자인 컨셉, 색·글꼴 |
+| `docs/06-3d-player.md` | 3D 플레이어 설계: 공간·카메라·효과 어휘·대체 화면 (**플레이어 작업 전 필독**) |
 | `docs/examples/*.json` | CSRF(흐름형), 콜 스택(스택형), 데드락(점유형) 예시 데이터 |
 
 ## 반드시 지킬 설계 원칙
@@ -24,7 +25,7 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 5. **백엔드는 인증과 학습 기록에만.** Cognito(인증), API Gateway + Lambda(account, progress, activity), DynamoDB. 진행률은 저장하지 않고 브라우저에서 `index.json`과 학습 기록으로 계산한다.
 6. **API는 토큰의 사용자 ID로만 대상을 정한다.** 요청 본문이나 경로의 userId를 믿지 않는다 (NFR-01).
 7. **용어 ID는 한 번 배포하면 바꾸지 않는다.** 학습 기록의 키이기 때문이다 (FR-CNT-05).
-8. **단계 순서 제어는 Framer Motion(`motion` 패키지, `motion/react`)으로만.** CSS 애니메이션은 장식 효과에만 쓴다 (DC-01).
+8. **단계 진행은 순수 PlaybackEngine이 정한다.** 3D 장면은 three.js + React Three Fiber로 그리고, 단계 안의 움직임(날아가기·카메라 이동·뒤집기)은 `useFrame` 기반 타임라인으로 만든다. 버튼·탭·자막 같은 일반 UI의 움직임은 Framer Motion(`motion/react`)을 쓴다. CSS 애니메이션은 장식 효과에만 쓴다. 3D 장면도 용어별 코드를 쓰지 않고, 용어 JSON의 행위자 종류(kind)·구역(zone)·효과(effects)를 읽어 만든다 (DC-01, DC-03, `docs/06`).
 9. **동작 줄이기(`prefers-reduced-motion`)를 존중**하고, 자막만 읽어도 개념이 이해되게 쓴다. 재생 컨트롤은 키보드로 조작 가능해야 한다 (NFR-03).
 10. **디자인 토큰은 한 곳에서만 관리한다.** 현재 디자인은 `docs/05-ui-design.md`의 Bento Glass(라이트/다크, 토큰 파일 `apps/web/src/styles/tokens.css`)이고, 이것도 출발점일 뿐이며 더 나은 디자인이 있으면 바꿔도 된다. 단, 화면마다 따로 색·글꼴을 정하지 않는다. 바꿀 때는 먼저 사용자에게 제안하고, 승인되면 `docs/05`와 코드의 토큰 파일을 함께 고쳐 전체 화면에 한 번에 적용한다. 공격(위험)과 방어(차단)는 색만이 아니라 명도로도 구분되게 유지한다 (빨강·초록 조합 금지).
 11. **위 구조는 의도한 설계다.** Zod 스키마 공유, 플레이어 3종 분리, 콘텐츠 빌드 파이프라인을 "불필요한 추상화"로 보고 합치거나 없애지 않는다. 코드 최소화 지침(ponytail, karpathy)은 이 구조 안에서 적용한다.
@@ -32,7 +33,7 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 ## 기술 스택
 
 - 전부 TypeScript
-- Frontend: React 19, Vite 8, React Router 8 (data mode), SVG, Framer Motion(`motion` 패키지), Zod 4, TypeScript 6, Amplify Auth(Cognito), TanStack Query, Vitest
+- Frontend: React 19, Vite 8, React Router 8 (data mode), three.js + React Three Fiber 9 + drei 10(3D 플레이어, 상세 페이지에서만 동적 import), Framer Motion(`motion` 패키지, 일반 UI), Zod 4, TypeScript 6, Amplify Auth(Cognito), TanStack Query, Vitest
 - Backend: Node.js 22 on AWS Lambda, API Gateway HTTP API(JWT 인가), EventBridge + SQS DLQ(회원 탈퇴 이벤트)
 - Database: DynamoDB (`LearningRecord`: PK userId, SK termId / `RecentView`: 같은 키 + TTL)
 - Infra: AWS CDK(TypeScript, 1단계부터), GitHub Actions. 배포는 `npm run deploy` (빌드 → `cdk deploy --profile vd`)
@@ -43,7 +44,8 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 
 ```
 apps/web/                 React 앱
-  src/players/            FlowPlayer, StackPlayer, LockPlayer, 공통 PlaybackEngine
+  src/players/            PlaybackEngine(순수 로직), PlayerShell(컨트롤·자막), 2D 대체 화면
+  src/players/three/      3D 장면: 공통(배치·결과 상태·타임라인·카메라·가림) + FlowScene / StackScene / LockScene
   src/features/           explore(목록·검색), term(상세), auth, progress
 packages/content-schema/  Zod 스키마와 타입 (web, scripts가 함께 사용)
 content/terms/            용어 JSON 원본
@@ -58,9 +60,9 @@ docs/                     설계 문서
 | 단계 | 범위 | 완료 기준 |
 | --- | --- | --- |
 | 1 | 프로젝트 생성, 화면 틀, 콘텐츠 스키마·검증기·인덱스 생성, CSRF 데이터 1개, S3+CloudFront 첫 배포 | 배포 주소에 화면이 뜨고, 형식이 틀린 JSON은 빌드에서 거부된다 |
-| 2 | 상세 페이지, PlaybackEngine, FlowPlayer, 재생 컨트롤·자막, 방어 모드 | CSRF가 끝까지 재생되고, 방어 모드에서 5단계에서 차단된다 |
+| 2 | PlaybackEngine, 장면 스키마, 3D FlowPlayer, 재생 컨트롤·자막, 방어 모드, 2D 대체 화면 | CSRF가 3D로 끝까지 재생되고, 방어 모드에서 5단계에서 차단된다 |
 | 3 | 목록, 카테고리 필터, 검색 + 보안 용어 4개 추가 | 플레이어 코드 수정 없이 데이터만 추가해 새 용어가 재생된다 |
-| 4 | StackPlayer, LockPlayer + CS 용어 3개 | 초기 용어 8개 모두 재생. 비회원 기능 완성 |
+| 4 | 3D StackPlayer, LockPlayer(스택형·점유형 효과 어휘) + CS 용어 3개 | 초기 용어 8개 모두 재생. 비회원 기능 완성 |
 | 5 | Cognito, 회원가입·이메일 인증·로그인·비밀번호 재설정 | 가입~로그인, 새로고침 후에도 로그인 유지 |
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, 재생 속도, 자동 배포 | 요구사항의 "선택" 항목 |

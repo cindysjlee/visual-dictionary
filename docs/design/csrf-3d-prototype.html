@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSRF 3D 무대</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Sora:wght@500;600;700&display=swap">
+<style>
+/* Layout: one centered column — intro, glass player (WebGL stage + HTML labels → caption → controls), notes */
+:root{
+  --bg:#E8EBF4;--text:#121624;--sub:#3D4560;--muted:#646C86;
+  --atk:#D9480F;--atk-t:#B23E0A;--def:#1864AB;--def-t:#1864AB;--neutral:#5C6378;--on:#FFFFFF;
+  --glass-a:rgba(255,255,255,.62);--glass-b:rgba(255,255,255,.28);--glass-border:rgba(255,255,255,.75);--glass-hi:rgba(255,255,255,.95);
+  --shadow:rgba(40,50,90,.14);--soft:rgba(255,255,255,.5);--line:rgba(18,22,36,.1);
+  --obj:#F3F5FB;--obj2:#D3D9E8;--villain:#2A2E3E;--grid3d:#9AA3BF;--paper:#FFFFFF;--gold:#D99A1E;--island:#DCE2F0;--evil:#3A2F3A;
+  --blob1:rgba(255,138,92,.7);--blob2:rgba(77,139,255,.6);--blob3:rgba(167,123,255,.45);--blob4:rgba(79,209,197,.4);
+  --cta:#121624;--cta-t:#FFFFFF;
+  --f-body:'Noto Sans KR',system-ui,sans-serif;--f-num:'Sora','Noto Sans KR',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#090C17;--text:#EEF1FA;--sub:#B3BBD2;--muted:#8089A5;
+  --atk:#FF9B5C;--atk-t:#FFB27F;--def:#6CB6FF;--def-t:#8CC6FF;--neutral:#A3ADC8;--on:#090C17;
+  --glass-a:rgba(255,255,255,.11);--glass-b:rgba(255,255,255,.03);--glass-border:rgba(255,255,255,.14);--glass-hi:rgba(255,255,255,.22);
+  --shadow:rgba(0,0,0,.45);--soft:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);
+  --obj:#3E4566;--obj2:#2C3250;--villain:#6A7190;--grid3d:#3B4366;--paper:#E9EDF7;--gold:#F2C14E;--island:#20263D;--evil:#3A2A33;
+  --blob1:rgba(255,120,70,.4);--blob2:rgba(60,120,255,.42);--blob3:rgba(150,90,255,.35);--blob4:rgba(40,190,180,.26);
+  --cta:#EEF1FA;--cta-t:#090C17;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#090C17;--text:#EEF1FA;--sub:#B3BBD2;--muted:#8089A5;
+  --atk:#FF9B5C;--atk-t:#FFB27F;--def:#6CB6FF;--def-t:#8CC6FF;--neutral:#A3ADC8;--on:#090C17;
+  --glass-a:rgba(255,255,255,.11);--glass-b:rgba(255,255,255,.03);--glass-border:rgba(255,255,255,.14);--glass-hi:rgba(255,255,255,.22);
+  --shadow:rgba(0,0,0,.45);--soft:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);
+  --obj:#3E4566;--obj2:#2C3250;--villain:#6A7190;--grid3d:#3B4366;--paper:#E9EDF7;--gold:#F2C14E;--island:#20263D;--evil:#3A2A33;
+  --blob1:rgba(255,120,70,.4);--blob2:rgba(60,120,255,.42);--blob3:rgba(150,90,255,.35);--blob4:rgba(40,190,180,.26);
+  --cta:#EEF1FA;--cta-t:#090C17;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);word-break:keep-all;overflow-x:hidden}
+.bgfx{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.bgfx i{position:absolute;border-radius:50%;filter:blur(10px)}
+.bgfx i:nth-child(1){left:-140px;top:-160px;width:620px;height:620px;background:radial-gradient(circle,var(--blob1),transparent 65%)}
+.bgfx i:nth-child(2){right:-160px;top:120px;width:680px;height:680px;background:radial-gradient(circle,var(--blob2),transparent 65%)}
+.bgfx i:nth-child(3){left:25%;top:520px;width:520px;height:520px;background:radial-gradient(circle,var(--blob3),transparent 65%)}
+.bgfx i:nth-child(4){left:-80px;bottom:-200px;width:520px;height:520px;background:radial-gradient(circle,var(--blob4),transparent 65%)}
+.wrap{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.glass{position:relative;background:linear-gradient(135deg,var(--glass-a),var(--glass-b));border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-hi),0 20px 50px var(--shadow);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%)}
+.intro{padding:24px 28px;border-radius:28px}
+.intro h1{margin:0;font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.intro p{margin:6px 0 0;color:var(--sub);font-size:15px;line-height:1.7;max-width:66ch}
+.eyebrow{font-family:var(--f-num);font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.player{padding:20px;border-radius:32px;display:flex;flex-direction:column;gap:14px}
+.bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.tabs{display:flex;padding:4px;border-radius:16px;background:var(--soft);border:1px solid var(--line)}
+.tabs button{height:44px;display:flex;align-items:center;gap:6px;padding:0 16px;border-radius:12px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--glass-a);box-shadow:inset 0 1px 0 var(--glass-hi),0 4px 14px var(--shadow)}
+#tAtk[aria-pressed="true"]{color:var(--atk-t)} #tDef[aria-pressed="true"]{color:var(--def-t)}
+.right{display:flex;align-items:center;gap:10px}
+.stepno{font-family:var(--f-num);font-weight:700;font-size:14px}
+.freebtn{height:44px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.freebtn[aria-pressed="true"]{border-color:var(--def);color:var(--def-t)}
+.stage{position:relative;height:540px;border-radius:26px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,var(--soft),transparent 75%);touch-action:pan-y}
+.stage canvas{display:block;width:100%;height:100%}
+.stage.free canvas{cursor:grab}
+.labels{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;will-change:transform;transition:opacity .35s}
+.aname{padding:4px 10px;border-radius:10px;background:var(--glass-a);border:1px solid var(--glass-border);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px;font-weight:800}
+.aname small{font-family:var(--f-num);font-weight:600;color:var(--muted);margin-left:4px}
+.plabel{padding:6px 12px;border-radius:10px;background:var(--c);color:var(--on);font-family:var(--f-num);font-size:12px;font-weight:700;box-shadow:0 8px 20px var(--shadow)}
+.info{padding:6px 10px;border-radius:10px;background:var(--glass-a);border:1px solid var(--glass-border);font-size:12px;font-weight:700;color:var(--sub);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.info.atk{color:var(--atk-t)} .info.def{color:var(--def-t);border-color:var(--def)}
+.check{display:flex;flex-direction:column;gap:4px;min-width:150px}
+.check span{opacity:0;transition:opacity .3s;display:flex;justify-content:space-between;gap:10px}
+.check span.v{opacity:1}
+.check .ok{color:var(--sub)} .check .bad{color:var(--def-t)} .check .skip{color:var(--atk-t)}
+.hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);pointer-events:none}
+.fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--sub)}
+.caption{display:flex;flex-direction:column;gap:4px;padding:2px 6px;min-height:84px}
+.caption b{font-size:14px;font-weight:800}
+.caption p{margin:0;font-size:18px;line-height:1.6}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.ibtn{width:48px;height:48px;border-radius:16px;border:1px solid var(--line);background:var(--soft);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.play{width:56px;height:56px;border-radius:20px;border:0;background:var(--cta);color:var(--cta-t);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 26px var(--shadow)}
+.dots{flex:1 1 220px;display:flex;gap:6px}
+.dots button{flex:1;height:44px;padding:0;border:0;background:transparent;cursor:pointer;display:flex;align-items:center}
+.dots span{display:block;width:100%;height:8px;border-radius:4px;background:var(--line);transition:background .3s}
+.txtbtn{height:48px;padding:0 16px;border-radius:16px;border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+button:focus-visible{outline:2px solid var(--def);outline-offset:2px}
+.toast{align-self:flex-start;padding:10px 14px;border-radius:14px;background:var(--soft);border:1px solid var(--def);color:var(--def-t);font-size:14px;font-weight:700}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.note{padding:20px 22px;border-radius:24px;display:flex;flex-direction:column;gap:8px}
+.note h2{margin:0;font-size:16px;font-weight:800}
+.note ul{margin:0;padding-left:18px;color:var(--sub);font-size:14px;line-height:1.7}
+@media (max-width:700px){
+  .stage{height:440px}
+  .aname{font-size:10.5px;padding:3px 7px} .aname small{display:none}
+  .plabel{font-size:10.5px;padding:4px 8px}
+  .info{font-size:10px;padding:4px 7px} .check{min-width:120px}
+  .caption p{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+
+<div class="bgfx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="wrap">
+  <section class="glass intro">
+    <div class="eyebrow">애니메이션 시안 2 · 실시간 3D (Three.js) · v2</div>
+    <h1>CSRF를 입체 무대에서 보기</h1>
+    <p>앞쪽은 사용자의 브라우저, 인터넷 너머 뒤쪽은 서버들이에요. 브라우저 유리 상자 안에 은행 탭과 함정 탭이 함께 떠 있어요. 단계마다 카메라가 필요한 곳으로 이동하고, 함정 탭을 뒤집어 숨은 폼을 보여주고, 은행 검문소에서 봉투를 열어 검사해요.</p>
+  </section>
+
+  <section class="glass player" aria-label="CSRF 3D 애니메이션 플레이어">
+    <div class="bar">
+      <div class="tabs" role="group" aria-label="재생 모드">
+        <button type="button" id="tAtk" aria-pressed="true">공격 흐름</button>
+        <button type="button" id="tDef" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>방어 모드 · CSRF 토큰</button>
+      </div>
+      <div class="right">
+        <div class="stepno" id="stepno">1 / 6 단계</div>
+        <button type="button" class="freebtn" id="free" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2a6 6 0 1 0 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 1.5L14 2l-.5 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>자유 시점</button>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="labels" id="labels" aria-hidden="true">
+        <div class="lbl aname" id="l-browser">사용자 브라우저<small>browser</small></div>
+        <div class="lbl aname" id="l-banktab">은행 탭<small>bank.example</small></div>
+        <div class="lbl aname" id="l-eviltab" style="opacity:0">함정 탭<small>evil.example</small></div>
+        <div class="lbl aname" id="l-bank">은행 서버<small>bank.example</small></div>
+        <div class="lbl aname" id="l-evil">함정 사이트 서버<small>evil.example</small></div>
+        <div class="lbl aname" id="l-attacker">공격자</div>
+        <div class="lbl info" id="l-jar">쿠키 보관함</div>
+        <div class="lbl info" id="l-balance">잔액 1,250,000원</div>
+        <div class="lbl info atk" id="l-loot" style="opacity:0">+1,000,000원</div>
+        <div class="lbl info" id="l-dest" style="opacity:0">목적지 bank.example → 쿠키 자동 첨부</div>
+        <div class="lbl info check" id="l-check" style="opacity:0"><span class="ok" id="ck1"><b>쿠키</b><em>있음</em></span><span id="ck2"><b>CSRF 토큰</b><em id="ck2t">없음</em></span></div>
+        <div class="lbl plabel" id="l-packet">POST /login</div>
+      </div>
+      <div class="hint" id="hint" hidden>드래그해서 돌리고, 휠로 확대해 보세요</div>
+    </div>
+
+    <div class="caption" aria-live="polite"><b id="capTitle"></b><p id="capText"></p></div>
+    <div class="controls">
+      <button type="button" class="ibtn" id="prev" aria-label="이전 단계"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="play" id="play" aria-label="일시정지"></button>
+      <button type="button" class="ibtn" id="next" aria-label="다음 단계"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M7 4l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="dots" id="dots"></div>
+      <button type="button" class="txtbtn" id="replay">다시 보기</button>
+    </div>
+    <div class="toast" id="toast" hidden>끝까지 봤어요 · 읽음으로 기록돼요</div>
+  </section>
+
+  <section class="notes">
+    <div class="glass note">
+      <h2>3D라서 가능한 것</h2>
+      <ul>
+        <li>공간이 곧 개념이에요. 두 탭이 같은 브라우저 상자 안에 있어서, 어느 탭이 보냈든 은행 쿠키가 붙는다는 게 보여요.</li>
+        <li>카메라가 단계마다 보관함, 함정 탭, 검문소로 움직여요.</li>
+        <li>함정 탭을 뒤집어 뒷면의 숨은 폼을 보여줘요.</li>
+        <li>검문소에서 봉투를 열어 내용물을 검사해요. 방어 모드에서는 토큰(열쇠)이 은행 탭에만 있다는 걸 보여줘요.</li>
+      </ul>
+    </div>
+    <div class="glass note">
+      <h2>실제 서비스로 옮길 때의 비용</h2>
+      <ul>
+        <li>three.js가 압축 후 약 150KB 이상 추가돼요.</li>
+        <li>GPU를 계속 써서 노트북·휴대폰에서 발열과 배터리 소모가 있어요. 화면 밖에 있을 때는 그리기를 멈춰야 해요.</li>
+        <li>장면(무대·카메라 위치)을 용어 JSON에 어떻게 적을지 새로 설계해야 해요.</li>
+        <li>"단계 진행은 Framer Motion" 규칙을 바꿔야 해요(React Three Fiber 사용).</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  var $ = function(s){ return document.querySelector(s); };
+  var stageEl = $('#stage');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var STEPS = [
+    { t:'정상 로그인', label:'POST /login', c:'neutral', cap:'사용자가 은행 탭에서 로그인합니다. 요청은 인터넷을 건너 은행 검문소를 지나 서버에 도착합니다.' },
+    { t:'세션 쿠키 발급', label:'Set-Cookie: session', c:'neutral', cap:'은행이 세션 쿠키를 보내고, 브라우저는 이 쿠키를 bank.example용 보관함에 넣어 둡니다. 이 보관함은 탭과 상관없이 브라우저 전체가 함께 씁니다.',
+      d:{ t:'세션 쿠키 + CSRF 토큰 발급', cap:'은행이 세션 쿠키를 보내고, 은행 탭의 송금 폼 안에는 CSRF 토큰(열쇠)을 넣어 둡니다. 쿠키는 보관함에, 토큰은 은행 탭 안에만 있습니다.' } },
+    { t:'함정 링크 전송', label:'이벤트 당첨 링크', c:'atk', cap:'공격자가 "이벤트 당첨" 링크를 보냅니다. 사용자가 링크를 열면 같은 브라우저에 새 탭이 생깁니다.' },
+    { t:'함정 사이트 접속', label:'GET /event', c:'atk', cap:'함정 탭이 이벤트 페이지를 불러옵니다. 그런데 페이지 뒷면에는 은행으로 송금을 요청하는 숨은 폼이 붙어 있습니다.' },
+    { t:'위조된 송금 요청', label:'POST /transfer', c:'atk', cap:'숨은 폼이 자동으로 제출됩니다. 브라우저는 목적지가 bank.example인 것만 보고 보관함의 은행 쿠키를 붙입니다. 검문소는 쿠키만 확인하고 통과시킵니다.',
+      b:{ t:'위조 요청 차단', cap:'검문소가 봉투를 열어 봅니다. 쿠키는 있지만 CSRF 토큰이 없습니다. 토큰은 은행 탭 안에만 있어서 함정 탭은 알 수 없습니다. 403으로 거부합니다.' } },
+    { t:'송금 완료', label:'200 OK', c:'atk', cap:'은행은 본인 요청이라고 판단해 송금을 처리합니다. 금고의 돈이 공격자에게 빠져나갑니다. 사용자는 아무것도 누르지 않았습니다.' }
+  ];
+  var step = 0, defense = false, playing = !reduce, run = 0, holdT = null, animDone = false, free = false;
+  function last(){ return defense ? 4 : 5; }
+
+  if (!window.THREE){ stageEl.insertAdjacentHTML('beforeend', '<div class="fallback">3D 라이브러리를 불러오지 못했어요. 새로고침해 주세요.</div>'); return; }
+  var renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+  catch (e) { stageEl.insertAdjacentHTML('beforeend', '<div class="fallback">이 브라우저에서는 3D(WebGL)를 쓸 수 없어요.</div>'); return; }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  stageEl.insertBefore(renderer.domElement, stageEl.firstChild);
+
+  var V = function(x, y, z){ return new THREE.Vector3(x, y, z); };
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(36, 2, 0.1, 120);
+  var controls = THREE.OrbitControls ? new THREE.OrbitControls(camera, renderer.domElement) : null;
+  if (controls){ controls.enabled = false; controls.enablePan = false; controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.4; controls.minDistance = 4; controls.maxDistance = 26; }
+
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  var C = {}, dark = false;
+  var hemi = new THREE.HemisphereLight(0xffffff, 0x8890b0, 0.95); scene.add(hemi);
+  var sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(5, 12, 8); sun.castShadow = true;
+  sun.shadow.mapSize.set(1536, 1536); var sc = sun.shadow.camera; sc.left = -11; sc.right = 11; sc.top = 9; sc.bottom = -9; sc.near = 1; sc.far = 40;
+  scene.add(sun);
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.18 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  var grid = new THREE.GridHelper(40, 40, 0x9aa3bf, 0x9aa3bf); grid.material.transparent = true; grid.material.opacity = 0.28; scene.add(grid);
+
+  var M = {
+    obj: new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.05 }),
+    obj2: new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.05 }),
+    bTop: new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.05 }),
+    island: new THREE.MeshStandardMaterial({ roughness: 0.8 }),
+    evil: new THREE.MeshStandardMaterial({ roughness: 0.6 }),
+    villain: new THREE.MeshStandardMaterial({ roughness: 0.7 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.14, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide }),
+    jar: new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, transparent: true, opacity: 0.3, clearcoat: 1, depthWrite: false }),
+    paper: new THREE.MeshStandardMaterial({ roughness: 0.6, side: THREE.DoubleSide }),
+    flap: new THREE.MeshStandardMaterial({ roughness: 0.5, side: THREE.DoubleSide, emissiveIntensity: 0.25 }),
+    cookie: new THREE.MeshStandardMaterial({ color: 0xC98A2E, roughness: 0.8 }),
+    chip: new THREE.MeshStandardMaterial({ color: 0x5A3410, roughness: 0.9 }),
+    gold: new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.65 }),
+    atkGlow: new THREE.MeshStandardMaterial({ emissiveIntensity: 1.1 }),
+    defGlow: new THREE.MeshStandardMaterial({ emissiveIntensity: 0.9 }),
+    ring: new THREE.MeshStandardMaterial({ emissiveIntensity: 0.9 }),
+    key: new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.5, emissiveIntensity: 0.4 })
+  };
+  function mesh(g, m, x, y, z){ var o = new THREE.Mesh(g, m); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; o.receiveShadow = true; return o; }
+  function textTex(w, h, draw){ var cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h); var t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t; }
+  function rr(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  // ---------- world layout ----------
+  var P = { browser: V(0, 0, 2.2), bank: V(-5, 0, -4.2), evil: V(5, 0, -4.2), attacker: V(8.6, 0, 1.6) };
+  // browser: glass box with two tabs and a cookie jar
+  var browser = new THREE.Group(); browser.position.copy(P.browser); scene.add(browser);
+  browser.add(mesh(new THREE.BoxGeometry(6.2, 0.22, 3.0), M.obj, 0, 0.11, 0));
+  var bbox = new THREE.Mesh(new THREE.BoxGeometry(6.0, 3.0, 2.8), M.glass); bbox.position.y = 1.72; browser.add(bbox);
+  var edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(6.0, 3.0, 2.8)), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 })); edges.position.y = 1.72; browser.add(edges);
+  var topbar = mesh(new THREE.BoxGeometry(6.0, 0.22, 2.8), M.bTop, 0, 3.33, 0); browser.add(topbar);
+  var tabFrames = [];
+  function makeTab(x){
+    var g = new THREE.Group(); g.position.set(x, 1.75, -0.2); browser.add(g);
+    var fm = new THREE.MeshStandardMaterial({ roughness: 0.6 }); tabFrames.push(fm);
+    g.add(mesh(new THREE.BoxGeometry(2.3, 1.62, 0.06), fm));
+    var front = new THREE.Mesh(new THREE.PlaneGeometry(2.18, 1.5), new THREE.MeshBasicMaterial({})); front.position.z = 0.032; g.add(front);
+    var back = new THREE.Mesh(new THREE.PlaneGeometry(2.18, 1.5), new THREE.MeshBasicMaterial({})); back.position.z = -0.032; back.rotation.y = Math.PI; g.add(back);
+    return { g: g, front: front, back: back };
+  }
+  var bankTab = makeTab(-1.45), evilTab = makeTab(1.45);
+  var jarG = new THREE.Group(); jarG.position.set(0, 0.22, 0.85); browser.add(jarG);
+  jarG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.7, 40, 1, true), M.jar)); jarG.children[0].position.y = 0.35;
+  jarG.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.06, 40), M.obj2, 0, 0.72, 0));
+  function makeCookie(){
+    var c = new THREE.Group();
+    var body = mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.07, 24), M.cookie); body.rotation.x = Math.PI / 2; c.add(body);
+    [[-0.07, 0.06], [0.08, 0.02], [-0.01, -0.08]].forEach(function(p){ c.add(mesh(new THREE.SphereGeometry(0.035, 8, 6), M.chip, p[0], p[1], 0.04)); });
+    return c;
+  }
+  var jarCookie = makeCookie(); jarCookie.position.set(0, 0.3, 0); jarG.add(jarCookie);
+  function makeKey(){
+    var k = new THREE.Group();
+    k.add(mesh(new THREE.TorusGeometry(0.13, 0.045, 10, 24), M.key, -0.2, 0, 0));
+    k.add(mesh(new THREE.BoxGeometry(0.34, 0.07, 0.05), M.key, 0.05, 0, 0));
+    k.add(mesh(new THREE.BoxGeometry(0.06, 0.12, 0.05), M.key, 0.16, -0.07, 0));
+    return k;
+  }
+  var tabKey = makeKey(); tabKey.position.set(0.72, -0.45, 0.12); bankTab.g.add(tabKey);
+
+  // occlusion: fade whatever sits between the camera and what we are looking at
+  var OCC = [], keep = [M.key, M.cookie, M.chip];
+  function addOcc(root){
+    var o = { ray: [], mats: [], f: 1, hit: false };
+    root.traverse(function(n){
+      if (!n.isMesh) return; o.ray.push(n);
+      if (keep.indexOf(n.material) < 0 && o.mats.indexOf(n.material) < 0){ n.material.transparent = true; n.material.userData.base = n.material.opacity; o.mats.push(n.material); }
+    });
+    OCC.push(o);
+  }
+  addOcc(bankTab.g); addOcc(evilTab.g); addOcc(topbar);
+  var rc = new THREE.Raycaster(), rdir = new THREE.Vector3();
+  function occlusion(){
+    var pts = [camTgt]; if (envG.visible) pts.push(envG.position);
+    OCC.forEach(function(o){ o.hit = false; });
+    pts.forEach(function(p){
+      rdir.copy(p).sub(camera.position); var dist = rdir.length(); rdir.normalize();
+      rc.set(camera.position, rdir); rc.far = Math.max(0.1, dist - 0.5);
+      OCC.forEach(function(o){ if (!o.hit && rc.intersectObjects(o.ray, false).length) o.hit = true; });
+    });
+    OCC.forEach(function(o){
+      var target = o.hit ? 0.1 : 1; o.f += (target - o.f) * (reduce ? 1 : 0.12);
+      o.mats.forEach(function(m){ m.opacity = m.userData.base * o.f; m.depthWrite = o.f > 0.95; });
+    });
+  }
+
+  // islands
+  function island(p, r, mat){ var m = mesh(new THREE.CylinderGeometry(r, r + 0.15, 0.36, 56), mat, p.x, 0.18, p.z); scene.add(m); return m; }
+  island(P.bank, 2.5, M.island); island(P.evil, 2.1, M.evil); island(P.attacker, 1.3, M.evil);
+  // bank building + vault
+  var bank = new THREE.Group(); bank.position.set(P.bank.x, 0.36, P.bank.z - 0.4); scene.add(bank);
+  bank.add(mesh(new THREE.BoxGeometry(2.6, 0.2, 1.8), M.obj, 0, 0.1, 0));
+  bank.add(mesh(new THREE.BoxGeometry(2.3, 1.4, 0.12), M.obj2, 0, 0.9, -0.7));
+  [-0.9, -0.3, 0.3, 0.9].forEach(function(x){ bank.add(mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.4, 20), M.obj, x, 0.9, 0.55)); });
+  bank.add(mesh(new THREE.BoxGeometry(2.8, 0.16, 2.0), M.obj, 0, 1.68, 0));
+  var tri = new THREE.Shape(); tri.moveTo(-1.4, 0); tri.lineTo(1.4, 0); tri.lineTo(0, 0.7); tri.lineTo(-1.4, 0);
+  bank.add(mesh(new THREE.ExtrudeGeometry(tri, { depth: 1.8, bevelEnabled: false }), M.obj, 0, 1.76, -0.9));
+  var vaultDoor = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 40), M.gold, 0, 0.75, -0.6); vaultDoor.rotation.x = Math.PI / 2; bank.add(vaultDoor);
+  // checkpoint gate between internet and bank
+  var gate = new THREE.Group(); gate.position.set(P.bank.x + 1.9, 0.36, P.bank.z + 1.9); scene.add(gate);
+  gate.lookAt(P.browser.x - 1.45, 0.36, P.browser.z);
+  gate.add(mesh(new THREE.BoxGeometry(0.16, 1.7, 0.16), M.obj2, -0.85, 0.85, 0));
+  gate.add(mesh(new THREE.BoxGeometry(0.16, 1.7, 0.16), M.obj2, 0.85, 0.85, 0));
+  var scanRing = mesh(new THREE.TorusGeometry(0.62, 0.06, 12, 48), M.ring, 0, 1.15, 0); gate.add(scanRing);
+  var armPivot = new THREE.Group(); armPivot.position.set(-0.85, 0.75, 0.12); gate.add(armPivot);
+  var arm = mesh(new THREE.BoxGeometry(1.7, 0.1, 0.08), M.atkGlow, 0.85, 0, 0); armPivot.add(arm);
+  // evil server tower
+  var evilT = new THREE.Group(); evilT.position.set(P.evil.x, 0.36, P.evil.z); scene.add(evilT);
+  evilT.add(mesh(new THREE.BoxGeometry(1.3, 2.6, 1.3), M.evil, 0, 1.3, 0));
+  for (var s = 0; s < 4; s++) evilT.add(mesh(new THREE.BoxGeometry(1.34, 0.08, 1.34), M.atkGlow, 0, 0.5 + s * 0.6, 0));
+  // attacker
+  var att = new THREE.Group(); att.position.set(P.attacker.x, 0.36, P.attacker.z); scene.add(att);
+  att.add(mesh(new THREE.ConeGeometry(0.55, 1.3, 32), M.villain, 0, 0.65, 0));
+  att.add(mesh(new THREE.SphereGeometry(0.33, 32, 16), M.villain, 0, 1.45, 0));
+  att.add(mesh(new THREE.SphereGeometry(0.05, 12, 8), M.atkGlow, -0.11, 1.5, 0.29));
+  att.add(mesh(new THREE.SphereGeometry(0.05, 12, 8), M.atkGlow, 0.11, 1.5, 0.29));
+  att.lookAt(P.browser.x, 0.36, P.browser.z);
+  // internet links
+  var linkMat = new THREE.LineDashedMaterial({ dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.6 });
+  function link(a, b){ var g = new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(a, V((a.x + b.x) / 2, 0.05, (a.z + b.z) / 2), b).getPoints(40)); var l = new THREE.Line(g, linkMat); l.computeLineDistances(); scene.add(l); }
+  link(V(-1.45, 0.05, 1.0), V(gate.position.x, 0.05, gate.position.z)); link(V(1.45, 0.05, 1.0), V(P.evil.x - 1.2, 0.05, P.evil.z + 1.5)); link(V(2.8, 0.05, 2.2), V(P.attacker.x - 1.2, 0.05, P.attacker.z));
+
+  // envelope with opening flap and a contents card
+  var envG = new THREE.Group(); scene.add(envG);
+  var envBody = mesh(new THREE.BoxGeometry(0.72, 0.48, 0.06), M.paper); envG.add(envBody);
+  var flapPivot = new THREE.Group(); flapPivot.position.set(0, 0.24, 0.035); envG.add(flapPivot);
+  var fl = new THREE.Shape(); fl.moveTo(-0.36, 0); fl.lineTo(0.36, 0); fl.lineTo(0, -0.27); fl.lineTo(-0.36, 0);
+  flapPivot.add(mesh(new THREE.ShapeGeometry(fl), M.flap));
+  var cardMat = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide });
+  var card = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.95), cardMat); card.visible = false; envG.add(card);
+  var envCookie = makeCookie(); envCookie.position.set(0.34, 0.2, 0.07); envCookie.scale.setScalar(0.7); envG.add(envCookie);
+  var flyCookie = makeCookie(); flyCookie.visible = false; scene.add(flyCookie);
+  var flyKey = makeKey(); flyKey.visible = false; scene.add(flyKey);
+  var stampMat = new THREE.SpriteMaterial({ transparent: true, depthTest: false }); var stamp = new THREE.Sprite(stampMat); stamp.scale.set(1.1, 0.55, 1); stamp.visible = false; stamp.renderOrder = 10; scene.add(stamp);
+  var coins = [0, 1, 2, 3].map(function(){ var c = mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24), M.gold); c.rotation.x = Math.PI / 2; c.visible = false; scene.add(c); return c; });
+
+  // ---------- theme ----------
+  var tex = {};
+  function makeTextures(){
+    var paper = dark ? '#1C2138' : '#FFFFFF', ink = dark ? '#E8ECF8' : '#1A1F33', mute = dark ? '#8F98B5' : '#6A7189';
+    function chrome(g, w, h, url, accent){
+      g.fillStyle = paper; g.fillRect(0, 0, w, h);
+      g.fillStyle = dark ? '#2A3150' : '#EEF1F8'; g.fillRect(0, 0, w, 64);
+      g.fillStyle = accent; rr(g, 20, 14, 36, 36, 10); g.fill();
+      g.fillStyle = dark ? '#151A2C' : '#FFFFFF'; rr(g, 72, 12, w - 92, 40, 20); g.fill();
+      g.fillStyle = mute; g.font = '600 24px "Sora", sans-serif'; g.textAlign = 'left'; g.fillText(url, 92, 40);
+    }
+    tex.bank = textTex(640, 440, function(g, w, h){
+      chrome(g, w, h, 'bank.example/account', C.def);
+      g.fillStyle = ink; g.font = '800 40px "Noto Sans KR", sans-serif'; g.fillText('내 계좌', 40, 130);
+      g.fillStyle = mute; g.font = '600 26px "Noto Sans KR", sans-serif'; g.fillText('잔액', 40, 180);
+      g.fillStyle = ink; g.font = '700 44px "Sora", sans-serif'; g.fillText('1,250,000원', 40, 232);
+      g.strokeStyle = dark ? '#3A4266' : '#D7DCE8'; g.lineWidth = 3; rr(g, 40, 268, w - 80, 130, 18); g.stroke();
+      g.fillStyle = ink; g.font = '700 28px "Noto Sans KR", sans-serif'; g.fillText('송금하기 폼', 64, 318);
+      g.fillStyle = mute; g.font = '500 24px "Noto Sans KR", sans-serif'; g.fillText('받는 사람 · 금액 · [송금]', 64, 362);
+    });
+    tex.blank = textTex(640, 440, function(g, w, h){ chrome(g, w, h, 'evil.example/event', C.atk); g.fillStyle = mute; g.font = '600 30px "Noto Sans KR", sans-serif'; g.textAlign = 'center'; g.fillText('불러오는 중…', w / 2, 260); });
+    tex.evil = textTex(640, 440, function(g, w, h){
+      chrome(g, w, h, 'evil.example/event', C.atk);
+      g.save(); g.globalAlpha = 0.9; g.fillStyle = C.atk; for (var i = -400; i < 800; i += 64){ g.beginPath(); g.moveTo(i, 64); g.lineTo(i + 32, 64); g.lineTo(i - 48, 130); g.lineTo(i - 80, 130); g.fill(); } g.restore();
+      g.fillStyle = ink; g.textAlign = 'center'; g.font = '800 70px "Noto Sans KR", sans-serif'; g.fillText('이벤트 당첨!', w / 2, 260);
+      g.fillStyle = mute; g.font = '600 30px "Noto Sans KR", sans-serif'; g.fillText('지금 바로 상품을 받으세요', w / 2, 320);
+    });
+    tex.hidden = textTex(640, 440, function(g, w, h){
+      g.fillStyle = dark ? '#221822' : '#FFF6F0'; g.fillRect(0, 0, w, h);
+      g.setLineDash([22, 14]); g.lineWidth = 10; g.strokeStyle = C.atk; g.strokeRect(18, 18, w - 36, h - 36); g.setLineDash([]);
+      g.fillStyle = C.atk; g.textAlign = 'center'; g.font = '800 54px "Noto Sans KR", sans-serif'; g.fillText('숨은 폼', w / 2, 120);
+      g.fillStyle = ink; g.font = '600 32px "Sora", sans-serif'; g.fillText('POST bank.example/transfer', w / 2, 200);
+      g.font = '700 40px "Noto Sans KR", sans-serif'; g.fillText('1,000,000원 → 공격자', w / 2, 270);
+      g.fillStyle = mute; g.font = '600 26px "Noto Sans KR", sans-serif'; g.fillText('페이지가 열리면 자동 제출', w / 2, 340);
+    });
+    function cardTex(lines){
+      return textTex(640, 400, function(g, w, h){
+        g.fillStyle = paper; rr(g, 6, 6, w - 12, h - 12, 28); g.fill(); g.lineWidth = 6; g.strokeStyle = dark ? '#3A4266' : '#D7DCE8'; g.stroke();
+        g.textAlign = 'left';
+        lines.forEach(function(l, i){ g.fillStyle = l[1] || ink; g.font = (i === 0 ? '800 38px' : '600 32px') + ' "Sora", "Noto Sans KR", sans-serif'; g.fillText(l[0], 40, 72 + i * 76); });
+      });
+    }
+    tex.cardAtk = cardTex([['POST /transfer'], ['Cookie: session=a91f…', C.atk], ['to=attacker  amount=1,000,000'], ['보낸 곳: evil.example 탭', mute]]);
+    tex.cardDef = cardTex([['POST /transfer'], ['Cookie: session=a91f…', C.atk], ['csrf_token: (비어 있음)', C.def], ['보낸 곳: evil.example 탭', mute]]);
+    stampMat.map = textTex(512, 256, function(g, w, h){
+      g.fillStyle = dark ? '#E9EDF7' : '#FFFFFF'; rr(g, 30, 30, w - 60, h - 60, 30); g.fill();
+      g.lineWidth = 16; g.strokeStyle = C.def; g.stroke();
+      g.fillStyle = C.def; g.textAlign = 'center'; g.font = '800 140px "Sora", sans-serif'; g.fillText('403', w / 2, 180);
+    }); stampMat.needsUpdate = true;
+  }
+  function applyTheme(){
+    C = { atk: css('--atk'), def: css('--def'), neutral: css('--neutral'), obj: css('--obj'), obj2: css('--obj2'), villain: css('--villain'), grid: css('--grid3d'), paper: css('--paper'), gold: css('--gold'), bg: css('--bg'), island: css('--island'), evil: css('--evil'), text: css('--text') };
+    var bc = new THREE.Color(C.bg); dark = (bc.r + bc.g + bc.b) / 3 < 0.3;
+    M.obj.color.set(C.obj); M.obj2.color.set(C.obj2); M.bTop.color.set(C.obj2); tabFrames.forEach(function(m){ m.color.set(C.obj2); }); M.villain.color.set(C.villain); M.paper.color.set(C.paper); M.gold.color.set(C.gold);
+    M.island.color.set(C.island); M.evil.color.set(C.evil);
+    M.atkGlow.color.set(C.atk); M.atkGlow.emissive.set(C.atk);
+    M.defGlow.color.set(C.def); M.defGlow.emissive.set(C.def);
+    M.key.color.set(C.def); M.key.emissive.set(C.def);
+    grid.material.color.set(C.grid); floor.material.opacity = dark ? 0.4 : 0.16;
+    hemi.intensity = dark ? 0.75 : 0.95; hemi.groundColor.set(dark ? '#1A1F33' : '#8890B0');
+    M.glass.opacity = dark ? 0.1 : 0.14; edges.material.color.set(dark ? '#8C96C0' : '#7E88AA');
+    linkMat.color.set(C.grid);
+    makeTextures();
+    bankTab.front.material.map = tex.bank; bankTab.front.material.needsUpdate = true;
+    bankTab.back.material.map = tex.bank; bankTab.back.material.needsUpdate = true;
+    setEvilFront(evilState); evilTab.back.material.map = tex.hidden; evilTab.back.material.needsUpdate = true;
+    cardMat.map = defense ? tex.cardDef : tex.cardAtk; cardMat.needsUpdate = true;
+    paint();
+  }
+  var evilState = 'blank';
+  function setEvilFront(s){ evilState = s; evilTab.front.material.map = s === 'evil' ? tex.evil : tex.blank; evilTab.front.material.needsUpdate = true; }
+
+  // ---------- tween + camera ----------
+  var tweens = [];
+  function ease(t){ return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function tween(dur, fn, e){ return new Promise(function(res){ tweens.push({ s: performance.now(), d: reduce ? 1 : dur, fn: fn, e: e || ease, res: res }); }); }
+  function wait(ms){ return tween(ms, function(){}); }
+  var camPos = V(0, 9, 15), camTgt = V(0, 1, -1), follow = null, K = 1;
+  function shot(pos, tgt, dur){
+    var p0 = camPos.clone(), t0 = camTgt.clone();
+    var p1 = tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(K));
+    return tween(dur || 1400, function(t){ camPos.lerpVectors(p0, p1, t); camTgt.lerpVectors(t0, tgt, t); });
+  }
+  var SHOT = {
+    wide: function(){ return shot(V(0, 9.5, 15.5), V(0, 0.8, -1.2)); },
+    bank: function(){ return shot(V(-0.8, 5.2, 5.2), V(-4.2, 1.2, -3.0)); },
+    browser: function(){ return shot(V(0.6, 4.2, 8.6), V(0, 1.6, 2.2)); },
+    jar: function(){ return shot(V(-1.2, 3.0, 6.4), V(0, 1.0, 2.8)); },
+    attacker: function(){ return shot(V(5.6, 4.6, 9.8), V(4.0, 1.2, 1.6)); },
+    evilTab: function(){ return shot(V(2.6, 2.9, 6.6), V(1.45, 1.9, 2.0)); },
+    evilServer: function(){ return shot(V(4.2, 5.4, 7.4), V(3.2, 1.4, -1.6)); },
+    gate: function(){ return shot(V(-0.6, 2.8, 1.4), V(gate.position.x, 1.4, gate.position.z)); },
+    money: function(){ return shot(V(1.6, 8.5, 13.5), V(1.5, 1.0, -1.2)); }
+  };
+  function curve(a, b, h){ return new THREE.QuadraticBezierCurve3(a, V((a.x + b.x) / 2, Math.max(a.y, b.y) + h, (a.z + b.z) / 2), b); }
+  function fly(obj, a, b, h, dur, stop){
+    var cv = curve(a, b, h); stop = stop || 1;
+    return tween(dur, function(t){ var tt = t * stop, p = cv.getPoint(tt); obj.position.copy(p); });
+  }
+
+  // ---------- anchors ----------
+  function W2(o, x, y, z){ var v = V(x, y, z); o.updateMatrixWorld(); return o.localToWorld(v); }
+  var A = {
+    bankTab: function(){ return W2(bankTab.g, 0, 0.2, 0.5); },
+    evilTab: function(){ return W2(evilTab.g, 0, 0.2, 0.5); },
+    jar: function(){ return W2(jarG, 0, 0.55, 0); },
+    gateIn: function(){ return W2(gate, 0, 1.15, 0.9); },
+    gateMid: function(){ return W2(gate, 0, 1.15, 0.05); },
+    bank: function(){ return V(P.bank.x, 1.5, P.bank.z + 0.6); },
+    evil: function(){ return V(P.evil.x - 0.2, 1.8, P.evil.z + 0.9); },
+    attacker: function(){ return V(P.attacker.x, 2.2, P.attacker.z); },
+    vault: function(){ return W2(bank, 0, 0.75, -0.4); }
+  };
+
+  // ---------- state ----------
+  var cur = { color: 'neutral' };
+  function colorOf(k){ return k === 'def' ? C.def : k === 'neutral' ? C.neutral : C.atk; }
+  function paint(){
+    M.flap.color.set(colorOf(cur.color)); M.flap.emissive.set(colorOf(cur.color));
+    M.ring.color.set(colorOf(cur.ring || 'neutral')); M.ring.emissive.set(colorOf(cur.ring || 'neutral'));
+    $('#l-packet').style.setProperty('--c', 'var(--' + (cur.color === 'def' ? 'def' : cur.color === 'neutral' ? 'neutral' : 'atk') + ')');
+  }
+  function setColor(c){ cur.color = c; paint(); }
+  function show(id, on){ $(id).style.opacity = on ? 1 : 0; }
+  function fmt(n){ return n.toLocaleString('ko-KR') + '원'; }
+  function base(i){
+    tweens.length = 0; follow = null;
+    jarCookie.visible = i >= 2;
+    tabKey.visible = defense && i >= 2;
+    evilTab.g.scale.setScalar(i >= 3 ? 1 : 0.001); show('#l-eviltab', i >= 3);
+    setEvilFront(i >= 4 ? 'evil' : 'blank');
+    evilTab.g.rotation.y = i >= 4 ? Math.PI : 0;
+    envG.visible = true; envG.rotation.set(0, 0, 0); envG.scale.setScalar(1); flapPivot.rotation.x = 0;
+    card.visible = false; card.position.set(0, 0, 0); card.scale.setScalar(0.3);
+    envCookie.visible = false; flyCookie.visible = false; flyKey.visible = false; stamp.visible = false;
+    coins.forEach(function(c){ c.visible = false; });
+    armPivot.rotation.z = 0; cur.ring = 'neutral';
+    arm.material = M.atkGlow;
+    vaultDoor.rotation.z = 0;
+    $('#l-balance').textContent = '잔액 ' + fmt(1250000); $('#l-balance').classList.remove('atk');
+    show('#l-loot', false); show('#l-check', false); show('#l-dest', false); show('#l-packet', true);
+    $('#ck1').classList.remove('v'); $('#ck2').classList.remove('v');
+    cardMat.map = defense ? tex.cardDef : tex.cardAtk; cardMat.needsUpdate = true;
+  }
+  function openArm(){ return tween(500, function(t){ armPivot.rotation.z = t * 1.35; }); }
+
+  async function playStep(i, my){
+    var s = STEPS[i], blocked = defense && s.b, ok = function(){ return my === run; };
+    $('#l-packet').textContent = s.label; setColor(s.c);
+    if (i === 0){
+      envG.position.copy(A.bankTab()); SHOT.bank(); follow = envG;
+      await fly(envG, A.bankTab(), A.gateIn(), 1.6, 1500); if (!ok()) return;
+      await openArm(); if (!ok()) return;
+      await fly(envG, A.gateIn(), A.bank(), 0.6, 900); if (!ok()) return; follow = null;
+    }
+    if (i === 1){
+      envCookie.visible = true; envG.position.copy(A.bank()); SHOT.wide(); armPivot.rotation.z = 1.35;
+      if (defense){ flyKey.visible = true; flyKey.position.copy(A.bank()); fly(flyKey, A.bank(), W2(bankTab.g, 0.72, -0.45, 0.2), 2.2, 2300).then(function(){ if (ok()){ flyKey.visible = false; tabKey.visible = true; } }); }
+      await fly(envG, A.bank(), A.bankTab(), 1.9, 2000); if (!ok()) return;
+      SHOT.jar();
+      envCookie.visible = false; flyCookie.visible = true;
+      await fly(flyCookie, W2(envG, 0.34, 0.2, 0.1), A.jar(), 0.9, 900); if (!ok()) return;
+      flyCookie.visible = false; jarCookie.visible = true;
+    }
+    if (i === 2){
+      envG.position.copy(A.attacker()); SHOT.attacker(); follow = envG;
+      await fly(envG, A.attacker(), A.evilTab(), 1.6, 1600); if (!ok()) return; follow = null;
+      show('#l-packet', false);
+      SHOT.browser();
+      await tween(700, function(t){ evilTab.g.scale.setScalar(Math.max(0.001, t)); }, function(t){ return 1 - Math.pow(1 - t, 3); }); show('#l-eviltab', true);
+      if (!ok()) return;
+    }
+    if (i === 3){
+      envG.position.copy(A.evilTab()); SHOT.evilServer(); follow = envG;
+      await fly(envG, A.evilTab(), A.evil(), 1.6, 1300); if (!ok()) return;
+      $('#l-packet').textContent = '이벤트 페이지';
+      await fly(envG, A.evil(), A.evilTab(), 1.6, 1300); if (!ok()) return; follow = null;
+      show('#l-packet', false); setEvilFront('evil');
+      SHOT.evilTab(); await wait(900); if (!ok()) return;
+      await tween(1400, function(t){ evilTab.g.rotation.y = t * Math.PI; }); if (!ok()) return;
+    }
+    if (i === 4){
+      show('#l-packet', false); SHOT.evilTab();
+      envG.position.copy(W2(evilTab.g, 0, 0, -0.3));
+      await tween(600, function(t){ envG.position.copy(W2(evilTab.g, 0, 0.1 * t, -0.3 - 0.9 * t)); }); if (!ok()) return;
+      show('#l-packet', true); SHOT.jar();
+      await fly(envG, envG.position.clone(), A.jar().add(V(0.9, 0.6, 0.3)), 0.6, 1000); if (!ok()) return;
+      show('#l-dest', true); await wait(700); if (!ok()) return;
+      jarCookie.visible = false; flyCookie.visible = true;
+      await fly(flyCookie, A.jar(), W2(envG, 0.34, 0.2, 0.1), 0.5, 650); if (!ok()) return;
+      flyCookie.visible = false; envCookie.visible = true; jarCookie.visible = true; show('#l-dest', false);
+      $('#l-packet').textContent = 'POST /transfer + Cookie';
+      SHOT.gate(); follow = envG;
+      await fly(envG, envG.position.clone(), A.gateIn(), 1.8, 1800); if (!ok()) return; follow = null;
+      // inspection: open envelope, pull out contents card
+      show('#l-packet', false);
+      await tween(450, function(t){ flapPivot.rotation.x = -2.6 * t; }); if (!ok()) return;
+      card.visible = true;
+      await tween(600, function(t){ card.position.set(0, 0.85 * t, 0.02); card.scale.setScalar(0.3 + 0.7 * t); }); if (!ok()) return;
+      $('#ck2t').textContent = blocked ? '없음' : '검사 안 함';
+      $('#ck2').className = blocked ? 'bad' : 'skip';
+      show('#l-check', true); show('#l-balance', false);
+      await wait(250); $('#ck1').classList.add('v');
+      await wait(650); $('#ck2').classList.add('v');
+      await wait(450); if (!ok()) return;
+      if (blocked){
+        cur.ring = 'def'; setColor('def'); arm.material = M.defGlow;
+        stamp.visible = true; stamp.position.copy(W2(envG, 0, 0.85, 0.3));
+        await tween(320, function(t){ var k = 2.4 - 1.4 * t; stamp.scale.set(k, k * 0.5, 1); stampMat.rotation = -0.22; stampMat.opacity = t; }, function(t){ return 1 - Math.pow(1 - t, 3); });
+        if (!ok()) return;
+        await wait(500); card.visible = false; flapPivot.rotation.x = 0;
+        var p0 = envG.position.clone(), back = A.gateIn().sub(A.gateMid()).normalize();
+        await tween(1000, function(t){ envG.position.set(p0.x + back.x * 1.4 * t, Math.max(0.5, p0.y + 0.6 * t - 2.2 * t * t), p0.z + back.z * 1.4 * t); envG.rotation.z = 1.1 * t; }, function(t){ return t; });
+      } else {
+        await wait(300); card.visible = false; flapPivot.rotation.x = 0;
+        cur.ring = 'atk'; paint();
+        await openArm(); if (!ok()) return;
+        show('#l-check', false); show('#l-balance', true);
+        show('#l-packet', true); follow = envG; SHOT.bank();
+        await fly(envG, A.gateIn(), A.bank(), 0.7, 1000); if (!ok()) return; follow = null;
+      }
+    }
+    if (i === 5){
+      armPivot.rotation.z = 1.35; cur.ring = 'atk'; paint();
+      envG.position.copy(A.bank()); show('#l-packet', false); envG.visible = false;
+      SHOT.money();
+      await tween(700, function(t){ vaultDoor.rotation.z = t * 1.6; }); if (!ok()) return;
+      $('#l-balance').classList.add('atk');
+      tween(1600, function(t){ $('#l-balance').textContent = '잔액 ' + fmt(Math.round((1250000 - 1000000 * t) / 1000) * 1000); });
+      coins.forEach(function(c, k){ setTimeout(function(){ if (!ok()) return; c.visible = true; fly(c, A.vault(), A.attacker(), 4.5, 1700).then(function(){ c.visible = false; }); }, reduce ? 0 : k * 200); });
+      await wait(1900); if (!ok()) return; show('#l-loot', true);
+    }
+  }
+
+  async function runStep(){
+    var my = ++run; animDone = false; clearTimeout(holdT); base(step); render();
+    await playStep(step, my);
+    if (my !== run) return;
+    animDone = true;
+    if (step >= last()){ playing = false; render(); if (!defense) $('#toast').hidden = false; return; }
+    if (playing) holdT = setTimeout(function(){ if (my === run && playing){ step++; runStep(); } }, reduce ? 3200 : 1700);
+  }
+
+  function render(){
+    var s = STEPS[step], blocked = defense && s.b, dv = defense && s.d;
+    $('#stepno').textContent = (step + 1) + ' / ' + (last() + 1) + ' 단계';
+    var tc = blocked ? 'var(--def-t)' : dv ? 'var(--def-t)' : s.c === 'neutral' ? 'var(--sub)' : 'var(--atk-t)';
+    $('#stepno').style.color = tc; $('#capTitle').style.color = tc;
+    $('#capTitle').textContent = (step + 1) + '. ' + (blocked ? s.b.t : dv ? s.d.t : s.t);
+    $('#capText').textContent = blocked ? s.b.cap : dv ? s.d.cap : s.cap;
+    $('#tAtk').setAttribute('aria-pressed', String(!defense)); $('#tDef').setAttribute('aria-pressed', String(defense));
+    var p = $('#play'); p.setAttribute('aria-label', playing ? '일시정지' : '재생');
+    p.innerHTML = playing
+      ? '<svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
+    var dots = $('#dots'); dots.innerHTML = '';
+    for (var k = 0; k <= last(); k++){ (function(k){
+      var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', (k + 1) + '단계로 이동');
+      var sp = document.createElement('span');
+      sp.style.background = k < step ? 'var(--text)' : k === step ? (blocked ? 'var(--def)' : s.c === 'neutral' ? 'var(--neutral)' : 'var(--atk)') : 'var(--line)';
+      b.appendChild(sp); b.onclick = function(){ playing = false; step = k; $('#toast').hidden = true; runStep(); }; dots.appendChild(b);
+    })(k); }
+  }
+  function setMode(d){ defense = d; playing = true; step = 0; $('#toast').hidden = true; runStep(); }
+  $('#tAtk').onclick = function(){ setMode(false); };
+  $('#tDef').onclick = function(){ setMode(true); };
+  $('#prev').onclick = function(){ playing = false; step = Math.max(0, step - 1); $('#toast').hidden = true; runStep(); };
+  $('#next').onclick = function(){ playing = false; step = Math.min(last(), step + 1); runStep(); };
+  $('#replay').onclick = function(){ playing = true; step = 0; $('#toast').hidden = true; runStep(); };
+  $('#play').onclick = function(){
+    if (playing){ playing = false; clearTimeout(holdT); render(); return; }
+    playing = true; $('#toast').hidden = true;
+    if (step >= last() && animDone){ step = 0; runStep(); } else if (animDone){ step++; runStep(); } else render();
+  };
+  $('#free').onclick = function(){
+    if (!controls) return;
+    free = !free; this.setAttribute('aria-pressed', String(free)); stageEl.classList.toggle('free', free); $('#hint').hidden = !free;
+    controls.enabled = free;
+    if (free){ controls.target.copy(camTgt); controls.update(); }
+    else { camPos.copy(camera.position); camTgt.copy(controls.target); }
+  };
+
+  // ---------- labels ----------
+  var L = [
+    ['#l-browser', function(){ return V(0, 3.75, P.browser.z); }],
+    ['#l-banktab', function(){ return W2(bankTab.g, 0, 0.98, 0); }],
+    ['#l-eviltab', function(){ return W2(evilTab.g, 0, 0.98, 0); }],
+    ['#l-bank', function(){ return V(P.bank.x, 3.3, P.bank.z - 0.4); }],
+    ['#l-evil', function(){ return V(P.evil.x, 3.4, P.evil.z); }],
+    ['#l-attacker', function(){ return V(P.attacker.x, 2.6, P.attacker.z); }],
+    ['#l-jar', function(){ return W2(jarG, 0, -0.1, 0.5); }],
+    ['#l-balance', function(){ return V(P.bank.x - 1.6, 2.1, P.bank.z + 0.9); }],
+    ['#l-loot', function(){ return V(P.attacker.x, 3.2, P.attacker.z); }],
+    ['#l-dest', function(){ return W2(jarG, 0, 1.55, 0); }],
+    ['#l-check', function(){ return W2(gate, -1.9, 1.6, 0.3); }]
+  ].map(function(x){ return [$(x[0]), x[1]]; });
+  var pv = new THREE.Vector3(), SW = 1, SH = 1;
+  function place(el, p, dy){ pv.copy(p).project(camera); var vis = pv.z < 1; el.style.visibility = vis ? 'visible' : 'hidden'; el.style.transform = 'translate(' + ((pv.x + 1) / 2 * SW).toFixed(1) + 'px,' + ((1 - pv.y) / 2 * SH + (dy || 0)).toFixed(1) + 'px) translate(-50%,-50%)'; }
+
+  function resize(){
+    SW = stageEl.clientWidth; SH = stageEl.clientHeight;
+    renderer.setSize(SW, SH, false); camera.aspect = SW / SH; camera.updateProjectionMatrix();
+    K = Math.max(1, 1.9 / camera.aspect);
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stageEl); else window.addEventListener('resize', resize);
+
+  var visible = true;
+  if (window.IntersectionObserver) new IntersectionObserver(function(e){ visible = e[0].isIntersecting; }).observe(stageEl);
+  function frame(now){
+    requestAnimationFrame(frame);
+    for (var i = tweens.length - 1; i >= 0; i--){
+      var tw = tweens[i], t = Math.min(1, (now - tw.s) / tw.d); tw.fn(tw.e(t));
+      if (t >= 1){ tweens.splice(i, 1); tw.res(); }
+    }
+    if (!visible) return;
+    if (free && controls){ controls.update(); }
+    else {
+      if (follow) camTgt.lerp(follow.position, reduce ? 1 : 0.06);
+      camera.position.copy(camPos); camera.lookAt(camTgt);
+    }
+    if (!reduce){
+      envBody.position.y = Math.sin(now / 420) * 0.03;
+      coins.forEach(function(c){ c.rotation.y += 0.15; });
+      scanRing.rotation.z += 0.01;
+    }
+    envG.quaternion.copy(camera.quaternion);
+    flyCookie.quaternion.copy(camera.quaternion); flyKey.quaternion.copy(camera.quaternion);
+    L.forEach(function(l){ place(l[0], l[1]()); });
+    place($('#l-packet'), envG.position, 46);
+    occlusion();
+    renderer.render(scene, camera);
+  }
+
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+  var start = function(){ applyTheme(); resize(); camPos.copy(V(0, 9.5, 15.5)); requestAnimationFrame(frame); runStep(); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(start, start); else start();
+})();
+</script>
+
+</body>
+</html>
