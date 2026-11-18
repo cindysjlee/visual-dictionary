@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema, type Term } from "./index.ts";
-import { blockingDefenses, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
+import { blockTarget, blockingDefenses, hasPanel, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
 
 const raw = () => JSON.parse(readFileSync(new URL("../../../content/terms/csrf.json", import.meta.url), "utf8"));
 const csrf: Term = termSchema.parse(raw());
@@ -96,6 +96,36 @@ describe("checkScene (검증기)", () => {
     });
     expect(paths).toContain("scenario.steps.0.effects.0.from: 1단계 봉투에 쿠키이(가) 붙어 있지 않습니다");
     expect(paths).toContain("scenario.steps.0.effects.1.target: run은 tab에서만 실행됩니다: bank");
+  });
+
+  it("화면판이 없는 곳에 rewrite하면 오류(서버는 screen이 있어야 화면판이 생긴다)", () => {
+    expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "rewrite", target: "evil", screen: { lines: ["x"] } }]))).toContain(
+      "scenario.steps.0.effects.0.target: evil에는 화면판이 없습니다(탭, 또는 screen이 있는 server·database만)",
+    );
+    const withScreen = issuePaths((t) => {
+      t.scenario.actors.find((a: any) => a.id === "evil").screen = { lines: ["대기"] };
+      t.scenario.steps[0].effects = [{ type: "rewrite", target: "evil", screen: { lines: ["x"] } }];
+    });
+    expect(withScreen).toEqual([]);
+    expect(hasPanel(csrf.scenario.actors.find((a) => a.id === "bankTab")!)).toBe(true);
+    expect(hasPanel(csrf.scenario.actors.find((a) => a.id === "bank")!)).toBe(false);
+  });
+
+  it("inspect는 검문소가 있는 이 단계의 목적지에서만", () => {
+    expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "inspect", at: "evil", checks: [{ name: "a", result: "b", status: "ok" }] }]))).toContain(
+      "scenario.steps.0.effects.0.at: inspect.at은 이 단계의 목적지(bank)여야 합니다",
+    );
+    expect(issuePaths((t) => (t.scenario.steps[3].effects = [{ type: "inspect", at: "evil", checks: [{ name: "a", result: "b", status: "ok" }] }]))).toContain(
+      "scenario.steps.3.effects.0.at: inspect는 검문소(gate)가 있는 목적지에서만 그려집니다: evil",
+    );
+  });
+
+  it("차단 도장 위치: 검사한 곳 → 거부된 효과의 대상 → 목적지", () => {
+    expect(blockTarget(stepView(csrf, TOKEN, 4))).toBe("bank");
+    expect(blockTarget({ to: "bank", effects: [{ type: "run", item: "script", target: "evilTab", refused: true }] })).toBe("evilTab");
+    expect(blockTarget({ to: "bank", effects: [{ type: "attach", item: "cookie", from: "jar", refused: true }] })).toBe("jar");
+    expect(blockTarget({ to: "bank", effects: [{ type: "give", item: "cookie", from: "packet", to: "attacker", refused: true }] })).toBe("attacker");
+    expect(blockTarget({ to: "bank", effects: [] })).toBe("bank");
   });
 
   it("알 수 없는 효과 type은 오류", () => {

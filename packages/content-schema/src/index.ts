@@ -10,7 +10,7 @@ const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
 
 /* ---------- 3D 장면 어휘 (docs/06, 모두 선택 항목) ---------- */
 export const ACTOR_KINDS = ["browser", "tab", "cookieJar", "server", "database", "network", "attacker", "person"] as const;
-export const ZONES = ["client", "server", "internal", "outside"] as const;
+export const ZONES = ["client", "between", "server", "internal", "outside"] as const;
 export const ITEMS = ["cookie", "token", "script", "data", "coin"] as const;
 
 const item = z.enum(ITEMS);
@@ -27,7 +27,8 @@ export const effectSchema = z.discriminatedUnion("type", [
     screen: screenSchema,
   }),
   z.strictObject({ type: z.literal("store"), item, into: text, label: text.optional() }),
-  z.strictObject({ type: z.literal("attach"), item, from: text, label: text.optional(), ...refusal }),
+  // note: 붙일 때 보여 줄 설명. 없으면 "목적지 … 자동 첨부"(브라우저가 쿠키를 자동으로 붙이는 경우)
+  z.strictObject({ type: z.literal("attach"), item, from: text, label: text.optional(), note: text.optional(), ...refusal }),
   z.strictObject({ type: z.literal("give"), item, from: text, to: text, label: text.optional(), ...refusal }),
   z.strictObject({ type: z.literal("run"), item, target: text, ...refusal }),
   z.strictObject({

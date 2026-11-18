@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Raycaster, Spherical, Vector3, type Material, type Mesh, type PerspectiveCamera } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
 import { CameraRig, buildStep } from "./director.ts";
 import { LabelLayer } from "./labels.ts";
@@ -95,7 +96,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       const inspect = view.effects.find((e) => e.type === "inspect");
       // 카메라는 결과가 보이는 곳: 검사한 곳 → 마지막 효과의 대상 → 목적지
       const lastTarget = [...view.effects].reverse().map((e) => ("target" in e ? e.target : "into" in e ? e.into : undefined)).find(Boolean);
-      const focusId = inspect && inspect.type === "inspect" ? inspect.at : (lastTarget ?? view.to);
+      const focusId = view.blocked ? blockTarget(view) : inspect && inspect.type === "inspect" ? inspect.at : (lastTarget ?? view.to);
       const placed = layout.get(focusId)!;
       if (view.blocked) {
         const at = new Vector3(...(placed.gate?.mid ?? placed.anchor)).add(new Vector3(0, 1.4, 0.4));

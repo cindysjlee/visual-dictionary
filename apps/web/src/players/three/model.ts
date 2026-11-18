@@ -26,6 +26,7 @@ import {
   type Material,
 } from "three";
 import type { Actor, Item, Term } from "@app/content-schema";
+import { hasPanel } from "@app/content-schema/scene";
 import { BROWSER_SIZE, type Placed, type Vec3 } from "./layout.ts";
 import type { SceneState, Screen } from "./sceneState.ts";
 import { paintCard, paintScreen, paintStamp, screenPainter, type Painter } from "./textures.ts";
@@ -173,20 +174,7 @@ export class SceneModel {
         break;
       }
       case "tab": {
-        const pivot = new Group();
-        group.add(pivot);
-        const frameMat = this.std(tone === "attack" ? "attack" : "object", { opacity: 1, emissive: tone === "attack" ? 0.2 : 0 });
-        this.mesh(new BoxGeometry(2.3, 1.6, 0.08), frameMat, [0, 0, 0], pivot, true);
-        const front = screenPainter();
-        const back = screenPainter();
-        const face = (p: Painter, z: number, ry: number) => {
-          const m = this.mesh(new PlaneGeometry(2.14, 1.47), new MeshBasicMaterial({ map: p.texture, transparent: true, toneMapped: false }), [0, 0, z], pivot, true); // 글자가 흐려지지 않게
-          m.rotation.y = ry;
-          m.castShadow = false;
-        };
-        face(front, 0.045, 0);
-        face(back, -0.045, Math.PI);
-        node.panel = { pivot, front, back };
+        node.panel = this.buildPanel(group, tone);
         labelY = 1.05;
         break;
       }
@@ -218,11 +206,13 @@ export class SceneModel {
           labelY = 2.9;
         }
         if (placed.gate) node.gate = this.buildGate(placed, group);
+        if (hasPanel(actor)) node.panel = this.buildStandPanel(group, tone);
         break;
       }
       case "database": {
         this.island(group, 1.8);
         for (let i = 0; i < 3; i++) this.mesh(new CylinderGeometry(0.8, 0.8, 0.45, 32), this.std("object"), [0, 0.55 + i * 0.5, 0], group);
+        if (hasPanel(actor)) node.panel = this.buildStandPanel(group, tone);
         labelY = 2.4;
         break;
       }
@@ -250,6 +240,31 @@ export class SceneModel {
     this.nodes.set(actor.id, node);
   }
 
+  /** 앞뒤 화면이 있는 판(탭, 서버·DB 화면). 뒤집기(flip)는 pivot을 돌린다 */
+  private buildPanel(parent: Object3D, tone: Tone, at: Vec3 = [0, 0, 0]): NonNullable<ActorNode["panel"]> {
+    const pivot = new Group();
+    pivot.position.set(...at);
+    parent.add(pivot);
+    const frameMat = this.std(tone === "attack" ? "attack" : "object", { opacity: 1, emissive: tone === "attack" ? 0.2 : 0 });
+    this.mesh(new BoxGeometry(2.3, 1.6, 0.08), frameMat, [0, 0, 0], pivot, true);
+    const front = screenPainter();
+    const back = screenPainter();
+    const face = (p: Painter, z: number, ry: number) => {
+      const m = this.mesh(new PlaneGeometry(2.14, 1.47), new MeshBasicMaterial({ map: p.texture, transparent: true, toneMapped: false }), [0, 0, z], pivot, true); // 글자가 흐려지지 않게
+      m.rotation.y = ry;
+      m.castShadow = false;
+    };
+    face(front, 0.045, 0);
+    face(back, -0.045, Math.PI);
+    return { pivot, front, back };
+  }
+
+  /** 서버·DB 옆에 세운 화면판(서버 안에서 일어나는 일: 만들어진 쿼리, 미리보기 결과 등) */
+  private buildStandPanel(group: Group, tone: Tone) {
+    this.mesh(new BoxGeometry(0.1, 1.2, 0.1), this.std("objectDim"), [2.6, 0.6, 0.6], group);
+    return this.buildPanel(group, tone, [2.6, 1.95, 0.6]);
+  }
+
   private buildGate(placed: Placed, server: Group): ActorNode["gate"] {
     const gate = placed.gate!;
     const g = new Group();
@@ -265,18 +280,29 @@ export class SceneModel {
     return { arm, ring, toneMats };
   }
 
+  /**
+   * 인터넷(점선): 사용자 쪽 → 길목(between) → 서버 구역, 사용자 쪽 → 공격자. 사내망(internal)은 서버 구역에서만 이어진다.
+   * 밖에서 사내망으로 바로 가는 선을 긋지 않아 "서버를 거쳐야만 닿는다"가 보이게 한다. 사용자 쪽이 없으면 공격자 쪽에서 긋는다
+   */
   private buildInternet() {
     const mat = new LineDashedMaterial({ dashSize: 0.3, gapSize: 0.25, transparent: true, opacity: 0.8 });
     this.bound.push({ mat, key: "grid" });
     this.paint(mat, "grid");
-    const client = [...this.layout.values()].find((p) => p.kind === "browser" || (!p.parent && p.position[2] > 1));
-    if (!client) return;
-    for (const p of this.layout.values()) {
-      if (p.parent || p === client) continue;
-      const line = new Line(new BufferGeometry().setFromPoints([v(client.position).setY(0.02), v(p.position).setY(0.02)]), mat);
+    const roots = [...this.layout.values()].filter((p) => !p.parent);
+    const inZone = (zone: Placed["zone"]) => roots.filter((p) => p.zone === zone);
+    const link = (a: Placed, b: Placed) => {
+      const line = new Line(new BufferGeometry().setFromPoints([v(a.position).setY(0.02), v(b.position).setY(0.02)]), mat);
       line.computeLineDistances();
       this.root.add(line);
-    }
+    };
+    const servers = inZone("server");
+    const between = inZone("between");
+    const front = inZone("client")[0] ?? inZone("outside")[0];
+    if (!front) return;
+    for (const p of front.zone === "client" ? inZone("outside") : []) link(front, p);
+    for (const b of between) link(front, b);
+    for (const s of servers) for (const from of between.length > 0 ? between : [front]) link(from, s);
+    for (const i of inZone("internal")) for (const s of servers) link(s, i);
   }
 
   /* ---------- 봉투와 물건 ---------- */

@@ -1,7 +1,7 @@
 // 한 단계의 연출을 타임라인으로 만든다. 효과 어휘(docs/04)만 보고 순서를 정하므로 용어별 코드가 없다 (docs/06 2·3절)
 import { QuadraticBezierCurve3, Vector3, type Object3D, type PerspectiveCamera } from "three";
 import type { Effect, Term } from "@app/content-schema";
-import type { StepView } from "@app/content-schema/scene";
+import { blockTarget, type StepView } from "@app/content-schema/scene";
 import type { LabelLayer, LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
@@ -97,6 +97,9 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const inspect = effects.find((e): e is Extract<Effect, { type: "inspect" }> => e.type === "inspect");
   let label = view.label;
   const cur = anchor(view.from);
+  const self = view.from === view.to; // 제자리 단계(예: 탭 안에서 스크립트 실행): 봉투가 날지 않는다
+  const via = view.via && !self && view.via !== view.from && view.via !== view.to ? view.via : undefined;
+  const panelPoint = (id: string) => node(id)?.panel?.pivot.getWorldPosition(new Vector3()) ?? anchor(id);
 
   const packetLabel = (text: string, t: Tone = tone, visible = true) =>
     labels.set(PACKET, env.position, { title: text, tone: TONE_LABEL[t] }, visible);
@@ -119,13 +122,14 @@ export function buildStep(ctx: DirectorContext): Timeline {
   // 출발
   tl.call(() => {
     env.position.copy(cur);
-    env.visible = true;
+    env.visible = !self;
     model.setEnvelopeTone(tone);
     packetLabel(label);
     if (view.camera) {
       if (view.camera.focus === "all") rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => vec(p.anchor)));
       else rig.shot(anchor(view.camera.focus), view.camera.distance);
-    } else rig.followObject(env, "mid");
+    } else if (self) rig.shot(cur, "near");
+    else rig.followObject(env, "mid");
   });
 
   // 봉투와 따로 날아가는 물건(토큰 발급·가로채기)은 첫 비행과 동시에
@@ -145,7 +149,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
         from.clone().add(new Vector3(0, 1.2, 0)),
         e.refused
           ? { title: `${e.reason ?? "거부"} → ${e.label ?? "물건"} 안 붙임`, tone: "defense" }
-          : { title: `목적지 ${site ?? view.to} → ${e.label ?? e.item} 자동 첨부`, tone: "plain" },
+          : { title: e.note ?? `목적지 ${site ?? view.to} → ${e.label ?? e.item} 자동 첨부`, tone: "plain" },
       );
     });
     tl.wait(800);
@@ -171,18 +175,27 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const blockedWithoutInspect = view.blocked && !inspect;
   let ended = false;
 
+  // 경유지(via): 먼저 들렀다 간다. 봉투에서 빠져나가는 물건(엿보기·가로채기)은 경유지에서 출발한다
+  if (via) {
+    fly(anchor(via), 1.0);
+    if (gives.some((g) => g.from === "packet")) tl.call(() => rig.shot(anchor(via), "mid"));
+  }
   const firstLeg = gate ? vec(gate.entry) : anchor(view.to);
+  const legFrom = cur.clone();
   const legStart = tl.duration;
-  fly(firstLeg, 1.6, undefined, blockedWithoutInspect && !gate ? 0.78 : 1);
+  if (self) tl.wait(900);
+  else fly(firstLeg, via ? 1.2 : 1.6);
   for (const g of gives) {
     const obj = model.flyers.get(g.item)!;
-    const from = g.from === "packet" ? env.position.clone() : anchor(g.from);
+    const from = g.from === "packet" ? legFrom : anchor(g.from);
     if (g.refused) continue;
     const curve = arc(from, anchor(g.to), 2.2);
-    tl.with(Math.max(1200, tl.duration - legStart), (t) => {
+    const update = (t: number) => {
       obj.visible = t < 1;
       obj.position.copy(curve.getPoint(t));
-    });
+    };
+    if (self) tl.tween(1200, update);
+    else tl.with(Math.max(1200, tl.duration - legStart), update);
   }
   tl.call(() => {
     for (const g of gives) if (!g.refused) model.setHolding(g.to, g.item, true);
@@ -251,14 +264,6 @@ export function buildStep(ctx: DirectorContext): Timeline {
       armOpen();
       fly(anchor(view.to), 0.6, 900);
     }
-  } else if (blockedWithoutInspect) {
-    tl.call(() => {
-      model.setEnvelopeTone("defense");
-      model.showStamp(view.blockedLabel ?? "차단", anchor(view.to).add(new Vector3(0, 1.2, 0.4)));
-      rig.shot(anchor(view.to), "near");
-    });
-    tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);
-    ended = true;
   }
 
   // 3) 왕복
@@ -302,7 +307,10 @@ export function buildStep(ctx: DirectorContext): Timeline {
           break;
         }
         case "rewrite":
-          tl.call(() => model.repaintScreen(e.target, e.side, e.screen));
+          tl.call(() => {
+            rig.shot(panelPoint(e.target), "near");
+            model.repaintScreen(e.target, e.side, e.screen);
+          });
           tl.wait(500);
           break;
         case "flip": {
@@ -349,6 +357,18 @@ export function buildStep(ctx: DirectorContext): Timeline {
           break;
       }
     }
+  }
+
+  // 검사 없이 막히는 차단(실행·읽기·엿보기가 거부됨): 단계를 끝까지 보여 준 뒤 거부된 곳에 도장 (docs/04 방어 모드 동작)
+  if (blockedWithoutInspect) {
+    const at = anchor(blockTarget(view));
+    tl.call(() => {
+      labels.show(NOTE, false);
+      model.setEnvelopeTone("defense");
+      model.showStamp(view.blockedLabel ?? "차단", at.clone().add(new Vector3(0, 1.3, 0.4)));
+      rig.shot(at, "near");
+    });
+    tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);
   }
 
   tl.wait(ctx.hold);

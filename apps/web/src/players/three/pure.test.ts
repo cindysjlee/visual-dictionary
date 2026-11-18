@@ -31,6 +31,25 @@ describe("layoutScene", () => {
   it("모든 행위자가 배치된다", () => {
     expect([...placed.keys()].sort()).toEqual(csrf.scenario.actors.map((a) => a.id).sort());
   });
+
+  it("between(길목)은 사용자와 서버 사이, 있으면 서버·사내망 줄이 뒤로 물러난다. 자식은 부모 구역을 따른다", () => {
+    const actors = termSchema.parse({
+      ...csrf,
+      scenario: {
+        ...csrf.scenario,
+        actors: [
+          ...csrf.scenario.actors,
+          { id: "wifi", name: "공용 와이파이", role: "network", kind: "network", zone: "between" },
+          { id: "db", name: "DB", role: "database", kind: "database", zone: "internal" },
+        ],
+      },
+    }).scenario.actors;
+    const p = layoutScene(actors);
+    expect(p.get("wifi")!.position).toEqual([0, 0, -1.2]);
+    expect(p.get("bank")!.position[2]).toBeCloseTo(-6.8);
+    expect(p.get("db")!.position[2]).toBeCloseTo(-12.1);
+    expect(p.get("jar")!.zone).toBe("client");
+  });
 });
 
 describe("sceneStateAt", () => {

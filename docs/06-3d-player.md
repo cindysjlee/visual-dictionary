@@ -79,6 +79,8 @@
 ]
 ```
 
+확정된 어휘는 `docs/04`의 "3D 장면 필드"가 기준이다(구역 `between`, 경유 `via`, 제자리 단계, 서버·DB 화면판, `attach.note`, 검사 없는 차단의 도장 위치 포함). 아래는 처음 제안할 때의 초안이다.
+
 효과 어휘 초안: `appear`, `flip`, `storeCookie`, `attachCookie`, `giveToken`, `inspect`, `transfer`(동전·데이터가 넘어감), `stamp`(차단 도장, 방어 모드 차단 단계에 자동). 방어 모드의 차단은 지금처럼 `defenses[].blockedAtStep`이 결정하고, 차단 단계에서는 `inspect` 결과가 실패로 바뀐다.
 
 **다른 플레이어 유형** (4단계에서 확정)

@@ -72,6 +72,7 @@
 1. `blockedAtStep` 이전 단계는 그대로 재생한다.
 2. `blockedAtStep` 단계에서 원래 `label` 대신 `blockedLabel`을, 원래 `caption` 대신 `blockedCaption`을 보여주고 차단 연출을 한다.
 3. 그 뒤 단계는 재생하지 않는다. 공격이 거기서 끝났다는 뜻이다.
+   - 차단 도장 위치(3D): 차단 단계에 `inspect`가 있으면 검문소에서 봉투를 열어 검사하고 실패하면 거기서 도장을 찍고 봉투가 튕겨 나간다. `inspect`가 없으면 단계를 끝까지 보여 준 뒤, 거부된 효과(`refused: true`)의 대상(`run` → 실행하려던 탭, `attach` → 꺼내려던 곳, `give` → 받으려던 쪽)에, 그것도 없으면 목적지에 도장을 찍는다. "도착은 했지만 실행·읽기·엿보기가 막혔다"를 이렇게 표현한다.
 4. 방어가 여러 개면 화면에서 하나를 골라 켠다. 기본값은 첫 번째.
 
 ## 3D 장면 필드 (흐름형, 모두 선택)
@@ -83,15 +84,15 @@
 | 필드 | 값 | 뜻 |
 | --- | --- | --- |
 | `kind` | `browser` `tab` `cookieJar` `server` `database` `network` `attacker` `person` | 모양. 없으면 `role`에서 정함(user→person, server→server, database→database, attacker→attacker) |
-| `zone` | `client`(앞, 사용자 쪽) `server`(인터넷 너머 뒤) `internal`(서버 뒤 사내망) `outside`(옆, 공격자 쪽) | 자동 배치 구역. 없으면 `parent`를 따르고, 그것도 없으면 `role`에서 정함 |
+| `zone` | `client`(앞, 사용자 쪽) `between`(사용자와 서버 사이 길목: 공용 와이파이·라우터) `server`(인터넷 너머 뒤) `internal`(서버 뒤 사내망) `outside`(옆, 공격자 쪽) | 자동 배치 구역. 없으면 `parent`를 따르고, 그것도 없으면 `role`에서 정함. `between`이 있으면 서버·사내망 줄이 그만큼 뒤로 물러난다. 인터넷 점선은 사용자 쪽 → 길목 → 서버, 사용자 쪽 → 공격자로 긋고, 사내망은 서버 구역에서만 이어진다(밖에서 바로 닿지 않음) |
 | `parent` | 행위자 id | 그 안에 들어감(예: 탭·쿠키 보관함 → 브라우저) |
 | `site` | 문자열 | 이름 옆에 작게 쓰는 주소(예: `bank.example`) |
 | `tone` | `attack` `neutral` | 공격 쪽 물체 표시 |
 | `gate` | `true` | 서버 앞 검문소 |
 | `balance` | 정수 | 잔액 라벨. `transfer`(coin)로 바뀜 |
-| `screen` / `back` | `{ title?, lines[] }` | 탭·서버 화면의 앞면 / 뒤집으면 보이는 뒷면 글자 |
+| `screen` / `back` | `{ title?, lines[] }` | 화면판의 앞면 / 뒤집으면 보이는 뒷면 글자. 탭은 항상 화면판이 있고, `server`·`database`는 `screen`이 있을 때 옆에 화면판이 선다(만들어진 쿼리, 미리보기 결과처럼 서버 안에서 일어나는 일) |
 
-**단계 (`scenario.steps[]`)**: `effects[]`(아래 어휘), `roundTrip`(왕복), `returnLabel`(돌아올 때 라벨), `via`(거쳐 가는 행위자), `camera: { focus: 행위자 id | "all", distance?: near|mid|far }`(자동 카메라를 덮어쓸 때만).
+**단계 (`scenario.steps[]`)**: `effects[]`(아래 어휘), `roundTrip`(왕복), `returnLabel`(돌아올 때 라벨), `via`(거쳐 가는 행위자. 봉투가 먼저 들렀다 가고, `give`(from `"packet"`)은 그 자리에서 빠져나간다), `camera: { focus: 행위자 id | "all", distance?: near|mid|far }`(자동 카메라를 덮어쓸 때만). `from`과 `to`가 같으면 제자리 단계다(예: 탭 안에서 스크립트 실행): 봉투가 날지 않고 그 자리에서 효과만 보여 준다.
 
 **효과 어휘 (`effects[]`)**. 물건(`item`)은 `cookie` `token` `script` `data` `coin`. 보관된 물건은 꺼내도 보관한 곳에 남는다(복사).
 
@@ -99,17 +100,17 @@
 | --- | --- | --- |
 | `appear` | target | 이 단계에 나타남. 그 전에는 숨김 |
 | `flip` | target | 패널을 뒤집어 `back`을 보여 줌 |
-| `rewrite` | target, side?(front·back), screen | 화면 글자를 바꿈 |
+| `rewrite` | target, side?(front·back), screen | 화면 글자를 바꿈. 카메라가 그 화면판으로 다가간다 |
 | `store` | item, into, label? | 봉투에 실려 온 물건을 보관함·서버 등에 넣음 |
-| `attach` | item, from, label?, refused?, reason? | 보관된 물건을 지금 봉투에 붙임. 붙으면 봉투 라벨이 `label + " + " + 붙인 label`이 됨. `refused`면 붙지 않고 라벨도 그대로 |
+| `attach` | item, from, label?, note?, refused?, reason? | 보관된 물건을 지금 봉투에 붙임. 붙으면 봉투 라벨이 `label + " + " + 붙인 label`이 됨. `note`는 붙일 때 보여 줄 설명(없으면 "목적지 … 자동 첨부", 브라우저가 쿠키를 자동으로 붙이는 경우). `refused`면 붙지 않고 라벨도 그대로 |
 | `give` | item, from(행위자 또는 `"packet"`), to, label?, refused?, reason? | 봉투와 따로 물건이 날아감(토큰 발급, 가로채기) |
 | `run` | item, target(tab), refused?, reason? | 스크립트 등이 그 탭에서 실행됨 |
-| `inspect` | at, contents[], checks[{name, result, status: ok·skip·fail}] | 그 행위자에서 봉투를 열어 검사 |
+| `inspect` | at, contents[], checks[{name, result, status: ok·skip·fail}] | 검문소에서 봉투를 열어 검사. `at`은 이 단계의 목적지이고, 목적지에 `gate: true`가 있어야 한다 |
 | `transfer` | item(coin·data), from, to, amount?, label? | 돈·데이터 묶음이 넘어감 |
 
 **방어 (`defenses[]`)**: `blockedTitle`(차단 단계 제목), `blockedLabel`(차단 도장과 2D 대체 화면의 차단 표시 글자, 예: `"403 · 토큰 없음"`), `overrides: [{ step, title?, caption?, effects? }]`(방어 모드에서 그 단계의 제목·자막·효과를 대신함).
 
-**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 흐름형이 아닌데 `effects` 사용(스택형·점유형 어휘는 4단계에서 정함).
+**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, 화면판이 없는 곳에 `rewrite`·`flip`, `inspect.at`이 목적지가 아니거나 목적지에 검문소가 없음, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 흐름형이 아닌데 `effects` 사용(스택형·점유형 어휘는 4단계에서 정함).
 
 ## 카테고리
 

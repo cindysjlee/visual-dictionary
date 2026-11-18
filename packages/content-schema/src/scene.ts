@@ -18,6 +18,12 @@ export function zoneOf(actor: Actor, actors: readonly Actor[], depth = 0): Zone 
   return ZONE_BY_ROLE[actor.role] ?? "client";
 }
 
+/** 화면판이 있는 행위자: 탭은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
+export const hasPanel = (actor: Actor) => {
+  const kind = kindOf(actor);
+  return kind === "tab" || ((kind === "server" || kind === "database") && actor.screen !== undefined);
+};
+
 /** 방어 모드에서 고를 수 있는 방어 = 차단 단계가 있는 방어 */
 export const blockingDefenses = (term: Term) =>
   term.defenses.flatMap((d, i) => (d.blockedAtStep === undefined ? [] : [i]));
@@ -73,6 +79,20 @@ export function stepView(term: Term, mode: Mode, index: number): StepView {
   };
 }
 
+/**
+ * 차단 도장을 찍는 행위자. 검사(inspect)가 있으면 그 검문소, 없으면 거부된 효과의 대상
+ * (run → 실행하려던 탭, attach → 꺼내려던 곳, give → 받으려던 쪽), 그것도 없으면 목적지 (docs/04 방어 모드 동작)
+ */
+export function blockTarget(view: Pick<StepView, "to" | "effects">): string {
+  for (const e of view.effects) if (e.type === "inspect") return e.at;
+  for (const e of view.effects) {
+    if (e.type === "run" && e.refused) return e.target;
+    if (e.type === "attach" && e.refused) return e.from;
+    if (e.type === "give" && e.refused) return e.to;
+  }
+  return view.to;
+}
+
 /** 봉투가 도착해 물건을 내려놓는 곳. 왕복이면 출발한 쪽으로 돌아온다 */
 export const deliveryTarget = (view: Pick<StepView, "from" | "to" | "roundTrip">) => (view.roundTrip ? view.from : view.to);
 
@@ -121,7 +141,7 @@ export function checkScene(term: Term): Issue[] {
     }
   });
 
-  const checkEffects = (effects: Effect[], base: (string | number)[]) =>
+  const checkEffects = (effects: Effect[], base: (string | number)[], stepIndex: number) =>
     effects.forEach((e, j) => {
       const path = [...base, j];
       if (playerType !== "flow") {
@@ -131,6 +151,14 @@ export function checkScene(term: Term): Issue[] {
         if (!byId.has(ref)) issues.push({ path: [...path, key], message: `actors에 없는 행위자: ${ref}` });
       }
       const target = "target" in e ? byId.get(e.target) : undefined;
+      if ((e.type === "flip" || e.type === "rewrite") && target && !hasPanel(target)) {
+        issues.push({ path: [...path, "target"], message: `${e.target}에는 화면판이 없습니다(탭, 또는 screen이 있는 server·database만)` });
+      }
+      const step = steps[stepIndex];
+      if (e.type === "inspect" && step && byId.has(step.to)) {
+        if (e.at !== step.to) issues.push({ path: [...path, "at"], message: `inspect.at은 이 단계의 목적지(${step.to})여야 합니다` });
+        else if (!byId.get(step.to)!.gate) issues.push({ path: [...path, "at"], message: `inspect는 검문소(gate)가 있는 목적지에서만 그려집니다: ${step.to}` });
+      }
       if (e.type === "flip" && target && !target.back) {
         issues.push({ path: [...path, "target"], message: `뒤집을 ${e.target}에 back 화면이 없습니다` });
       }
@@ -147,7 +175,7 @@ export function checkScene(term: Term): Issue[] {
     if (s.camera && s.camera.focus !== "all" && !byId.has(s.camera.focus)) {
       issues.push({ path: ["scenario", "steps", i, "camera", "focus"], message: `actors에 없는 행위자: ${s.camera.focus}` });
     }
-    checkEffects(s.effects, ["scenario", "steps", i, "effects"]);
+    checkEffects(s.effects, ["scenario", "steps", i, "effects"], i);
   });
 
   term.defenses.forEach((d, di) => {
@@ -158,7 +186,7 @@ export function checkScene(term: Term): Issue[] {
       if (o.step > limit) issues.push({ path: [...path, "step"], message: `override 단계 ${o.step}가 범위(1~${limit})를 벗어납니다` });
       if (seenSteps.has(o.step)) issues.push({ path: [...path, "step"], message: `같은 단계의 override가 두 번 있습니다: ${o.step}` });
       seenSteps.add(o.step);
-      if (o.effects) checkEffects(o.effects, [...path, "effects"]);
+      if (o.effects) checkEffects(o.effects, [...path, "effects"], o.step - 1);
     });
   });
 
