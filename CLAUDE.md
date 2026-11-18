@@ -92,3 +92,6 @@ docs/                     설계 문서
 - 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지)를 돌린다.
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.
 - 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고, 커밋한 뒤 push한다.
+- 여러 파일에 걸친 변경, 영향 범위 확인, "이건 어디서 쓰이나" 같은 구조 질문은 `graphify-out/GRAPH_REPORT.md`를 먼저 읽고, 필요하면 `graphify query`/`path`/`explain`(영향 범위는 `affected`)을 터미널에서 실행해서 답한다.
+- 그래프는 참고용이고 설계 기준은 `docs/`다. 둘이 다르면 docs를 따르고, 그래프가 오래됐으면 갱신한다. 범위는 `.graphifyignore`(apps/web/src, packages, scripts, docs). 커밋 훅은 코드만 AST로 갱신(LLM 사용 없음)하므로, 문서가 바뀌면 사용자가 필요할 때 `/graphify . --update`로 갱신한다.
+- INFERRED·AMBIGUOUS로 표시된 연결은 실제 코드를 열어 확인한 뒤에 믿는다.

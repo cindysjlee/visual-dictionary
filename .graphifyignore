@@ -1,0 +1,21 @@
+# graphify 범위: apps/web/src, packages, scripts, docs만 (.gitignore도 함께 적용됨)
+# 커밋 훅이 저장소 루트 기준으로 다시 추출하므로 나머지는 여기서 뺀다
+/.claude/
+/content/
+/infra/
+/tests/
+/test-results/
+/playwright-report/
+/graphify-out/
+/*.json
+/*.ts
+/*.md
+/apps/web/*.*
+/apps/web/static/
+/apps/web/dist/
+/apps/web/generated/
+/apps/web/src/favicon.svg
+# 예전 디자인 시안 HTML(현재 기준은 docs/05)
+/docs/design/
+node_modules/
+dist/

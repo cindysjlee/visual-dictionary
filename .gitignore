@@ -6,3 +6,5 @@ apps/web/generated/
 cdk.out/
 test-results/
 playwright-report/
+# graphify 지식 그래프 산출물 (로컬 전용)
+graphify-out/
