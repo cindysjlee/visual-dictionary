@@ -179,5 +179,6 @@ export type Zone = (typeof ZONES)[number];
 export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | "category" | "summary"> & {
   playerType: PlayerType;
   stepCount: number;
-  defenseCount: number;
+  defenseCount: number; // 차단 단계가 있는 방어 수
+  supportCount: number; // 차단 단계 없는 보조 방어 수
 };

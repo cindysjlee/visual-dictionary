@@ -48,13 +48,15 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   }, [model, scene, labelRoot]);
 
   /** 이름·잔액 라벨. 숨은 행위자의 라벨은 감춘다 */
-  const refreshLabels = (s: SceneState) => {
+  /** overview: 시작 전 전체 샷. 맨 위 행위자 이름만 보이고, 안에 든 것(탭·보관함)과 잔액은 재생하면 나타난다(라벨 겹침 방지) */
+  const refreshLabels = (s: SceneState, overview = false) => {
     const l = labels.current!;
     for (const [id, node] of model.nodes) {
       const a = node.actor;
-      l.set(`actor-${id}`, node.labelPoint, { title: a.name, sub: a.site, tone: a.tone === "attack" ? "attack" : "plain" }, !s.hidden.has(id));
+      l.set(`actor-${id}`, node.labelPoint, { title: a.name, sub: a.site, tone: a.tone === "attack" ? "attack" : "plain" }, !s.hidden.has(id) && !(overview && node.placed.parent));
       const balance = s.balances.get(id);
-      if (balance !== undefined) {
+      if (balance !== undefined && overview) l.show(`bal-${id}`, false);
+      else if (balance !== undefined) {
         const changed = balance !== a.balance;
         l.set(`bal-${id}`, node.labelPoint.clone().add(new Vector3(-1.6, -0.5, 0)), {
           title: `잔액 ${balance.toLocaleString("ko-KR")}원`,
@@ -77,9 +79,12 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     const before = sceneStateAt(term, state.defense, state.step);
     model.applyState(before);
     refreshLabels(before);
+    labels.current!.declutter = false;
 
     if (!state.started) {
       // 상세 진입 직후: 1단계 장면 전체를 보여 주고 멈춘다. 재생을 누르면 이 effect가 다시 돌아 1단계부터 연출한다
+      refreshLabels(before, true);
+      labels.current!.declutter = true;
       timeline.current = null;
       rig.setAspect(size.width / Math.max(1, size.height)); // useFrame보다 먼저 돌므로 화면 비율을 여기서 넣는다(휴대폰에서 잘리지 않게)
       rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => new Vector3(...p.anchor)));

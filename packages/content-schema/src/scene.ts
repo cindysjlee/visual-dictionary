@@ -37,6 +37,12 @@ export const hasPanel = (actor: Actor) => {
 export const blockingDefenses = (term: Term) =>
   term.defenses.flatMap((d, i) => (d.blockedAtStep === undefined ? [] : [i]));
 
+/** 목록·상세 카드의 개수: 차단 단계가 있는 방어와, 설명만 있는 보조 방어(차단 단계 없음)를 따로 센다 */
+export const defenseCounts = (term: Pick<Term, "defenses">) => {
+  const defenseCount = term.defenses.filter((d) => d.blockedAtStep !== undefined).length;
+  return { defenseCount, supportCount: term.defenses.length - defenseCount };
+};
+
 export function lastStepIndex(term: Term, mode: Mode): number {
   const blockedAt = mode === null ? undefined : term.defenses[mode]?.blockedAtStep;
   return (blockedAt ?? term.scenario.steps.length) - 1;

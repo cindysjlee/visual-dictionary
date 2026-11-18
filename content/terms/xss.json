@@ -6,7 +6,7 @@
   "category": "web-security",
   "summary": "공격자가 넣은 스크립트가 다른 사용자의 브라우저에서 그 사이트의 코드처럼 실행되는 공격",
   "description": "사이트가 사용자가 쓴 내용을 그대로 페이지에 넣으면, 그 안에 숨긴 스크립트가 다른 사람의 브라우저에서 실행된다. 브라우저는 이 스크립트를 그 사이트의 코드로 보기 때문에 그 사이트의 쿠키와 화면에 접근할 수 있다. 게시판처럼 서버에 저장되었다가 여러 사람에게 보여지는 경우를 저장형 XSS라고 한다.",
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [
@@ -93,7 +93,7 @@
         "to": "evil",
         "title": "쿠키를 공격자 서버로",
         "label": "GET evil.example/c?…",
-        "caption": "스크립트가 document.cookie로 세션 쿠키를 읽어 공격자 서버 주소에 붙여 보냅니다. 공격자는 이 쿠키로 피해자인 척 사이트를 쓸 수 있습니다.",
+        "caption": "스크립트가 document.cookie로 세션 쿠키를 읽어 공격자 서버 주소에 붙여 보냅니다. 다른 사이트로 데이터를 보내는 것 자체는 브라우저가 막지 않습니다. 공격자는 이 쿠키로 피해자인 척 사이트를 쓸 수 있습니다.",
         "danger": true,
         "effects": [
           { "type": "attach", "item": "cookie", "from": "jar", "label": "session=…", "note": "스크립트가 document.cookie로 읽음" },
@@ -106,7 +106,7 @@
     {
       "name": "출력 인코딩",
       "kind": "defense",
-      "description": "사용자가 쓴 값을 페이지에 넣을 때 <, >, \", ', & 같은 글자를 &lt; 같은 HTML 엔티티로 바꿔(인코딩) 넣습니다. 브라우저는 그 값을 코드가 아니라 글자로만 그립니다. 넣는 자리(HTML 본문, 속성, 자바스크립트, URL)에 맞는 인코딩을 써야 하며, OWASP가 모든 경우에 권하는 기본 방어입니다.",
+      "description": "사용자가 쓴 값을 페이지에 넣을 때 <, >, \", ', & 같은 글자를 &lt; 같은 HTML 엔티티로 바꿔(인코딩) 넣습니다. 브라우저는 그 값을 코드가 아니라 글자로만 그립니다. 넣는 위치(HTML 본문·속성·자바스크립트·URL)마다 인코딩 방식이 다르므로 그 자리에 맞는 인코딩을 써야 하며, OWASP가 모든 경우에 권하는 기본 방어입니다.",
       "blockedAtStep": 5,
       "blockedTitle": "글자로만 그려진 스크립트",
       "blockedLabel": "인코딩 · 글자로 표시",
@@ -130,11 +130,11 @@
     {
       "name": "CSP",
       "kind": "defense",
-      "description": "Content-Security-Policy 헤더로 이 페이지가 실행해도 되는 스크립트를 정합니다. script-src에 'unsafe-inline'을 넣지 않으면 페이지에 섞여 들어온 인라인 스크립트는 실행되지 않습니다. 인코딩이 빠진 곳을 막아 주는 추가 방어(심층 방어)이지, 인코딩을 대신하지는 않습니다.",
+      "description": "Content-Security-Policy 헤더로 이 페이지가 실행해도 되는 스크립트를 정합니다. script-src에 'unsafe-inline'을 넣지 않으면 페이지에 섞여 들어온 인라인 스크립트는 실행되지 않습니다. 인라인 스크립트가 꼭 필요하면 응답마다 바뀌는 nonce를 붙인 스크립트만 허용합니다. 인코딩이 빠진 곳을 막아 주는 추가 방어(심층 방어)이지, 인코딩을 대신하지는 않습니다.",
       "blockedAtStep": 6,
       "blockedTitle": "인라인 스크립트 실행 차단",
       "blockedLabel": "CSP · 실행 차단",
-      "blockedCaption": "브라우저가 실행하기 전에 서버가 보낸 CSP를 확인합니다. 허용된 파일(script-src 'self')이나 nonce가 맞는 스크립트만 실행하므로, 본문에 끼어든 인라인 <script>는 실행되지 않습니다.",
+      "blockedCaption": "브라우저가 실행하기 전에 서버가 보낸 CSP를 확인합니다. script-src 'self'는 이 사이트에서 파일로 불러온 스크립트만 허용하므로, 본문에 끼어든 인라인 <script>는 실행되지 않습니다.",
       "overrides": [
         {
           "step": 5,

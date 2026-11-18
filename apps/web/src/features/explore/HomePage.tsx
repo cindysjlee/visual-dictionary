@@ -12,8 +12,11 @@ const matches = (term: IndexEntry, query: string) => {
   return !q || [term.name, term.englishName ?? "", term.summary, ...term.aliases].some((s) => s.toLowerCase().includes(q));
 };
 
-export const termMeta = (t: Pick<IndexEntry, "playerType" | "stepCount" | "defenseCount" | "category">) => {
-  const defense = t.defenseCount === 0 ? "개념 설명" : `${t.category === "web-security" ? "방어" : "해결"} ${t.defenseCount}개`;
+export const termMeta = (t: Pick<IndexEntry, "playerType" | "stepCount" | "defenseCount" | "supportCount" | "category">) => {
+  const word = t.category === "web-security" ? "방어" : "해결";
+  // 보조 방어(차단 단계 없음)는 방어 개수에 넣지 않고 따로 보인다: "방어 1 · 보조 1"
+  const defense =
+    t.defenseCount + t.supportCount === 0 ? "개념 설명" : t.supportCount > 0 ? `${word} ${t.defenseCount} · 보조 ${t.supportCount}` : `${word} ${t.defenseCount}개`;
   return `${PLAYER_LABELS[t.playerType]} · ${t.stepCount}단계 · ${defense}`;
 };
 

@@ -6,53 +6,53 @@
   "category": "web-security",
   "summary": "로그인한 사용자의 세션 쿠키를 훔쳐, 비밀번호 없이 그 사용자로 행세하는 공격",
   "description": "로그인한 뒤 서버는 세션 쿠키 값만 보고 사용자를 알아본다. 그래서 공격자가 이 값을 손에 넣으면 비밀번호 없이도 그 사용자로 인정받는다. 쿠키는 암호화되지 않은 통신을 엿보거나, XSS로 스크립트가 읽어 내는 방법 등으로 샌다.",
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [
       { "id": "browser", "name": "피해자 브라우저", "role": "user", "kind": "browser", "zone": "client", "site": "browser" },
       {
-        "id": "bankTab",
-        "name": "은행 탭",
+        "id": "siteTab",
+        "name": "쇼핑몰 탭",
         "role": "user",
         "kind": "tab",
         "parent": "browser",
-        "site": "bank.example",
-        "screen": { "title": "내 계좌", "lines": ["잔액 1,250,000원"] }
+        "site": "shop.example",
+        "screen": { "title": "마이페이지", "lines": ["주문 내역 3건", "배송지: 서울시 …"] }
       },
       { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
       { "id": "wifi", "name": "공용 와이파이", "role": "network", "kind": "network", "zone": "between", "site": "cafe-free-wifi" },
-      { "id": "bank", "name": "은행 서버", "role": "server", "kind": "server", "zone": "server", "site": "bank.example", "gate": true },
+      { "id": "site", "name": "쇼핑몰 서버", "role": "server", "kind": "server", "zone": "server", "site": "shop.example", "gate": true },
       { "id": "attacker", "name": "같은 와이파이의 공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
     ],
     "steps": [
       {
         "action": "send",
-        "from": "bankTab",
-        "to": "bank",
+        "from": "siteTab",
+        "to": "site",
         "via": "wifi",
         "title": "공용 와이파이에서 로그인",
         "label": "POST /login",
-        "caption": "카페의 공용 와이파이로 은행에 로그인합니다. 이 은행은 HTTP를 써서 내용을 암호화하지 않으므로, 같은 와이파이에 있는 사람은 오가는 내용을 그대로 볼 수 있습니다. 비밀번호도 그대로 보입니다."
+        "caption": "카페의 공용 와이파이로 쇼핑몰에 로그인합니다. 요즘은 대부분의 사이트가 HTTPS를 쓰지만, 이 쇼핑몰처럼 HTTP를 쓰는 사이트라면 내용이 암호화되지 않아 같은 와이파이에 있는 사람이 오가는 내용을 그대로 볼 수 있습니다. 비밀번호도 그대로 보입니다."
       },
       {
         "action": "send",
-        "from": "bank",
-        "to": "bankTab",
+        "from": "site",
+        "to": "siteTab",
         "via": "wifi",
         "title": "세션 쿠키 발급",
         "label": "Set-Cookie: session=7c2e…",
-        "caption": "은행이 로그인 상태를 나타내는 세션 쿠키를 보내고, 브라우저는 보관함에 넣어 둡니다. 이 쿠키 값만 있으면 은행은 누구든 이 사용자로 인정합니다.",
+        "caption": "쇼핑몰이 로그인 상태를 나타내는 세션 쿠키를 보내고, 브라우저는 보관함에 넣어 둡니다. 이 쿠키 값만 있으면 쇼핑몰은 누구든 이 사용자로 인정합니다.",
         "effects": [{ "type": "store", "item": "cookie", "into": "jar" }]
       },
       {
         "action": "send",
-        "from": "bankTab",
-        "to": "bank",
+        "from": "siteTab",
+        "to": "site",
         "via": "wifi",
         "title": "쿠키를 엿봄",
-        "label": "GET /account",
-        "caption": "계좌를 볼 때마다 브라우저는 세션 쿠키를 붙여 보냅니다. 요청이 와이파이를 지나는 순간, 옆의 공격자가 암호화되지 않은 쿠키 값을 그대로 복사합니다.",
+        "label": "GET /mypage",
+        "caption": "마이페이지를 열 때마다 브라우저는 세션 쿠키를 붙여 보냅니다. 요청이 와이파이를 지나는 순간, 옆의 공격자가 암호화되지 않은 쿠키 값을 그대로 복사합니다.",
         "danger": true,
         "effects": [
           { "type": "attach", "item": "cookie", "from": "jar", "label": "Cookie" },
@@ -62,17 +62,17 @@
       {
         "action": "send",
         "from": "attacker",
-        "to": "bank",
+        "to": "site",
         "title": "훔친 쿠키로 요청",
-        "label": "GET /account",
-        "caption": "공격자가 자기 브라우저에 훔친 쿠키 값을 넣고 은행에 요청합니다. 검문소는 세션 쿠키가 유효한지만 확인하므로 통과시킵니다.",
+        "label": "GET /mypage",
+        "caption": "공격자가 자기 브라우저에 훔친 쿠키 값을 넣고 쇼핑몰에 요청합니다. 검문소는 세션 쿠키가 유효한지만 확인하므로 통과시킵니다.",
         "danger": true,
         "effects": [
           { "type": "attach", "item": "cookie", "from": "attacker", "label": "Cookie(훔친 값)", "note": "훔친 쿠키 값을 직접 넣음" },
           {
             "type": "inspect",
-            "at": "bank",
-            "contents": ["GET /account", "Cookie: session=7c2e…", "보낸 곳: 공격자 브라우저"],
+            "at": "site",
+            "contents": ["GET /mypage", "Cookie: session=7c2e…", "보낸 곳: 공격자 브라우저"],
             "checks": [
               { "name": "세션 쿠키", "result": "유효함", "status": "ok" },
               { "name": "원래 사용자인지", "result": "알 수 없음", "status": "skip" }
@@ -82,13 +82,13 @@
       },
       {
         "action": "send",
-        "from": "bank",
+        "from": "site",
         "to": "attacker",
         "title": "피해자로 인정",
-        "label": "200 OK · 피해자 계좌",
-        "caption": "은행은 쿠키만 보고 피해자 본인이라고 판단해 계좌 정보를 보여 줍니다. 공격자는 비밀번호 없이 피해자의 세션을 가로챘습니다.",
+        "label": "200 OK · 피해자 마이페이지",
+        "caption": "쇼핑몰은 쿠키만 보고 피해자 본인이라고 판단해 마이페이지를 보여 줍니다. 공격자는 비밀번호 없이 피해자의 세션을 가로채, 주문 내역과 배송지를 보고 피해자 이름으로 주문할 수도 있습니다.",
         "danger": true,
-        "effects": [{ "type": "store", "item": "data", "into": "attacker", "label": "피해자 계좌 정보" }]
+        "effects": [{ "type": "store", "item": "data", "into": "attacker", "label": "피해자 주문·배송 정보" }]
       }
     ]
   },
@@ -105,12 +105,12 @@
         {
           "step": 1,
           "title": "HTTPS로 로그인",
-          "caption": "같은 공용 와이파이로 로그인하지만, 은행이 HTTPS를 써서 브라우저와 은행 사이의 내용이 모두 암호화됩니다. 옆 사람에게는 비밀번호도 암호문으로만 보입니다."
+          "caption": "같은 공용 와이파이로 로그인하지만, 쇼핑몰이 HTTPS를 써서 브라우저와 쇼핑몰 사이의 내용이 모두 암호화됩니다. 옆 사람에게는 비밀번호도 암호문으로만 보입니다."
         },
         {
           "step": 2,
           "title": "Secure 세션 쿠키 발급",
-          "caption": "은행이 Secure를 지정한 세션 쿠키를 보냅니다. 브라우저는 이 쿠키를 HTTPS 요청에만 붙입니다.",
+          "caption": "쇼핑몰이 Secure를 지정한 세션 쿠키를 보냅니다. 브라우저는 이 쿠키를 HTTPS 요청에만 붙입니다.",
           "effects": [{ "type": "store", "item": "cookie", "into": "jar", "label": "Secure" }]
         },
         {

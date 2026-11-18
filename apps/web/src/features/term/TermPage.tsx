@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router";
 import type { IndexEntry, Term } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
+import { defenseCounts } from "@app/content-schema/scene";
 import NotFoundPage from "../../NotFoundPage.tsx";
 import { ShieldIcon } from "../../icons.tsx";
 import { useJson } from "../../useJson.ts";
@@ -26,7 +27,7 @@ function TermDetail({ term }: { term: Term }) {
               {termMeta({
                 playerType: term.scenario.playerType,
                 stepCount: term.scenario.steps.length,
-                defenseCount: term.defenses.length,
+                ...defenseCounts(term),
                 category: term.category,
               })}
             </span>

@@ -52,7 +52,7 @@
 | `steps[].danger` | | 위험 단계 강조. 기본값 `false` |
 | `defenses` | | 보안 용어는 1개 이상 권장. CS 용어는 `kind: "solution"` 또는 빈 배열 |
 | `defenses[].kind` | O | `defense`(보안 방어 기법) 또는 `solution`(CS 해결 방법) |
-| `defenses[].blockedAtStep` | | 1부터 시작하는 단계 번호. `steps` 길이 이하. 없으면 방어 모드 연출 없이 설명만 표시 |
+| `defenses[].blockedAtStep` | | 1부터 시작하는 단계 번호. `steps` 길이 이하. 없으면 보조 방어: 방어 모드 선택에는 나오지 않고 방어 방법 카드에만 설명이 보이며, 목록 카드에서는 "방어 1 · 보조 1"처럼 따로 센다 |
 | `defenses[].blockedLabel`, `blockedCaption` | | `blockedAtStep`이 있으면 필수 |
 | `references` | O | 1개 이상 |
 | `related` | | 다른 용어의 `id`. 존재하지 않는 id면 빌드 경고 |
@@ -125,7 +125,7 @@
 
 `scripts/build-index`가 `status: "published"`인 파일만 모아 `apps/web/generated/build/content/`에 만든다. 배포 주소에서는 `/content/...`로 제공된다. 화면 경로 `/terms/:id`와 겹치지 않게 하려고 `/content/` 아래에 둔다.
 
-- `/content/index.json`: 목록·검색·진행률 계산용. 용어마다 `id`, `name`, `englishName`, `aliases`, `category`, `summary`, `playerType`, `stepCount`(단계 수), `defenseCount`(`defenses` 수)만 담는다. 뒤의 둘은 목록 카드의 "흐름형 · 6단계 · 방어 2개" 표시용이다.
+- `/content/index.json`: 목록·검색·진행률 계산용. 용어마다 `id`, `name`, `englishName`, `aliases`, `category`, `summary`, `playerType`, `stepCount`(단계 수), `defenseCount`(차단 단계가 있는 방어 수), `supportCount`(차단 단계 없는 보조 방어 수)만 담는다. 뒤의 셋은 목록 카드의 "흐름형 · 6단계 · 방어 2개"(보조가 있으면 "방어 1 · 보조 1") 표시용이다.
 - `/content/terms/<id>.json`: 상세 페이지용. 스키마 검증을 거쳐 기본값(`aliases: []`, `danger: false` 등)을 채운 결과.
 
 개발 서버(`npm run dev`)용은 `draft`까지 포함해 `apps/web/generated/dev/content/`에 따로 만든다. `vite.config.ts`는 `vite build`일 때 `generated/build`만 publicDir로 쓰므로, `npx vite build`를 직접 실행해도 draft가 배포 결과물에 들어갈 수 없다. `retired`는 어느 쪽에도 포함하지 않는다.

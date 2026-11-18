@@ -50,6 +50,8 @@ describe("selectTerms", () => {
   });
 
   it("index 항목에 단계 수와 방어 수가 들어간다", () => {
-    expect(toIndexEntry(base)).toMatchObject({ id: "csrf", playerType: "flow", stepCount: 6, defenseCount: 2 });
+    expect(toIndexEntry(base)).toMatchObject({ id: "csrf", playerType: "flow", stepCount: 6, defenseCount: 2, supportCount: 0 });
+    const withSupport = { ...base, defenses: [...base.defenses, { ...base.defenses[0]!, name: "보조", blockedAtStep: undefined }] };
+    expect(toIndexEntry(withSupport)).toMatchObject({ defenseCount: 2, supportCount: 1 });
   });
 });

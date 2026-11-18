@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IndexEntry, Term } from "@app/content-schema";
+import { defenseCounts } from "@app/content-schema/scene";
 import { validateOrExit } from "./validate-content.ts";
 
 const outDir = (includeDrafts: boolean) =>
@@ -15,6 +16,7 @@ export const selectTerms = (terms: Term[], includeDrafts: boolean) =>
   terms.filter((t) => t.status === "published" || (includeDrafts && t.status === "draft"));
 
 export const toIndexEntry = ({ id, name, englishName, aliases, category, summary, scenario, defenses }: Term): IndexEntry => ({
+  ...defenseCounts({ defenses }),
   id,
   name,
   englishName,
@@ -23,7 +25,6 @@ export const toIndexEntry = ({ id, name, englishName, aliases, category, summary
   summary,
   playerType: scenario.playerType,
   stepCount: scenario.steps.length,
-  defenseCount: defenses.length,
 });
 
 if (import.meta.main) {
