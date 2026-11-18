@@ -1,16 +1,11 @@
 // 플레이어 E2E: 3D 화면 모양이 아니라 자막·단계 번호·차단 표시로 확인한다.
-// 재생 버튼을 눌러 끝까지는 CSRF만, 나머지 용어는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다)
-import { readdirSync, readFileSync } from "node:fs";
+// 재생 버튼을 눌러 끝까지는 CSRF만, 모든 용어 × 모든 모드는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다)
 import { expect, test, type Page } from "@playwright/test";
-import { termSchema, type Term } from "../../packages/content-schema/src/index.ts";
-import { lastStepIndex, stepView } from "../../packages/content-schema/src/scene.ts";
+import type { Term } from "../../packages/content-schema/src/index.ts";
+import { blockingDefenses, lastStepIndex, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
+import { terms } from "./terms.ts";
 
-const dir = new URL("../../content/terms/", import.meta.url);
-const published: Term[] = readdirSync(dir)
-  .filter((f) => f.endsWith(".json"))
-  .map((f) => termSchema.parse(JSON.parse(readFileSync(new URL(f, dir), "utf8"))))
-  .filter((t) => t.status === "published");
-const csrf = published.find((t) => t.id === "csrf")!;
+const csrf = terms.find((t) => t.id === "csrf")!;
 const TOKEN = csrf.defenses.findIndex((d) => d.name === "CSRF 토큰");
 const SAMESITE = csrf.defenses.findIndex((d) => d.name === "SameSite 쿠키");
 
@@ -102,14 +97,27 @@ test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", asy
   await expect(page.locator(".steps2d-item").last()).toContainText(csrf.defenses[SAMESITE]!.blockedLabel!);
 });
 
-for (const term of published) {
-  test(`${term.id}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, async ({ page }) => {
-    await open(page, term.id);
-    const last = lastStepIndex(term, null);
-    for (let i = 0; i <= last; i++) {
-      await expect(stepPos(page)).toHaveText(`${i + 1} / ${last + 1} 단계`);
-      await expect(captionTitle(page)).toHaveText(`${i + 1}. ${stepView(term, null, i).title}`);
-      if (i < last) await player(page).getByRole("button", { name: "다음 단계" }).click();
-    }
-  });
+async function selectMode(page: Page, term: Term, mode: Mode) {
+  if (mode === null) return; // 진입 시 공격 흐름
+  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  if (blockingDefenses(term).length > 1) {
+    await player(page).getByRole("group", { name: "방어 기법" }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
+  }
+}
+
+for (const term of terms) {
+  for (const mode of [null, ...blockingDefenses(term)] as Mode[]) {
+    const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
+    test(`${term.id} · ${modeName}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, async ({ page }) => {
+      await open(page, term.id);
+      await selectMode(page, term, mode);
+      const last = lastStepIndex(term, mode);
+      await expect(player(page).locator(".step-seg-btn")).toHaveCount(last + 1);
+      for (let i = 0; i <= last; i++) {
+        await expect(stepPos(page)).toHaveText(`${i + 1} / ${last + 1} 단계`);
+        await expect(captionTitle(page)).toHaveText(`${i + 1}. ${stepView(term, mode, i).title}`);
+        if (i < last) await player(page).getByRole("button", { name: "다음 단계" }).click();
+      }
+    });
+  }
 }

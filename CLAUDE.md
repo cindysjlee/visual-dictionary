@@ -91,7 +91,7 @@ docs/                     설계 문서
 - 라이브러리 API(React, Motion, Zod, React Router, Amplify, AWS CDK)는 기억에 의존하지 말고 context7로 최신 문서를 확인한 뒤 쓴다.
 - 화면이나 애니메이션을 만들었으면 chrome-devtools로 실제 페이지를 열어 재생·방어 모드·콘솔 오류를 확인하고 나서 완료라고 말한다.
 - 주 대상은 PC다. 화면 확인과 E2E·axe는 데스크톱(1440×900)을 기본으로 한다(Playwright 설정에도 명시). 375px는 반응형이 깨지지 않는지(가로 스크롤·잘림·겹침)만 보는 보조 확인이다. 확인이 끝나면 chrome-devtools 화면 크기 흉내 설정을 반드시 기본값으로 되돌린다.
-- draft 용어도 published로 바꾸기 전에 `E2E_INCLUDE_DRAFTS=1 npm run test:e2e`(개발 빌드 대상)로 같은 E2E·axe를 돌린다.
+- draft 용어도 published로 바꾸기 전에 `npm run test:e2e:drafts`(E2E_INCLUDE_DRAFTS=1, draft가 든 개발 서버 대상)로 같은 E2E·axe를 돌린다.
 - ponytail 모드는 `full` 이하로 쓴다. `ultra`는 요구사항으로 정한 기능까지 줄이려 하므로 쓰지 않는다.
 - 한 단계를 끝내면 위 "현재 단계" 줄을 갱신하고, 다음 세션이 이어갈 수 있게 남은 일을 한두 줄로 적는다.
 - 의미 있는 작업 단위가 끝나면 커밋한다.
