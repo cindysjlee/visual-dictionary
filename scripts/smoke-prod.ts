@@ -1,4 +1,6 @@
-// 배포 후 확인: node scripts/smoke-prod.ts [주소]. 보안 헤더 값, SPA 대체 응답, robots.txt, 상세 페이지·콘텐츠
+// 배포 후 확인: node scripts/smoke-prod.ts [주소]. 보안 헤더 값, SPA 대체 응답, robots.txt, published 용어 전부의 상세 페이지·콘텐츠, 캐시 정책
+import { readdirSync, readFileSync } from "node:fs";
+const TERMS_DIR = new URL("../content/terms/", import.meta.url);
 const base = (process.argv[2] ?? process.env.SITE_URL ?? "https://d1y3rvak3nd08u.cloudfront.net").replace(/\/$/, "");
 
 const EXPECTED_HEADERS: Record<string, string> = {
@@ -19,8 +21,23 @@ for (const [name, value] of Object.entries(EXPECTED_HEADERS)) {
   check(got === value, `${name}: ${got ?? "(없음)"}`);
 }
 
-const detail = await fetch(`${base}/terms/csrf`);
-check(detail.status === 200 && (detail.headers.get("content-type") ?? "").includes("text/html"), `/terms/csrf → ${detail.status}`);
+// published 용어 전부: 상세 페이지(HTML)와 콘텐츠 JSON. 없는 JSON도 SPA 대체 응답(HTML 200)이 오므로 형식과 id까지 본다
+const published = readdirSync(TERMS_DIR)
+  .filter((f) => f.endsWith(".json"))
+  .map((f) => JSON.parse(readFileSync(new URL(f, TERMS_DIR), "utf8")) as { id: string; status: string })
+  .filter((t) => t.status === "published")
+  .map((t) => t.id)
+  .sort();
+for (const id of published) {
+  const page = await fetch(`${base}/terms/${id}`);
+  check(page.status === 200 && (page.headers.get("content-type") ?? "").includes("text/html"), `/terms/${id} → ${page.status}`);
+  const res = await fetch(`${base}/content/terms/${id}.json`);
+  const type = res.headers.get("content-type") ?? "";
+  const body = type.includes("application/json") ? ((await res.json()) as { id?: string }) : undefined;
+  check(res.status === 200 && body?.id === id, `/content/terms/${id}.json → ${res.status} ${type}${body && body.id !== id ? ` (id ${body.id})` : ""}`);
+}
+const deployedIds = ((await (await fetch(`${base}/content/index.json`)).json()) as { id: string }[]).map((e) => e.id).sort();
+check(deployedIds.join() === published.join(), `index.json 용어 = published ${published.length}개 (배포: ${deployedIds.join(", ")})`);
 
 const missing = await fetch(`${base}/no-such-page/x`);
 const missingBody = await missing.text();
@@ -30,7 +47,6 @@ const robots = await fetch(`${base}/robots.txt`);
 check(robots.status === 200 && (robots.headers.get("content-type") ?? "").startsWith("text/plain"), `/robots.txt → ${robots.status} ${robots.headers.get("content-type")}`);
 
 const json = await fetch(`${base}/content/terms/csrf.json`);
-check(json.status === 200 && (json.headers.get("content-type") ?? "").includes("application/json"), `/content/terms/csrf.json → ${json.status} ${json.headers.get("content-type")}`);
 
 // 캐시 정책 (infra/lib/web-stack.ts): 진입 HTML·콘텐츠는 no-cache, 해시 파일은 immutable, 나머지는 1시간
 const cacheOf = (r: Response) => r.headers.get("cache-control") ?? "(없음)";
