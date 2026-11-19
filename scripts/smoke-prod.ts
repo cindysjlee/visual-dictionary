@@ -1,11 +1,12 @@
-// 배포 후 확인: node scripts/smoke-prod.ts [주소]. 보안 헤더 값, SPA 대체 응답, robots.txt, published 용어 전부의 상세 페이지·콘텐츠, 캐시 정책
+// 배포 후 확인: node scripts/smoke-prod.ts [주소]. 보안 헤더 값, SPA 대체 응답, robots.txt, published 용어 전부의 상세 페이지·콘텐츠, 브라우저 설정(/config.json), 캐시 정책
 import { readdirSync, readFileSync } from "node:fs";
+import { CSP } from "../infra/lib/csp.ts";
 const TERMS_DIR = new URL("../content/terms/", import.meta.url);
 const base = (process.argv[2] ?? process.env.SITE_URL ?? "https://d1y3rvak3nd08u.cloudfront.net").replace(/\/$/, "");
 
 const EXPECTED_HEADERS: Record<string, string> = {
-  "content-security-policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  // CloudFront에 넣은 값과 같은 상수(infra/lib/csp.ts): connect-src는 'self'와 서울 사용자 풀 엔드포인트뿐
+  "content-security-policy": CSP,
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-frame-options": "DENY",
   "x-content-type-options": "nosniff",
@@ -14,6 +15,7 @@ const EXPECTED_HEADERS: Record<string, string> = {
 
 const results: [boolean, string][] = [];
 const check = (ok: boolean, what: string) => results.push([ok, what]);
+const cacheOf = (r: Response) => r.headers.get("cache-control") ?? "(없음)";
 
 const home = await fetch(`${base}/`);
 for (const [name, value] of Object.entries(EXPECTED_HEADERS)) {
@@ -48,8 +50,19 @@ check(robots.status === 200 && (robots.headers.get("content-type") ?? "").starts
 
 const json = await fetch(`${base}/content/terms/csrf.json`);
 
+// 브라우저 설정(/config.json, 배포 때 생성): JSON이고 서울 리전·풀·클라이언트 ID 세 값만, no-cache
+const config = await fetch(`${base}/config.json`);
+const configBody = (config.headers.get("content-type") ?? "").includes("json") ? ((await config.json()) as Record<string, unknown>) : undefined;
+check(
+  config.status === 200 &&
+    Object.keys(configBody ?? {}).sort().join() === "region,userPoolClientId,userPoolId" &&
+    configBody?.region === "ap-northeast-2" &&
+    String(configBody?.userPoolId).startsWith("ap-northeast-2_"),
+  `/config.json → ${config.status} 키: ${Object.keys(configBody ?? {}).sort().join(", ") || "(JSON 아님)"}`,
+);
+check(cacheOf(config) === "no-cache", `/config.json cache-control: ${cacheOf(config)}`);
+
 // 캐시 정책 (infra/lib/web-stack.ts): 진입 HTML·콘텐츠는 no-cache, 해시 파일은 immutable, 나머지는 1시간
-const cacheOf = (r: Response) => r.headers.get("cache-control") ?? "(없음)";
 const homeHtml = await home.text();
 check(cacheOf(home) === "no-cache", `/ (index.html) cache-control: ${cacheOf(home)}`);
 for (const [path, res] of [["/content/terms/csrf.json", json], ["/content/index.json", await fetch(`${base}/content/index.json`)]] as const) {

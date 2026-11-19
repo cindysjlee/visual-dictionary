@@ -13,25 +13,12 @@ import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, CacheControl, Source } from "aws-cdk-lib/aws-s3-deployment";
 import type { Construct } from "constructs";
+import { CSP } from "./csp.ts";
 
 /** 배포 때 CloudFront에서 비우는 경로. "/"는 기본 루트 객체(index.html)의 캐시 키가 따로라서 함께 넣는다. 해시 파일은 이름이 바뀌므로 비울 필요가 없다 */
 export const INVALIDATION_PATHS = ["/", "/index.html", "/config.json", "/content/*"];
 
-/** 브라우저가 부르는 Cognito 사용자 풀 엔드포인트(서울). 자격 증명 풀은 쓰지 않으므로 이것 하나뿐이다. 6단계 API 도메인은 그때 정한다 */
-export const COGNITO_ORIGIN = "https://cognito-idp.ap-northeast-2.amazonaws.com";
-
-export const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "font-src 'self'",
-  "img-src 'self' data:",
-  `connect-src 'self' ${COGNITO_ORIGIN}`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
+export { COGNITO_ORIGIN, CSP } from "./csp.ts";
 
 /** 브라우저 설정(/config.json): 배포 때 값이 채워진다. 풀·클라이언트 ID는 공개돼도 되는 값이고 저장소 파일에는 적지 않는다 */
 export type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string };

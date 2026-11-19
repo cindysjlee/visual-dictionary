@@ -117,7 +117,23 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 색은 디자인 토큰 (런타임에 CSS 변수 읽기, 테마 바뀌면 다시 읽기) | `players/three/tokens.ts` `TOKEN_NAMES`, `readPalette()`, `usePalette()` / 값은 `styles/tokens.css` |
 | 화면·도장·카드 그림 | `players/three/textures.ts` `paintScreen()`, `paintStamp()`, `paintCard()` |
 | 자유 시점 | `FlowScene.tsx` `OrbitControls` (`freeView`) |
-| 스택형·점유형 3D 플레이어 | 4단계에서 추가 예정 (`players/three/StackScene`·`LockScene`, 아직 없음) |
+| 스택형·점유형 3D 플레이어 | `players/three/stack/StackScene.tsx`(`stackStateAt()`), `players/three/lock/LockScene.tsx`(`lockStateAt()`) |
+
+**S5 인증 (5단계)**
+
+| 설계 이름 | 코드 위치 |
+| --- | --- |
+| 사용자 풀·웹 앱 클라이언트 | `infra/lib/auth-stack.ts` `AuthStack` (테스트 `infra/test/auth-stack.test.ts`) |
+| 브라우저 설정(`/config.json`: region·풀 ID·클라이언트 ID) | `infra/lib/web-stack.ts` `DeployPages`의 `Source.jsonData` |
+| CSP(연결 허용 대상) | `infra/lib/csp.ts` `CSP`, `COGNITO_ORIGIN` |
+| 인증 경계(화면은 이것만 쓴다) | `features/auth/client.ts` `AuthClient`, `importAuthClient()` |
+| Cognito 구현(Amplify, 배포 빌드) / 가짜 구현(테스트·개발 빌드) | `features/auth/cognito.ts` `cognitoAuthClient()` / `features/auth/fake.ts` `fakeAuthClient()` |
+| 로그인 상태·동작 | `features/auth/store.ts` `useAuth()`, `startAuth()`, `auth` |
+| 돌아갈 곳 검증(열린 리디렉션 방지) | `features/auth/safeNext.ts` `safeNext()`, `loginPath()` |
+| 비밀번호 조건·오류 문구 | `features/auth/password.ts` `passwordProblems()`, `features/auth/errors.ts` `authMessage()` |
+| 계정 화면 | `features/auth/LoginPage.tsx`·`SignupPage.tsx`·`ConfirmPage.tsx`·`ResetPage.tsx` |
+| 상단바 계정 영역 | `Layout.tsx` `AccountBar` |
+| 배포 후 실제 Cognito 확인 | `scripts/smoke-auth.ts` (`npm run smoke:auth`) |
 
 ## 2. 기술 스택 정의 및 할당뷰 아키텍처
 
@@ -147,8 +163,8 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 | --- | --- | --- |
 | Frontend (웹 빌드 결과물) | Amazon S3 (비공개) + CloudFront | OAC로 CloudFront만 버킷에 접근, HTTPS 전용, 403·404를 `index.html`(200)로 응답 (FR-DEP-01, 02) |
 | 콘텐츠 (용어 JSON) | 같은 S3 버킷 + CloudFront | 빌드 때 생성된 `/content/index.json`, `/content/terms/{id}.json`을 정적 파일로 제공 |
-| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP는 Cognito와 API 도메인만 연결 허용 (FR-DEP-04) |
-| 인증 | Amazon Cognito User Pool | 이메일 인증 코드, 비밀번호 8자 이상·영문과 숫자 포함 정책 (FR-AUTH-02). 기본 이메일 발송은 하루 발송량이 적어 사용자가 늘면 SES 연결 |
+| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`와 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`)뿐이다(와일드카드 없음). API 도메인은 6단계에서 정한다 (FR-DEP-04) |
+| 인증 | Amazon Cognito User Pool (Lite, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP만·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
 | Backend | API Gateway (HTTP API) + Lambda 3개 | account, progress, activity. 모든 경로에 JWT 인가 적용 (FR-DEP-03) |
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
 | 이벤트 | Amazon EventBridge + SQS DLQ | 회원 탈퇴 이벤트 전달과 실패 이벤트 보관 |
@@ -168,3 +184,18 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 5. **배포**: `npm run deploy`(7단계부터는 GitHub Actions)가 빌드한 뒤 CDK로 배포한다. 웹·콘텐츠는 S3에 올리고 CloudFront 캐시를 비우며, 백엔드도 같은 CDK 앱으로 배포한다.
 
 그림은 7단계까지 끝난 최종 형태다. 4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 오른쪽 백엔드 영역은 5단계부터 차례로 추가된다. 인프라는 1단계부터 CDK(`infra/`, 리전 ap-northeast-2)로 관리한다.
+
+### 2.4 인증과 보안 메모 (5단계)
+
+**토큰 저장.** 로그인 토큰은 Amplify 기본값인 localStorage에 둔다. 브라우저를 닫았다 열어도 로그인이 유지되어야 하기 때문이다(FR-AUTH-03). 이 방식은 XSS가 일어나면 스크립트가 토큰을 읽을 수 있으므로, XSS를 막는 장치를 함께 유지한다: CSP `script-src 'self'`(인라인 스크립트 금지), React의 출력 이스케이프, `dangerouslySetInnerHTML` 사용 금지. 피해 범위는 액세스 토큰 1시간·리프레시 토큰 30일로 줄이고, 로그아웃할 때 리프레시 토큰을 취소한다. HttpOnly 쿠키로 토큰을 중계하는 방식은 별도 백엔드와 CSRF 방어가 필요해, 다루는 데이터가 이메일과 학습 기록뿐인 이 서비스에는 쓰지 않는다.
+
+**설정 전달.** 사용자 풀 ID·클라이언트 ID는 빌드에 넣지 않고 배포 때 `/config.json`(no-cache)으로 올린다. 공개돼도 되는 값이고, 저장소 파일에는 적지 않는다. 앱은 첫 화면을 그린 뒤 인증 구현(Amplify)을 따로 받는다(홈 묶음에 없음, `check:bundle`이 확인).
+
+**테스트.** 테스트·개발 빌드는 가짜 인증(`features/auth/fake.ts`, 고정 코드 `123456`)을 써서 실제 메일 없이 가입·인증·재설정 흐름을 E2E(`@auth`)로 확인한다. 배포 빌드에는 가짜 구현이 없다(`check:bundle`). 실제 Cognito는 배포 후 `npm run smoke:auth`가 관리자 명령으로 만든 테스트 사용자(예약 도메인 `example.com`, 실행마다 다른 이름, 메일 보내지 않음)로 로그인·새로고침 유지·로그아웃을 확인하고 지운다. 실제 메일 경로(가입 코드, 재설정 코드)는 사람이 직접 받아 확인한다.
+
+**보안 메모.**
+- **돌아갈 곳(`?next=`) 검증:** `/`로 시작하고, 두 번째 글자가 `/`나 `\`가 아니고, `new URL(next, location.origin)`의 origin이 현재 사이트와 같을 때만 허용한다. 아니면 `/`로 보낸다(`//evil.com`, `/\evil.com`, `https://evil.com`, `javascript:…` 차단을 단위 테스트·E2E로 확인).
+- **비밀번호 "영문 포함":** Cognito는 대·소문자를 따로만 강제할 수 있어 서버는 8자+숫자만 강제하고 "영문 포함"은 화면에서 검사한다. 화면을 우회하면 자기 계정의 비밀번호만 약해진다.
+- **가입 여부 노출(한계):** 로그인·재설정은 사용자 존재 노출 방지로 가입 여부를 드러내지 않지만, 가입 화면의 "이미 가입된 이메일" 안내는 요구사항(FR-AUTH-02) 때문에 남긴다. 그래서 가입 화면으로 어떤 이메일이 가입됐는지 알아낼 수 있다는 한계가 있다.
+- **메일 한도:** Cognito 기본 메일은 계정 전체 하루 50통이라, 누가 가입·코드 재발송을 반복하면 그날 다른 사용자의 인증 메일이 막힐 수 있다. 대안은 사용자 풀에 AWS WAF 요청 수 제한을 거는 것(웹 ACL 월 $5 + 규칙 월 $1 + 요청 100만 건당 $0.60)이고, 과제 규모에서는 적용하지 않는다. 사용자가 늘면 SES 연결(1,000통당 $0.10)과 함께 다시 정한다.
+- **정리 순서:** 사용자 풀은 삭제 보호와 RETAIN이 걸려 있어 `cdk destroy`로 스택을 지워도 남는다. 지우려면 AWS 콘솔(서울 리전) → Amazon Cognito → 사용자 풀 → 해당 풀 → 설정 탭 → 삭제 방지 → 편집에서 끈 뒤 저장하고, 사용자 풀 목록에서 그 풀을 선택해 삭제를 따로 실행한다.
