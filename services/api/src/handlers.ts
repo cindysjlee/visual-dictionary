@@ -4,12 +4,14 @@ import { AdminDeleteUserCommand, AdminGetUserCommand, CognitoIdentityProviderCli
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2, SQSBatchResponse, SQSEvent } from "aws-lambda";
 import { withdraw } from "./account.ts";
+import { getActivity, putActivity } from "./activity.ts";
 import { cleanup } from "./cleanup.ts";
-import { deleteRecords, dynamoProgressRepo, markWithdrawn, unmarkWithdrawn } from "./dynamo.ts";
+import { deleteActivity, deleteRecords, dynamoActivityRepo, dynamoProgressRepo, markWithdrawn, unmarkWithdrawn } from "./dynamo.ts";
 import { getProgress, putProgress, type ApiResult } from "./progress.ts";
 
 const env = (name: string) => process.env[name] ?? "";
 const TABLE = env("TABLE_NAME");
+const ACTIVITY_TABLE = env("ACTIVITY_TABLE_NAME");
 /** 배포 때 published 용어 ID 목록을 넣는다(쉼표 구분). 이 목록에 있는 용어만 저장할 수 있다 */
 const TERM_IDS = new Set(env("TERM_IDS").split(",").filter(Boolean));
 const sqs = new SQSClient({});
@@ -37,6 +39,21 @@ export async function progressHandler(event: APIGatewayProxyEventV2WithJWTAuthor
     const repo = dynamoProgressRepo(TABLE);
     if (route === "GET /api/progress") return respond(route, await getProgress(sub, repo));
     if (route === "PUT /api/progress/{termId}") return respond(route, await putProgress(sub, event.pathParameters?.termId, bodyOf(event), TERM_IDS, repo));
+    return respond(route, { status: 404, body: { error: "not-found" } });
+  } catch (e) {
+    log({ route, status: 500, error: errorName(e) });
+    return respond(route, { status: 500, body: { error: "internal" } });
+  }
+}
+
+export async function activityHandler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyResultV2> {
+  const route = event.routeKey;
+  const sub = String(event.requestContext.authorizer.jwt.claims.sub ?? "");
+  try {
+    if (!sub) return respond(route, { status: 401, body: { error: "no-subject" } });
+    const repo = dynamoActivityRepo(ACTIVITY_TABLE, TABLE);
+    if (route === "GET /api/activity") return respond(route, await getActivity(sub, repo));
+    if (route === "PUT /api/activity/{termId}") return respond(route, await putActivity(sub, event.pathParameters?.termId, bodyOf(event), TERM_IDS, repo));
     return respond(route, { status: 404, body: { error: "not-found" } });
   } catch (e) {
     log({ route, status: 500, error: errorName(e) });
@@ -80,6 +97,7 @@ export async function cleanupHandler(event: SQSEvent): Promise<SQSBatchResponse>
           }
         },
         deleteRecords: (userId) => deleteRecords(TABLE, userId),
+        deleteActivity: (userId) => deleteActivity(ACTIVITY_TABLE, userId),
       });
       log({ route: "cleanup", result });
     } catch (e) {

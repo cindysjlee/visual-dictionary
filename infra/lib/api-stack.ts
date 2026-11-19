@@ -40,6 +40,16 @@ export class ApiStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
+    // 최근 본 용어(7단계): 같은 키 구조, 다시 보면 덮어쓰고 30일 뒤 TTL로 사라진다
+    const recent = new Table(this, "RecentView", {
+      partitionKey: { name: "userId", type: AttributeType.STRING },
+      sortKey: { name: "termId", type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: "ttl",
+      deletionProtection: true,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
     // 탈퇴 정리: 실패하면 큐가 다시 보내고(가시성 시간 뒤), 5번 실패하면 DLQ(14일 보관)
     const dlq = new Queue(this, "CleanupDlq", { retentionPeriod: Duration.days(14), enforceSSL: true });
     const queue = new Queue(this, "CleanupQueue", {
@@ -68,13 +78,19 @@ export class ApiStack extends Stack {
         // 로그는 14일만 보관한다. 토큰·이메일·본문은 남기지 않는다(handlers.ts)
         logGroup: new LogGroup(this, `${name}Logs`, { retention: RetentionDays.TWO_WEEKS, removalPolicy: RemovalPolicy.DESTROY }),
         bundling: { minify: true, sourceMap: false }, // AWS SDK v3는 런타임에 있으므로 묶지 않는다(Node 22 기본)
-        environment: { TABLE_NAME: table.tableName },
+        environment: { TABLE_NAME: table.tableName, ACTIVITY_TABLE_NAME: recent.tableName },
       });
 
     // 권한은 하는 일만큼만
     const progress = fn("ProgressFn", "progressHandler");
     progress.addEnvironment("TERM_IDS", props.termIds.join(","));
     table.grant(progress, "dynamodb:Query", "dynamodb:ConditionCheckItem", "dynamodb:PutItem");
+
+    // 최근 본 용어: RecentView 조회·기록, 탈퇴 표시 확인(LearningRecord ConditionCheck)만
+    const activity = fn("ActivityFn", "activityHandler");
+    activity.addEnvironment("TERM_IDS", props.termIds.join(","));
+    recent.grant(activity, "dynamodb:Query", "dynamodb:PutItem");
+    table.grant(activity, "dynamodb:ConditionCheckItem");
 
     const account = fn("AccountFn", "accountHandler");
     account.addEnvironment("QUEUE_URL", queue.queueUrl);
@@ -86,6 +102,7 @@ export class ApiStack extends Stack {
     const cleanup = fn("CleanupFn", "cleanupHandler", CLEANUP_TIMEOUT);
     cleanup.addEnvironment("USER_POOL_ID", props.userPool.userPoolId);
     table.grant(cleanup, "dynamodb:Query", "dynamodb:BatchWriteItem");
+    recent.grant(cleanup, "dynamodb:Query", "dynamodb:BatchWriteItem");
     cleanup.addToRolePolicy(new PolicyStatement({ actions: ["cognito-idp:AdminGetUser"], resources: [props.userPool.userPoolArn] }));
     cleanup.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));
 
@@ -98,11 +115,15 @@ export class ApiStack extends Stack {
     const progressIntegration = new HttpLambdaIntegration("ProgressIntegration", progress);
     this.api.addRoutes({ path: "/api/progress", methods: [HttpMethod.GET], integration: progressIntegration, authorizer });
     this.api.addRoutes({ path: "/api/progress/{termId}", methods: [HttpMethod.PUT], integration: progressIntegration, authorizer });
+    const activityIntegration = new HttpLambdaIntegration("ActivityIntegration", activity);
+    this.api.addRoutes({ path: "/api/activity", methods: [HttpMethod.GET], integration: activityIntegration, authorizer });
+    this.api.addRoutes({ path: "/api/activity/{termId}", methods: [HttpMethod.PUT], integration: activityIntegration, authorizer });
     this.api.addRoutes({ path: "/api/account", methods: [HttpMethod.DELETE], integration: new HttpLambdaIntegration("AccountIntegration", account), authorizer });
 
     this.apiDomain = `${this.api.apiId}.execute-api.${this.region}.amazonaws.com`;
     new CfnOutput(this, "ApiDomain", { value: this.apiDomain });
     new CfnOutput(this, "TableName", { value: table.tableName });
+    new CfnOutput(this, "ActivityTableName", { value: recent.tableName });
     new CfnOutput(this, "CleanupDlqUrl", { value: dlq.queueUrl });
   }
 }

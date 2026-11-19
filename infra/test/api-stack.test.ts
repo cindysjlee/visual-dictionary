@@ -20,7 +20,9 @@ function actionsOf(fnPrefix: string): string[] {
 }
 
 describe("ApiStack", () => {
-  it("테이블: PK userId·SK termId, 요청당 과금, TTL ttl, 삭제 보호, 스택을 지워도 남음", () => {
+  it("테이블 2개(학습 기록·최근 본 용어): PK userId·SK termId, 요청당 과금, TTL ttl, 삭제 보호, 스택을 지워도 남음", () => {
+    t.resourceCountIs("AWS::DynamoDB::Table", 2);
+    t.allResources("AWS::DynamoDB::Table", { DeletionPolicy: "Retain", UpdateReplacePolicy: "Retain" });
     t.hasResource("AWS::DynamoDB::Table", {
       Properties: Match.objectLike({
         KeySchema: [
@@ -42,7 +44,13 @@ describe("ApiStack", () => {
       JwtConfiguration: { Audience: [Match.anyValue()], Issuer: Match.anyValue() },
     });
     const routes = Object.values(t.findResources("AWS::ApiGatewayV2::Route"));
-    expect(routes.map((r) => r.Properties.RouteKey).sort()).toEqual(["DELETE /api/account", "GET /api/progress", "PUT /api/progress/{termId}"]);
+    expect(routes.map((r) => r.Properties.RouteKey).sort()).toEqual([
+      "DELETE /api/account",
+      "GET /api/activity",
+      "GET /api/progress",
+      "PUT /api/activity/{termId}",
+      "PUT /api/progress/{termId}",
+    ]);
     for (const r of routes) expect(r.Properties.AuthorizationType).toBe("JWT");
   });
 
@@ -63,9 +71,9 @@ describe("ApiStack", () => {
   });
 
   it("Lambda: Node 22·ARM, 로그 14일", () => {
-    t.resourceCountIs("AWS::Lambda::Function", 3);
+    t.resourceCountIs("AWS::Lambda::Function", 4);
     t.allResourcesProperties("AWS::Lambda::Function", { Runtime: "nodejs22.x", Architectures: ["arm64"] });
-    t.resourceCountIs("AWS::Logs::LogGroup", 3);
+    t.resourceCountIs("AWS::Logs::LogGroup", 4);
     t.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 14 });
   });
 
@@ -77,5 +85,6 @@ describe("ApiStack", () => {
     );
     expect(actionsOf("CleanupFn")).not.toContain("cognito-idp:AdminDeleteUser");
     expect(actionsOf("ProgressFn")).not.toContain("dynamodb:DeleteItem");
+    expect(actionsOf("ActivityFn")).toEqual(["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"]);
   });
 });

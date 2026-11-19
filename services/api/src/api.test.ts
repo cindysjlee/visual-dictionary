@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { withdraw, type CleanupJob, type WithdrawDeps } from "./account.ts";
+import { getActivity, putActivity, RECENT_LIMIT, type ActivityRepo, type ViewRecord } from "./activity.ts";
 import { cleanup, UserStillExistsError } from "./cleanup.ts";
 import { getProgress, putProgress, type ProgressRecord, type ProgressRepo } from "./progress.ts";
 
@@ -21,7 +22,20 @@ function memoryTable() {
       return "saved";
     },
   };
-  return { rows, withdrawn, repo, count: (u: string) => of(u).size };
+  // 최근 본 용어(RecentView): 같은 탈퇴 표시를 본다
+  const views = new Map<string, Map<string, ViewRecord>>();
+  const viewsOf = (u: string) => views.get(u) ?? views.set(u, new Map()).get(u)!;
+  const activity: ActivityRepo = {
+    async list(u) {
+      return { views: [...viewsOf(u).values()], withdrawn: withdrawn.has(u) };
+    },
+    async put(u, v) {
+      if (withdrawn.has(u)) return "withdrawn";
+      viewsOf(u).set(v.termId, v);
+      return "saved";
+    },
+  };
+  return { rows, withdrawn, repo, activity, views, count: (u: string) => of(u).size, viewCount: (u: string) => viewsOf(u).size };
 }
 
 describe("학습 기록 API: 사용자는 토큰의 sub로만", () => {
@@ -92,6 +106,11 @@ function withdrawDeps(t: ReturnType<typeof memoryTable>, fail: Partial<Record<"m
       t.rows.get(u)?.clear();
       return n;
     },
+    deleteActivity: async (u: string) => {
+      const n = t.viewCount(u);
+      t.views.get(u)?.clear();
+      return n;
+    },
   };
   return { deps, queue, cognitoUsers, cleanupDeps };
 }
@@ -109,6 +128,17 @@ describe("회원 탈퇴: 큐에 넣은 뒤에만 Cognito 삭제, 실패 단계�
     expect(await cleanup(JSON.stringify(w.queue[0]), w.cleanupDeps)).toBe("done");
     expect((await putProgress("A", "tcp-handshake", body(true), TERMS, t.repo)).status).toBe(403);
     expect(t.count("A")).toBe(0);
+  });
+
+  it("최근 본 용어도: 탈퇴 직후 예전 토큰으로 PUT은 거부, 정리가 두 테이블을 모두 지운다", async () => {
+    const t = memoryTable();
+    await putActivity("A", "csrf", undefined, TERMS, t.activity);
+    const w = withdrawDeps(t);
+    expect((await withdraw("A", "A", w.deps)).status).toBe(204);
+    expect((await putActivity("A", "xss", undefined, TERMS, t.activity)).status).toBe(403);
+    expect((await getActivity("A", t.activity)).status).toBe(403);
+    await cleanup(JSON.stringify(w.queue[0]), w.cleanupDeps);
+    expect(t.viewCount("A")).toBe(0);
   });
 
   it("표시 쓰기 실패: 탈퇴 실패, 큐·Cognito는 그대로", async () => {
@@ -151,5 +181,35 @@ describe("회원 탈퇴: 큐에 넣은 뒤에만 Cognito 삭제, 실패 단계�
     const w = withdrawDeps(t);
     expect(await cleanup("not json", w.cleanupDeps)).toBe("skipped");
     expect(await cleanup(JSON.stringify({ userId: "A" }), w.cleanupDeps)).toBe("skipped");
+  });
+});
+
+describe("최근 본 용어 API: 사용자는 토큰의 sub로만, 본 시각은 서버가", () => {
+  it("본 용어는 그 사용자에게만, 최신순으로, 최대 RECENT_LIMIT개", async () => {
+    const t = memoryTable();
+    const many = new Set(Array.from({ length: 12 }, (_, i) => `term-${i}`));
+    for (let i = 0; i < 12; i++) await putActivity("A", `term-${i}`, undefined, many, t.activity, new Date(Date.UTC(2026, 0, 1, 0, i)));
+    const r = (await getActivity("A", t.activity)) as { status: number; body: { recent: ViewRecord[] } };
+    expect(r.status).toBe(200);
+    expect(r.body.recent).toHaveLength(RECENT_LIMIT);
+    expect(r.body.recent[0]!.termId).toBe("term-11");
+    expect(await getActivity("B", t.activity)).toEqual({ status: 200, body: { recent: [] } });
+  });
+
+  it("같은 용어를 다시 보면 덮어쓴다(사용자당 항목 수 ≤ 용어 수)", async () => {
+    const t = memoryTable();
+    await putActivity("A", "csrf", undefined, TERMS, t.activity, new Date("2026-01-01T00:00:00Z"));
+    await putActivity("A", "csrf", undefined, TERMS, t.activity, new Date("2026-01-02T00:00:00Z"));
+    expect(t.viewCount("A")).toBe(1);
+  });
+
+  it.each([
+    ["없는 용어", "no-such-term", undefined, 404],
+    ["형식이 틀린 용어 ID", "#deleted", undefined, 404],
+    ["본문을 보내면(다른 사용자 ID·시각 지정 시도)", "csrf", JSON.stringify({ userId: "B", viewedAt: "2030-01-01" }), 400],
+  ])("거부: %s → %i", async (_, termId, raw, status) => {
+    const t = memoryTable();
+    expect((await putActivity("A", termId, raw, TERMS, t.activity)).status).toBe(status);
+    expect(t.viewCount("A") + t.viewCount("B")).toBe(0);
   });
 });
