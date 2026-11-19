@@ -29,6 +29,15 @@ const visibleLabels = (page: Page) =>
 /** 등장 행위자: 출발·목적지·경유지와 효과가 가리키는 행위자 (docs/04 효과 어휘) */
 function involved(term: Term, mode: Mode, i: number): string[] {
   const v = stepView(term, mode, i);
+  if (term.scenario.playerType === "stack") {
+    // 스택형: 코드 판, 맨 위 프레임, 바로 아래 프레임(반환값을 받거나 기다리는 쪽). pop 단계는 빠지기 전 자리도 센다
+    let depth = 0;
+    for (let k = 0; k <= i; k++) {
+      const a = stepView(term, mode, k).action;
+      depth += a === "push" ? 1 : a === "pop" ? -1 : 0;
+    }
+    return ["code", ...[depth - 1, depth - 2].filter((d) => d >= 0).map((d) => `frame-${d}`)];
+  }
   const ids = [v.from, v.to, v.via];
   for (const e of v.effects) {
     for (const [k, val] of Object.entries(e)) if (["target", "into", "at", "to", "from"].includes(k) && val !== "packet") ids.push(val as string);
@@ -64,7 +73,7 @@ const stepEnded = (page: Page, step: number) =>
 
 for (const term of terms) {
   for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
-    const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
+    const modeName = mode === null ? (term.category === "web-security" ? "공격 흐름" : "기본 흐름") : term.defenses[mode]!.name;
     test(`${term.id} · ${modeName}: 단계마다 등장 행위자가 모두 화면 안에 있고 ${MAX_OVERLAP * 100}% 넘게 겹치지 않는다`, async ({ page }) => {
       await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));
       await page.goto(`/terms/${term.id}`);

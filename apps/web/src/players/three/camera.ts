@@ -12,6 +12,11 @@ const FRAME_MARGIN = 0.82;
 const MIN_FRAME_DISTANCE = 9;
 
 export class CameraRig {
+  /** 바라보는 방향(초점 → 카메라). 흐름형은 약 40° 내려다보기, 세로로 쌓이는 스택형은 거의 정면 */
+  private readonly viewDir: Vector3;
+  constructor(viewDir: Vector3 = VIEW_DIR) {
+    this.viewDir = viewDir.clone().normalize();
+  }
   readonly target = new Vector3(0, 0.8, -1.2);
   readonly position = new Vector3(0, 12.5, 14);
   private probe = new PerspectiveCamera(FOV, 1.8, 0.1, 200);
@@ -36,7 +41,7 @@ export class CameraRig {
     cam.aspect = this.aspect;
     cam.updateProjectionMatrix();
     const place = (d: number) => {
-      cam.position.copy(center).addScaledVector(VIEW_DIR, d);
+      cam.position.copy(center).addScaledVector(this.viewDir, d);
       cam.lookAt(center);
       cam.updateMatrixWorld();
       return points.map((p) => p.clone().project(cam));
@@ -69,7 +74,7 @@ export class CameraRig {
       else lo = mid;
     }
     this.target.copy(center);
-    this.position.copy(center).addScaledVector(VIEW_DIR, hi);
+    this.position.copy(center).addScaledVector(this.viewDir, hi);
   }
   /** 목표 샷(카메라가 가려는 자리)에서 점들이 모두 화면 안에 들어오는지 */
   covers(points: Vector3[]) {

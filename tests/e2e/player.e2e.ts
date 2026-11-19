@@ -149,9 +149,26 @@ const effectActor = (e: Effect): string | undefined =>
 const effectKey = (e: Effect, refused = "refused" in e && e.refused) => `effect:${e.type}:${effectActor(e)}${refused ? "!" : ""}`;
 const eventKey = (e: TraceEvent) => (e.kind === "effect" ? `effect:${e.effect}:${e.actor}${e.refused ? "!" : ""}` : e.actor ? `${e.kind}:${e.actor}` : e.kind);
 
+/** 스택형: i단계를 마친 뒤 쌓여 있는 프레임 수 */
+const stackDepthAfter = (term: Term, mode: Mode, i: number) => {
+  let depth = 0;
+  for (let k = 0; k <= i; k++) {
+    const a = stepView(term, mode, k).action;
+    depth += a === "push" ? 1 : a === "pop" ? -1 : 0;
+  }
+  return depth;
+};
+
 /** JSON 규칙(docs/04 "3D 장면 필드"·"방어 모드 동작")으로 정한 한 단계의 기대 이벤트 순서 */
 function expectedEvents(term: Term, mode: Mode, i: number): string[] {
   const v = stepView(term, mode, i);
+  if (term.scenario.playerType === "stack") {
+    // 스택형: push(새 함수)·pop(끝난 함수)·run → 반환값이 호출한 쪽에 도착 → 나머지 효과(지역 변수) 순서
+    const actor = v.action === "push" ? v.to : v.from;
+    const returns = v.effects.filter((e) => e.type === "returnValue").map(() => `effect:returnValue:${v.to}`);
+    const others = v.effects.filter((e) => e.type !== "returnValue").map((e) => `effect:${e.type}:${(e.type === "locals" && e.target) || v.to}`);
+    return ["stepStart", `${v.action}:${actor}`, ...returns, ...others, "stepEnd"];
+  }
   const self = v.from === v.to;
   const via = v.via && !self && v.via !== v.from && v.via !== v.to ? v.via : undefined;
   const inspect = v.effects.find((e) => e.type === "inspect");
@@ -182,7 +199,7 @@ function expectedEvents(term: Term, mode: Mode, i: number): string[] {
 
 for (const term of terms) {
   for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
-    const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
+    const modeName = mode === null ? (term.category === "web-security" ? "공격 흐름" : "기본 흐름") : term.defenses[mode]!.name;
     test(`${term.id} · ${modeName}: 3D 장면이 단계마다 기대한 출발·도착·효과·차단을 실제로 연출한다`, async ({ page }) => {
       const errors: string[] = [];
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
@@ -219,7 +236,12 @@ for (const term of terms) {
         // 단계 끝: 카메라가 멈췄을 때 목적지와 효과 대상이 화면 안에 있다
         await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe().settled), { timeout: 15_000 }).toBe(true);
         const probe = await page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe());
-        const targets = [v.to, ...v.effects.flatMap((e) => (e.type === "attach" ? [] : [effectActor(e)]))].filter((x): x is string => Boolean(x));
+        // 스택형은 코드 판과 맨 위 프레임(행위자가 아니라 프레임 자리로 센다)
+        const depth = stackDepthAfter(term, mode, i);
+        const targets =
+          term.scenario.playerType === "stack"
+            ? ["code", `frame-${depth - 1}`]
+            : [v.to, ...v.effects.flatMap((e) => (e.type === "attach" ? [] : [effectActor(e)]))].filter((x): x is string => Boolean(x));
         for (const id of new Set(targets)) {
           const r = probe.rects[id];
           expect(r && r.l >= 0 && r.t >= 0 && r.r <= probe.width && r.b <= probe.height, `${i + 1}단계 끝 화면에 ${id}가 없음`).toBe(true);

@@ -9,7 +9,11 @@ import type { StageProps } from "./stage.ts";
 import { usePlayback } from "./usePlayback.ts";
 import { canUseWebGL } from "./webgl.ts";
 
-const FlowScene = lazy(() => import("./three/FlowScene.tsx"));
+// 플레이어 유형별 3D 장면(용어별 코드 없음). 아직 3D 장면이 없는 유형은 2D 대체 화면
+const SCENES = {
+  flow: lazy(() => import("./three/FlowScene.tsx")),
+  stack: lazy(() => import("./three/stack/StackScene.tsx")),
+} as const;
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
 const subscribeReduced = (cb: () => void) => {
@@ -35,7 +39,8 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
 
 export default function Player({ term, onComplete }: { term: Term; onComplete?: () => void }) {
   const reducedMotion = useReducedMotionPref();
-  const [use3d] = useState(() => term.scenario.playerType === "flow" && canUseWebGL());
+  const Scene = SCENES[term.scenario.playerType as keyof typeof SCENES] as (typeof SCENES)[keyof typeof SCENES] | undefined;
+  const [use3d] = useState(() => Scene !== undefined && canUseWebGL());
   const playback = usePlayback(term, onComplete);
   const [freeView, setFreeView] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -60,7 +65,7 @@ export default function Player({ term, onComplete }: { term: Term; onComplete?: 
         {use3d ? (
           <SceneBoundary fallback={fallback}>
             <Suspense fallback={<p className="stage-loading">3D 장면을 불러오는 중…</p>}>
-              <FlowScene {...stage} />
+              {Scene && <Scene {...stage} />}
             </Suspense>
           </SceneBoundary>
         ) : (

@@ -27,7 +27,9 @@ describe.each(terms.map((t) => [t.id, t] as const))("용어 %s", (_, term) => {
     for (let guard = 0; state.playing && guard < 100; guard++) {
       const view = stepView(term, mode, state.step);
       for (const e of view.effects) {
-        for (const ref of Object.entries(e).flatMap(([k, v]) => (["target", "into", "to", "at"].includes(k) || (k === "from" && v !== "packet") ? [v as string] : []))) {
+        // returnValue.into는 행위자가 아니라 받는 칸(변수 이름)이다
+        const refs = e.type === "returnValue" ? [] : Object.entries(e).flatMap(([k, v]) => (["target", "into", "to", "at"].includes(k) || (k === "from" && v !== "packet") ? [v as string] : []));
+        for (const ref of refs) {
           expect(actorIds.has(ref), `${state.step + 1}단계 ${e.type}.${ref}`).toBe(true);
         }
       }

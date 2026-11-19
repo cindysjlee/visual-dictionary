@@ -92,6 +92,76 @@ export function paintCard(p: Painter, lines: readonly string[], c: Palette) {
   p.texture.needsUpdate = true;
 }
 
+/** 크기를 정해 만드는 글자 판(스택형 코드 판·프레임 판 등) */
+export const canvasPainter = (w: number, h: number) => makeCanvas(w, h);
+
+/** 코드 판: 줄 번호와 코드, 지금 실행 중인 줄 강조, 반환 주소인 줄에 ↩ 표시 */
+export function paintCode(p: Painter, title: string | undefined, lines: readonly string[], current: number | undefined, returnLines: ReadonlySet<number>, c: Palette) {
+  const { ctx: g, canvas } = p;
+  const { width: w, height: h } = canvas;
+  const top = 96;
+  const lh = (h - top - 24) / Math.max(1, lines.length);
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = c.paper;
+  roundRect(g, 0, 0, w, h, 28);
+  g.fill();
+  g.fillStyle = c.textMuted;
+  g.font = `600 30px ${FONT}`;
+  g.fillText(title ?? "", 32, 58);
+  lines.forEach((line, i) => {
+    const y = top + i * lh;
+    if (current === i + 1) {
+      g.fillStyle = c.neutral;
+      g.globalAlpha = 0.18;
+      roundRect(g, 16, y, w - 32, lh - 6, 12);
+      g.fill();
+      g.globalAlpha = 1;
+      g.fillStyle = c.neutral;
+      g.fillText("▶", 20, y + lh * 0.68);
+    }
+    if (returnLines.has(i + 1)) {
+      g.fillStyle = c.gold;
+      g.font = `700 30px ${FONT}`;
+      g.fillText("↩", w - 64, y + lh * 0.68);
+    }
+    g.fillStyle = c.textMuted;
+    g.font = `500 26px ${FONT}`;
+    g.fillText(String(i + 1).padStart(2, " "), 56, y + lh * 0.66);
+    g.fillStyle = current === i + 1 ? c.villain : c.text;
+    g.font = `${current === i + 1 ? 700 : 500} 30px ui-monospace, Consolas, ${FONT}`;
+    g.fillText(line, 108, y + lh * 0.68, w - 190);
+  });
+  p.texture.needsUpdate = true;
+}
+
+/** 프레임 앞면: 호출식 + 지역 변수 칸. 맨 위(실행 중)가 아니면 흐리게 */
+export function paintFrame(p: Painter, call: string, locals: readonly { name: string; value: string }[], running: boolean, c: Palette) {
+  const { ctx: g, canvas } = p;
+  const { width: w, height: h } = canvas;
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = c.paper;
+  roundRect(g, 0, 0, w, h, 24);
+  g.fill();
+  g.lineWidth = 10;
+  g.strokeStyle = running ? c.neutral : c.objectDim;
+  g.stroke();
+  g.globalAlpha = running ? 1 : 0.6;
+  g.fillStyle = c.villain;
+  g.font = `800 64px ui-monospace, Consolas, ${FONT}`;
+  g.fillText(call, 32, 96, w * 0.4);
+  g.font = `700 54px ui-monospace, Consolas, ${FONT}`;
+  locals.forEach((l, i) => {
+    const x = w * 0.45;
+    const y = 86 + i * 84;
+    g.fillStyle = c.textMuted;
+    g.fillText(l.name, x, y, w * 0.16);
+    g.fillStyle = l.value.includes("▢") || l.value === "?" ? c.textMuted : c.villain;
+    g.fillText(`= ${l.value}`, x + w * 0.17, y, w * 0.36);
+  });
+  g.globalAlpha = 1;
+  p.texture.needsUpdate = true;
+}
+
 export function signPainter() {
   return makeCanvas(512, 128);
 }
