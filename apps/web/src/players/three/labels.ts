@@ -1,11 +1,11 @@
 // 이름·요청·잔액·검사 목록 라벨은 3D 글자가 아니라 HTML(직접 투영). 글자가 선명하고 테마 토큰을 그대로 쓴다 (docs/06 2절)
-import type { Camera, Vector3 } from "three";
+import { Vector3, type Camera } from "three";
 
 export type LabelTone = "plain" | "neutral" | "attack" | "defense";
 export type CheckRow = { name: string; result: string; status: "ok" | "skip" | "fail" };
 export type LabelContent = { title: string; sub?: string; tone?: LabelTone; rows?: CheckRow[] };
 
-type Entry = { el: HTMLDivElement; point: Vector3; visible: boolean };
+type Entry = { el: HTMLDivElement; point: Vector3; visible: boolean; pinned?: boolean };
 
 /** 행위자에 붙은 고정 라벨(이름·잔액·받은 돈). 재생 중에도 서로 겹치면 비킨다. 봉투·안내·검사 라벨은 움직이므로 비키지 않고 위에 그린다 */
 const STATIC_LABEL = /^(actor|bal|gain)-/;
@@ -56,6 +56,12 @@ export class LabelLayer {
     }
   }
 
+  /** 화면에 고정한 패널(무대 왼쪽 위). 카메라가 어디를 보든 같은 자리에 있고, 다른 라벨이 이 자리를 피한다(예: 점유형 "교착 조건") */
+  pin(id: string, content: LabelContent, visible = true) {
+    this.set(id, new Vector3(), content, visible);
+    this.entries.get(id)!.pinned = true;
+  }
+
   show(id: string, visible: boolean) {
     const entry = this.entries.get(id);
     if (entry) entry.visible = visible;
@@ -69,7 +75,14 @@ export class LabelLayer {
     const placed: Rect[] = [...keepOut];
     if (this.declutter) placed.push({ l: width / 2 - half, t: height / 2 - half, r: width / 2 + half, b: height / 2 + half });
     // 움직이는 라벨(봉투·안내·검사)이 먼저 자리를 잡고(움직이지 않음), 고정 라벨은 그 자리까지 피한다
-    const ordered = [...this.entries].sort(([a], [b]) => Number(STATIC_LABEL.test(a)) - Number(STATIC_LABEL.test(b)));
+    // 화면 고정 패널이 먼저 자리를 잡는다
+    for (const { el, visible, pinned } of this.entries.values()) {
+      if (!pinned) continue;
+      el.style.opacity = visible ? "1" : "0";
+      el.style.transform = "translate(12px, 12px)";
+      if (visible) placed.push({ l: 12, t: 12, r: 12 + el.offsetWidth, b: 12 + el.offsetHeight });
+    }
+    const ordered = [...this.entries].filter(([, e]) => !e.pinned).sort(([a], [b]) => Number(STATIC_LABEL.test(a)) - Number(STATIC_LABEL.test(b)));
     for (const [id, { el, point, visible }] of ordered) {
       const avoid = this.declutter || AVOIDS_KEEP_OUT.test(id);
       const p = point.clone().project(camera);

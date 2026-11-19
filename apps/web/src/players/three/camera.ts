@@ -34,14 +34,16 @@ export class CameraRig {
     this.position.copy(focus).add(OFFSET[distance].clone().multiplyScalar(this.scale()));
   }
   /** 여러 점이 모두 화면 안에 여유 있게 들어오는 가장 가까운 거리를 찾는다 (화면 비율 반영) */
-  frame(points: Vector3[]) {
+  /** dir: 이 샷만 다른 방향에서 볼 때(예: 점유형 순환 대기는 위에서) */
+  frame(points: Vector3[], dir: Vector3 = this.viewDir) {
+    const viewDir = dir.clone().normalize();
     if (points.length === 0) return;
     const center = new Box3().setFromPoints(points).getCenter(new Vector3());
     const cam = this.probe;
     cam.aspect = this.aspect;
     cam.updateProjectionMatrix();
     const place = (d: number) => {
-      cam.position.copy(center).addScaledVector(this.viewDir, d);
+      cam.position.copy(center).addScaledVector(viewDir, d);
       cam.lookAt(center);
       cam.updateMatrixWorld();
       return points.map((p) => p.clone().project(cam));
@@ -74,7 +76,7 @@ export class CameraRig {
       else lo = mid;
     }
     this.target.copy(center);
-    this.position.copy(center).addScaledVector(this.viewDir, hi);
+    this.position.copy(center).addScaledVector(viewDir, hi);
   }
   /** 목표 샷(카메라가 가려는 자리)에서 점들이 모두 화면 안에 들어오는지 */
   covers(points: Vector3[]) {

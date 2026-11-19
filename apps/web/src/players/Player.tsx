@@ -13,6 +13,7 @@ import { canUseWebGL } from "./webgl.ts";
 const SCENES = {
   flow: lazy(() => import("./three/FlowScene.tsx")),
   stack: lazy(() => import("./three/stack/StackScene.tsx")),
+  lock: lazy(() => import("./three/lock/LockScene.tsx")),
 } as const;
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";

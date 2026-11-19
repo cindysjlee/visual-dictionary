@@ -47,7 +47,8 @@ export const effectSchema = z.discriminatedUnion("type", [
   // pop 단계: 반환값이 호출한 프레임으로 전달된다. into는 받는 칸(변수 이름 또는 식의 빈칸 표시)
   z.strictObject({ type: z.literal("returnValue"), value: text, into: text.optional() }),
   /* 점유형(lock) */
-  z.strictObject({ type: z.literal("condition"), name: z.enum(DEADLOCK_CONDITIONS) }),
+  // 조건 패널 한 칸: 성립(기본) 또는 해결 방법이 그 조건을 깸(broken)
+  z.strictObject({ type: z.literal("condition"), name: z.enum(DEADLOCK_CONDITIONS), broken: z.boolean().default(false) }),
   // 다른 스레드가 잡은 자원을 빼앗으려 함. 비선점이면 refused
   z.strictObject({ type: z.literal("take"), from: text, ...refusal }),
   z.strictObject({ type: z.literal("cycle") }), // 대기 관계가 고리를 이룸(바닥 고리, 위에서 보는 샷)

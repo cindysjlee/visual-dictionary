@@ -61,9 +61,9 @@ const related = (p: Probe, a: string, b: string) => {
 
 async function selectMode(page: Page, term: Term, mode: Mode) {
   if (mode === null) return;
-  await page.getByRole("button", { name: /방어 모드/ }).click();
+  await page.getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   if (modeDefenses(term).length > 1) {
-    await page.getByRole("group", { name: "방어 기법" }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
+    await page.getByRole("group", { name: /^(방어 기법|해결 방법)$/ }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
   }
 }
 

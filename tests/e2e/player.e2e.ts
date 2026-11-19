@@ -48,7 +48,7 @@ test("아래 재생 버튼·스페이스로 시작해도 가운데 버튼이 사
 
 test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", async ({ page }) => {
   await open(page, "csrf");
-  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   await expect(stagePlay(page)).toBeVisible();
   await expect(playButton(page)).toHaveAttribute("aria-label", "재생");
   await stagePlay(page).click();
@@ -71,7 +71,7 @@ test("CSRF 공격 흐름: 재생 버튼을 누르면 6단계까지 자막과 단
 
 test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에서 차단된다", async ({ page }) => {
   await open(page, "csrf");
-  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   await stagePlay(page).click();
   const blocked = csrf.defenses[TOKEN]!.blockedAtStep!;
   await expect(stepPos(page)).toHaveText(`${blocked} / ${blocked} 단계`, { timeout: 90_000 });
@@ -121,7 +121,7 @@ test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", asy
   await open(page, "csrf", "?no3d");
   await expect(page.locator("canvas")).toHaveCount(0);
   await expect(page.locator(".steps2d-item")).toHaveCount(csrf.scenario.steps.length);
-  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   await player(page).getByRole("button", { name: "SameSite 쿠키" }).click();
   const blocked = csrf.defenses[SAMESITE]!.blockedAtStep!;
   await expect(page.locator(".steps2d-item")).toHaveCount(blocked);
@@ -130,9 +130,9 @@ test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", asy
 
 async function selectMode(page: Page, term: Term, mode: Mode) {
   if (mode === null) return; // 진입 시 공격 흐름
-  await player(page).getByRole("button", { name: /방어 모드/ }).click();
+  await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   if (modeDefenses(term).length > 1) {
-    await player(page).getByRole("group", { name: "방어 기법" }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
+    await player(page).getByRole("group", { name: /^(방어 기법|해결 방법)$/ }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
   }
 }
 
@@ -162,6 +162,11 @@ const stackDepthAfter = (term: Term, mode: Mode, i: number) => {
 /** JSON 규칙(docs/04 "3D 장면 필드"·"방어 모드 동작")으로 정한 한 단계의 기대 이벤트 순서 */
 function expectedEvents(term: Term, mode: Mode, i: number): string[] {
   const v = stepView(term, mode, i);
+  if (term.scenario.playerType === "lock") {
+    // 점유형: 쥠·대기·내려놓기 → 효과(조건은 이름, 빼앗기는 빼앗으려던 상대, 나머지는 그 스레드) 순서
+    const actor = (e: Effect) => (e.type === "condition" ? e.name : e.type === "take" ? e.from : v.from);
+    return ["stepStart", `${v.action}:${v.from}`, ...v.effects.map((e) => `effect:${e.type}:${actor(e)}${"refused" in e && e.refused ? "!" : ""}`), "stepEnd"];
+  }
   if (term.scenario.playerType === "stack") {
     // 스택형: push(새 함수)·pop(끝난 함수)·run → 반환값이 호출한 쪽에 도착 → 나머지 효과(지역 변수) 순서
     const actor = v.action === "push" ? v.to : v.from;
@@ -241,7 +246,9 @@ for (const term of terms) {
         const targets =
           term.scenario.playerType === "stack"
             ? ["code", `frame-${depth - 1}`]
-            : [v.to, ...v.effects.flatMap((e) => (e.type === "attach" ? [] : [effectActor(e)]))].filter((x): x is string => Boolean(x));
+            : term.scenario.playerType === "lock"
+              ? [v.from, v.to]
+              : [v.to, ...v.effects.flatMap((e) => (e.type === "attach" ? [] : [effectActor(e)]))].filter((x): x is string => Boolean(x));
         for (const id of new Set(targets)) {
           const r = probe.rects[id];
           expect(r && r.l >= 0 && r.t >= 0 && r.r <= probe.width && r.b <= probe.height, `${i + 1}단계 끝 화면에 ${id}가 없음`).toBe(true);

@@ -57,7 +57,7 @@ export function paintScreen(p: Painter, screen: Screen | undefined, site: string
   p.texture.needsUpdate = true;
 }
 
-export function paintStamp(p: Painter, text: string, c: Palette) {
+export function paintStamp(p: Painter, text: string, c: Palette, tone: "attack" | "defense" = "defense") {
   const { ctx: g, canvas } = p;
   const { width: w, height: h } = canvas;
   g.clearRect(0, 0, w, h);
@@ -65,9 +65,9 @@ export function paintStamp(p: Painter, text: string, c: Palette) {
   roundRect(g, 10, 10, w - 20, h - 20, 36);
   g.fill();
   g.lineWidth = 14;
-  g.strokeStyle = c.defense;
+  g.strokeStyle = c[tone];
   g.stroke();
-  g.fillStyle = c.defense;
+  g.fillStyle = c[tone];
   g.font = `800 ${Math.min(110, (w - 80) / Math.max(4, text.length * 0.62))}px ${FONT}`;
   g.textAlign = "center";
   g.textBaseline = "middle";

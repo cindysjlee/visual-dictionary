@@ -77,7 +77,7 @@
 ## 점유형 필드와 효과 (`playerType: "lock"`)
 
 - 행위자: 스레드(`kind: "thread"`), 자원(`kind: "resource"`, look `printer`·`scanner`).
-- 효과: `condition { name }`(데드락 네 조건 `mutual-exclusion`·`hold-and-wait`·`no-preemption`·`circular-wait` 중 하나를 "교착 조건" 패널에 켬), `take { from, refused?, reason? }`(다른 스레드가 쥔 자원을 빼앗으려 함. 비선점이면 `refused`), `cycle`(대기 관계가 고리를 이룸: 바닥 고리, 위에서 보는 샷), `timeout`(기다리다 포기: 모래시계가 다 됨. 보통 `release`와 함께), `stamp { label, tone }`(도장. 예: 교착).
+- 효과: `condition { name, broken? }`(데드락 네 조건 `mutual-exclusion`·`hold-and-wait`·`no-preemption`·`circular-wait` 중 하나를 "교착 조건" 패널에 "성립"으로 켬. 해결 방법이 그 조건을 깨면 `broken: true`로 "깨짐"), `take { from, refused?, reason? }`(다른 스레드가 쥔 자원을 빼앗으려 함. 비선점이면 `refused`), `cycle`(대기 관계가 고리를 이룸: 바닥 고리, 위에서 보는 샷), `timeout`(기다리다 포기: 모래시계가 다 됨. 보통 `release`와 함께), `stamp { label, tone }`(도장. 예: 교착).
 - 검증: acquire는 아무도 안 쥔 자원, wait는 다른 스레드가 쥔 자원, release는 자기가 쥔 자원. 기본 흐름·해결 방법마다 단계를 따라가며 확인한다.
 
 ## 방어 모드 동작
