@@ -1409,3 +1409,36 @@ button:disabled {
     white-space: nowrap;
   }
 }
+
+/* ---------- 최근 본 용어(7단계) ---------- */
+.recent-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+
+.recent-links a,
+.recent-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--defense-text);
+  font-weight: 600;
+}
+
+.recent-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}

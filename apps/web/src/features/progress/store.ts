@@ -2,7 +2,7 @@
 // 기록 저장이 실패해도 용어 보기·재생은 그대로다(NFR-02): 오류는 여기서 상태로만 알리고 던지지 않는 쪽은 부르는 곳이 정한다
 import { useSyncExternalStore } from "react";
 import { subscribeAuth, type AuthState } from "../auth/store.ts";
-import { progressApi, type ReadSource } from "./api.ts";
+import { progressApi, type ReadSource, type ViewRecord } from "./api.ts";
 
 export type ProgressEntry = { read: boolean; source: ReadSource };
 export type ProgressState =
@@ -19,8 +19,34 @@ const set = (next: ProgressState) => {
   for (const l of listeners) l();
 };
 
+/** 최근 본 용어(7단계): 기록과 따로 불러온다. 실패하면 빈 목록(화면은 그대로) */
+let recent: ViewRecord[] = [];
+const recentListeners = new Set<() => void>();
+const setRecent = (next: ViewRecord[]) => {
+  recent = next;
+  for (const l of recentListeners) l();
+};
+export const useRecent = () =>
+  useSyncExternalStore(
+    (l) => {
+      recentListeners.add(l);
+      return () => recentListeners.delete(l);
+    },
+    () => recent,
+  );
+
+async function loadRecent(email: string) {
+  try {
+    const list = await (await progressApi()).listRecent();
+    if (owner === email) setRecent(list);
+  } catch {
+    if (owner === email) setRecent([]);
+  }
+}
+
 async function load(email: string) {
   set({ status: "loading" });
+  void loadRecent(email);
   try {
     const list = await (await progressApi()).list();
     if (owner !== email) return; // 그사이 로그아웃·다른 사용자
@@ -35,7 +61,10 @@ function follow(auth: AuthState) {
   if (email === owner) return;
   owner = email;
   if (email) void load(email);
-  else set({ status: "anon" });
+  else {
+    set({ status: "anon" });
+    setRecent([]);
+  }
 }
 
 let started = false;
@@ -78,5 +107,14 @@ export const progress = {
     await (await progressApi()).withdraw();
     owner = null;
     set({ status: "anon" });
+    setRecent([]);
+  },
+  /** 상세 페이지를 열었음: 목록 맨 앞에 먼저 반영하고 서버에 기록한다. 실패는 무시한다(NFR-02) */
+  recordView(termId: string) {
+    if (!owner) return;
+    setRecent([{ termId, viewedAt: new Date().toISOString() }, ...recent.filter((v) => v.termId !== termId)].slice(0, 10));
+    void progressApi()
+      .then((api) => api.recordView(termId))
+      .catch(() => undefined);
   },
 };

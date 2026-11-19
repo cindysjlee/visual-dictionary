@@ -2,12 +2,17 @@
 
 export type ReadSource = "completed" | "manual";
 export type ProgressRecord = { termId: string; read: boolean; source: ReadSource; updatedAt: string };
+/** 최근 본 용어(7단계, 서버가 최신순 10개, 30일 보존) */
+export type ViewRecord = { termId: string; viewedAt: string };
 
 export interface ProgressApi {
   list(): Promise<ProgressRecord[]>;
   put(termId: string, read: boolean, source: ReadSource): Promise<void>;
   /** 회원 탈퇴(계정과 기록 삭제, FR-AUTH-06) */
   withdraw(): Promise<void>;
+  listRecent(): Promise<ViewRecord[]>;
+  /** 상세 페이지를 열었음(본 시각은 서버가 정한다) */
+  recordView(termId: string): Promise<void>;
 }
 
 /** 기록 API 오류. name: NotSignedIn(토큰 없음), Withdrawn(탈퇴한 계정, 403), ProgressFailed(그 밖) */

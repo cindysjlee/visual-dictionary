@@ -42,4 +42,9 @@ describe("termSchema", () => {
     mutate(csrf);
     expect(issuePaths(csrf)).toContain(path);
   });
+
+  it("관련 용어에 자기 자신을 넣으면 오류", () => {
+    const csrf = example("csrf");
+    expect(issuePaths({ ...csrf, related: ["xss", "csrf"] })).toContain("related.1");
+  });
 });

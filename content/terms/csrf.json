@@ -349,8 +349,5 @@
       "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
     }
   ],
-  "related": [
-    "xss",
-    "session-hijacking"
-  ]
+  "related": ["xss", "session-hijacking", "ssrf"]
 }

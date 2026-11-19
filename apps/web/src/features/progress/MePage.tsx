@@ -9,7 +9,8 @@ import { authMessage } from "../auth/errors.ts";
 import { loginPath } from "../auth/safeNext.ts";
 import { auth, useAuth } from "../auth/store.ts";
 import { ProgressSummary } from "./ProgressSummary.tsx";
-import { isRead, progress, useProgress } from "./store.ts";
+import { daysAgoLabel, recentTerms } from "./recent.ts";
+import { isRead, progress, useProgress, useRecent } from "./store.ts";
 
 function TermList({ title, terms }: { title: string; terms: IndexEntry[] }) {
   return (
@@ -123,6 +124,28 @@ function Withdraw({ leave }: { leave: () => void }) {
   );
 }
 
+/** 최근 본 용어 10개(FR-PRG-06, 30일 보존) */
+function RecentList({ index }: { index: IndexEntry[] }) {
+  const items = recentTerms(useRecent(), index, 10);
+  return (
+    <div className="glass card span-2">
+      <h2 className="card-title">최근 본 용어</h2>
+      {items.length === 0 ? (
+        <p className="muted">아직 없어요. 용어를 열어 보면 30일 동안 여기에 남아요.</p>
+      ) : (
+        <ul className="recent-list">
+          {items.map(({ term, viewedAt }) => (
+            <li key={term.id}>
+              <Link to={`/terms/${term.id}`}>{term.name}</Link>
+              <span className="muted">{daysAgoLabel(viewedAt)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function MePage() {
   const user = useAuth();
   const navigate = useNavigate();
@@ -180,6 +203,7 @@ export default function MePage() {
         </section>
       )}
       <section className="bento">
+        <RecentList index={terms} />
         <Withdraw leave={leave} />
       </section>
     </>

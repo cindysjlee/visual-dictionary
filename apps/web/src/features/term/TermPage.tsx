@@ -18,7 +18,8 @@ const Player = lazy(() => import("../../players/Player.tsx"));
 function TermDetail({ term }: { term: Term }) {
   const index = useJson<IndexEntry[]>("/content/index.json");
   // 배포된(published) 용어만 링크한다
-  const related = index.state === "ok" ? index.data.filter((t) => term.related.includes(t.id)) : [];
+  // JSON에 적은 순서대로, published(목록에 있는) 용어만
+  const related = index.state === "ok" ? term.related.flatMap((id) => index.data.find((t) => t.id === id) ?? []) : [];
   const isSecurity = term.category === "web-security";
   const auth = useAuth();
   const { pathname } = useLocation();
@@ -29,6 +30,10 @@ function TermDetail({ term }: { term: Term }) {
   useEffect(() => {
     signedIn.current = auth.status === "user";
   }, [auth.status]);
+  // 최근 본 용어(FR-PRG-06): 로그인 상태로 상세를 열면 한 번 기록한다. 실패해도 화면은 그대로
+  useEffect(() => {
+    if (auth.status === "user") progress.recordView(term.id);
+  }, [auth.status, term.id]);
   const onComplete = useCallback(() => {
     setCompleted(true);
     if (signedIn.current) progress.setRead(term.id, true, "completed").catch(() => setSaveError(SAVE_FAILED));

@@ -4,6 +4,8 @@ import { auth } from "../auth/store.ts";
 import { ProgressError, type ProgressApi, type ProgressRecord } from "./api.ts";
 
 const KEY = "fake-progress";
+const VIEWS = "fake-activity";
+type Views = Record<string, Record<string, string>>; // 이메일 → 용어 → 본 시각
 type Store = Record<string, Record<string, ProgressRecord>>;
 const read = (): Store => JSON.parse(localStorage.getItem(KEY) ?? "{}") as Store;
 const write = (s: Store) => localStorage.setItem(KEY, JSON.stringify(s));
@@ -29,8 +31,24 @@ export const fakeProgressApi: ProgressApi = {
     const s = read();
     delete s[email];
     write(s);
+    const views = JSON.parse(localStorage.getItem(VIEWS) ?? "{}") as Views;
+    delete views[email];
+    localStorage.setItem(VIEWS, JSON.stringify(views));
     const users = JSON.parse(localStorage.getItem("fake-auth-users") ?? "{}") as Record<string, unknown>;
     delete users[email];
     localStorage.setItem("fake-auth-users", JSON.stringify(users));
+  },
+  async listRecent() {
+    const mine = (JSON.parse(localStorage.getItem(VIEWS) ?? "{}") as Views)[await user()] ?? {};
+    return Object.entries(mine)
+      .map(([termId, viewedAt]) => ({ termId, viewedAt }))
+      .sort((a, b) => b.viewedAt.localeCompare(a.viewedAt))
+      .slice(0, 10);
+  },
+  async recordView(termId) {
+    const email = await user();
+    const views = JSON.parse(localStorage.getItem(VIEWS) ?? "{}") as Views;
+    views[email] = { ...views[email], [termId]: new Date().toISOString() };
+    localStorage.setItem(VIEWS, JSON.stringify(views));
   },
 };

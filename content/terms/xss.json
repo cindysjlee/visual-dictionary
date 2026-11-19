@@ -177,5 +177,5 @@
     { "title": "MDN · Content Security Policy (CSP)", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP" },
     { "title": "MDN · Set-Cookie의 HttpOnly 속성", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" }
   ],
-  "related": ["csrf", "session-hijacking"]
+  "related": ["csrf", "session-hijacking", "sql-injection"]
 }

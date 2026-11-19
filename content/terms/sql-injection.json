@@ -137,5 +137,5 @@
     { "title": "OWASP SQL Injection Prevention Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" },
     { "title": "OWASP SQL Injection", "url": "https://community.owasp.org/attacks/SQL_Injection" }
   ],
-  "related": []
+  "related": ["xss"]
 }

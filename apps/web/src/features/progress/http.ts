@@ -1,6 +1,6 @@
 // 실제 기록 API(배포 빌드). 같은 출처의 /api/*(CloudFront → API Gateway)라 CSP connect-src는 'self'로 충분하다
 import { auth } from "../auth/store.ts";
-import { ProgressError, type ProgressApi, type ProgressRecord } from "./api.ts";
+import { ProgressError, type ProgressApi, type ProgressRecord, type ViewRecord } from "./api.ts";
 
 async function call(method: "GET" | "PUT" | "DELETE", path: string, body?: unknown): Promise<unknown> {
   const token = await auth.accessToken();
@@ -30,5 +30,11 @@ export const httpProgressApi: ProgressApi = {
   },
   async withdraw() {
     await call("DELETE", "/api/account");
+  },
+  async listRecent() {
+    return ((await call("GET", "/api/activity")) as { recent: ViewRecord[] }).recent;
+  },
+  async recordView(termId) {
+    await call("PUT", `/api/activity/${encodeURIComponent(termId)}`);
   },
 };

@@ -143,6 +143,10 @@ export const termSchema = z
     related: z.array(id).default([]),
   })
   .superRefine((term, ctx) => {
+    // 관련 용어는 다른 용어여야 한다(자기 자신으로 가는 링크 금지). 없는 id는 검증기가 경고만 낸다(scripts/validate-content.ts)
+    term.related.forEach((relatedId, i) => {
+      if (relatedId === term.id) ctx.addIssue({ code: "custom", path: ["related", i], message: `자기 자신을 관련 용어로 둘 수 없습니다: ${relatedId}` });
+    });
     const { playerType, actors, steps } = term.scenario;
     const actorIds = new Set<string>();
     actors.forEach((actor, i) => {

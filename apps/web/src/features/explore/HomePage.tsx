@@ -7,7 +7,8 @@ import { useJson } from "../../useJson.ts";
 import { loginPath } from "../auth/safeNext.ts";
 import { useAuth } from "../auth/store.ts";
 import { ProgressSummary } from "../progress/ProgressSummary.tsx";
-import { isRead, progress, useProgress } from "../progress/store.ts";
+import { recentTerms } from "../progress/recent.ts";
+import { isRead, progress, useProgress, useRecent } from "../progress/store.ts";
 import { passesReadFilter, type ReadFilter } from "../progress/summary.ts";
 
 const CATEGORY_FILTERS: [Category | "all", string][] = [["all", "전체"], ...(Object.entries(CATEGORY_LABELS) as [Category, string][])];
@@ -16,6 +17,22 @@ const READ_FILTERS: [ReadFilter, string][] = [
   ["read", "읽음"],
   ["unread", "안 읽음"],
 ];
+
+/** 최근 본 용어 3개(FR-PRG-06) */
+function RecentLinks({ index }: { index: IndexEntry[] }) {
+  const items = recentTerms(useRecent(), index, 3);
+  if (!items.length) return null;
+  return (
+    <nav className="recent-links" aria-label="최근 본 용어">
+      <span className="muted">최근 본 용어</span>
+      {items.map(({ term }) => (
+        <Link key={term.id} to={`/terms/${term.id}`}>
+          {term.name}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 /** 홈 "내 진행률" 카드(FR-PRG-05): 로그아웃이면 로그인 안내, 로그인이면 전체·카테고리별 진행률 */
 function ProgressCard({ index }: { index: IndexEntry[] }) {
@@ -32,7 +49,10 @@ function ProgressCard({ index }: { index: IndexEntry[] }) {
           </Link>
         </>
       ) : state.status === "ready" ? (
-        <ProgressSummary index={index} records={state.records} />
+        <>
+          <ProgressSummary index={index} records={state.records} />
+          <RecentLinks index={index} />
+        </>
       ) : state.status === "error" ? (
         <>
           <p className="muted">기록을 불러오지 못했어요. 용어는 그대로 볼 수 있어요.</p>
@@ -61,7 +81,7 @@ export const termMeta = (t: Pick<IndexEntry, "playerType" | "stepCount" | "defen
 };
 
 // 비회원에게는 "이어서 볼 용어" 대신 첫 용어를 보여 준다. 로그인 후 최근 본 용어로 바꾼다(6~7단계)
-function FeaturedCard({ entry }: { entry: IndexEntry }) {
+function FeaturedCard({ entry, label }: { entry: IndexEntry; label: string }) {
   const load = useJson<Term>(`/content/terms/${entry.id}.json`);
   const term = load.state === "ok" ? load.data : null;
   const blockedAt = term?.defenses.find((d) => d.blockedAtStep)?.blockedAtStep;
@@ -69,7 +89,7 @@ function FeaturedCard({ entry }: { entry: IndexEntry }) {
   return (
     <Link to={`/terms/${entry.id}`} className="glass tint-attack card featured span-2 row-2">
       <div className="featured-head">
-        <span className="tag tag-plain">처음 볼 용어</span>
+        <span className="tag tag-plain">{label}</span>
         <span>
           {CATEGORY_LABELS[entry.category]} · {PLAYER_LABELS[entry.playerType]}
         </span>
@@ -109,6 +129,8 @@ export default function HomePage() {
   const [category, setCategory] = useState<Category | "all">("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const notice = (useLocation().state as { notice?: string } | null)?.notice; // 예: 탈퇴 완료
+  const user = useAuth();
+  const recent = useRecent();
   const state = useProgress();
   const records = state.status === "ready"; // 기록이 있을 때만 읽음 표시·필터를 쓴다
 
@@ -157,7 +179,12 @@ export default function HomePage() {
           </label>
         </div>
 
-        {terms[0] && <FeaturedCard entry={terms[0]} />}
+        {(() => {
+          // 로그인 상태로 본 용어가 있으면 가장 최근 용어를 "이어서 볼 용어"로(FR-PRG-06), 아니면 첫 용어
+          const last = user.status === "user" ? recentTerms(recent, terms, 1)[0]?.term : undefined;
+          const entry = last ?? terms[0];
+          return entry && <FeaturedCard key={entry.id} entry={entry} label={last ? "이어서 볼 용어" : "처음 볼 용어"} />;
+        })()}
 
         <ProgressCard index={terms} />
 

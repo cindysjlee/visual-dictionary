@@ -146,3 +146,35 @@ test("탈퇴: 틀린 비밀번호면 버튼이 꺼진 채, 맞으면 켜지고, 
   expect(left.users["bye@example.com"]).toBeUndefined();
   expect(left.progress["bye@example.com"]).toBeUndefined();
 });
+
+/* ---------- 최근 본 용어(@activity, FR-PRG-06) ---------- */
+const activity = { tag: ["@activity", "@progress"] };
+
+test("상세를 열면 최근 본 용어에 남고, 홈은 '이어서 볼 용어'(가장 최근)와 최근 3개, /me는 날짜와 함께", activity, async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".featured .tag")).toHaveText("처음 볼 용어"); // 로그아웃 상태
+  await signedIn(page, "recent@example.com");
+  for (const id of ["csrf", "deadlock", "xss"]) {
+    await page.goto(`/terms/${id}`);
+    await expect(page.locator(".study-card")).toContainText("아직 안 읽음"); // 로그인 상태로 상세가 뜬 뒤
+  }
+  await page.goto("/");
+  await expect(page.locator(".featured .tag")).toHaveText("이어서 볼 용어");
+  await expect(page.locator(".featured .featured-name")).toHaveText("XSS");
+  await expect(page.getByRole("navigation", { name: "최근 본 용어" }).getByRole("link")).toHaveText(["XSS", "데드락", "CSRF"]);
+
+  await page.goto("/me");
+  const list = page.locator(".recent-list li");
+  await expect(list).toHaveCount(3);
+  await expect(list.first()).toContainText("XSS");
+  await expect(list.first()).toContainText("오늘");
+});
+
+test("최근 본 용어 기록이 실패해도 상세·홈은 그대로(첫 용어를 보임)", activity, async ({ page }) => {
+  await signedIn(page, "recent-offline@example.com");
+  await page.evaluate(() => localStorage.setItem("fake-progress-fail", "1"));
+  await page.goto("/terms/csrf");
+  await expect(page.getByRole("heading", { level: 1, name: "CSRF" })).toBeVisible();
+  await page.goto("/");
+  await expect(page.locator(".featured .tag")).toHaveText("처음 볼 용어");
+});
