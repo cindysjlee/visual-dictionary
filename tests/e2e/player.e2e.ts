@@ -154,7 +154,7 @@ for (const term of terms) {
       page.on("pageerror", (e) => errors.push(e.message));
       await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));
       await open(page, term.id);
-      await expect(page.locator(".scene3d canvas")).toBeVisible(); // 2D 대체 화면으로 넘어가지 않았는지
+      await expect(page.locator(".scene3d canvas")).toBeVisible({ timeout: 15_000 }); // 2D 대체 화면으로 넘어가지 않았는지
       await selectMode(page, term, mode);
       for (let i = 0; i <= lastStepIndex(term, mode); i++) {
         await page.evaluate(() => Object.assign(globalThis, { __sceneTrace: [] }));

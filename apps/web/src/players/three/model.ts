@@ -1,5 +1,6 @@
 // 행위자 종류(kind)별 3D 물체를 만든다. 용어별 코드 없음: layoutScene의 배치와 JSON의 kind·tone·gate·screen만 읽는다
 import {
+  Box3,
   BoxGeometry,
   CircleGeometry,
   Color,
@@ -23,6 +24,7 @@ import {
   SphereGeometry,
   TorusGeometry,
   Vector3,
+  type Camera,
   type Material,
 } from "three";
 import type { Actor, Item, Term } from "@app/content-schema";
@@ -145,6 +147,9 @@ export class SceneModel {
 
   private island(parent: Object3D, radius = 2.2) {
     this.mesh(new CylinderGeometry(radius, radius * 1.08, 0.3, 48), this.std("island"), [0, 0.15, 0], parent);
+    // 엇갈려 높인 섬(layout STAGGER)은 바닥까지 받침 기둥을 세운다
+    const lift = parent.position.y;
+    if (lift > 0.01) this.mesh(new CylinderGeometry(radius * 0.35, radius * 0.5, lift, 24), this.std("objectDim"), [0, -lift / 2, 0], parent);
   }
 
   private buildActor(actor: Actor) {
@@ -155,6 +160,7 @@ export class SceneModel {
     const tone: Tone = actor.tone === "attack" ? "attack" : "neutral";
     const node: ActorNode = { actor, placed, group, labelPoint: new Vector3(), slots: new Map() };
     let labelY = 2.4;
+    let labelAt: Vector3 | undefined;
 
     switch (placed.kind) {
       case "browser": {
@@ -171,6 +177,8 @@ export class SceneModel {
         group.add(edges);
         this.mesh(new BoxGeometry(w, 0.22, d), this.std("object", { opacity: 0.95 }), [0, h + 0.27, 0], group, true);
         labelY = h + 0.9;
+        // 이름표는 상자 왼쪽 바깥 앞: 위에 두면 위에서 내려다볼 때 안쪽 탭 이름표와 겹친다
+        labelAt = new Vector3(-w / 2 - 1.1, h * 0.55, d / 2);
         break;
       }
       case "tab": {
@@ -236,8 +244,14 @@ export class SceneModel {
         break;
       }
     }
-    node.labelPoint.copy(group.position).add(new Vector3(0, labelY, 0));
+    node.labelPoint.copy(group.position).add(labelAt ?? new Vector3(0, labelY, 0));
     this.nodes.set(actor.id, node);
+    // 가림 자동 투명은 모든 행위자 대상. 어느 행위자의 메시인지 적어 두어, 그 행위자를 보려는 시선에서는 자기 자신을 흐리지 않는다
+    group.traverse((o) => {
+      if (!(o instanceof Mesh)) return;
+      o.userData.actor = actor.id;
+      if (!this.occluders.includes(o)) this.occluders.push(o);
+    });
   }
 
   /** 앞뒤 화면이 있는 판(탭, 서버·DB 화면). 뒤집기(flip)는 pivot을 돌린다 */
@@ -396,13 +410,59 @@ export class SceneModel {
       slot = this.itemMesh(item, node.placed.kind === "tab" ? 0.9 : 1);
       const k = node.slots.size;
       const at: Vec3 =
-        node.placed.kind === "cookieJar" ? [0, 0.45 + k * 0.1, 0] : node.placed.kind === "tab" ? [0.78 - k * 0.4, -0.5, 0.12] : [0, 3.0 + k * 0.5, 0];
+        // 서버·인물 등은 오른쪽 앞에 둔다(머리 위면 이름표에 가린다)
+        node.placed.kind === "cookieJar" ? [0, 0.45 + k * 0.1, 0] : node.placed.kind === "tab" ? [0.78 - k * 0.4, -0.5, 0.12] : [1.5, 1.2 + k * 0.55, 0.9];
       slot.position.set(...at);
       (node.panel?.pivot ?? node.group).add(slot);
       this.billboards.push(slot);
       node.slots.set(item, slot);
     }
     if (slot) slot.visible = on;
+  }
+
+  /** 행위자에서 지금 보이는 부분의 월드 상자(숨은 물건·숨은 행위자 제외). 안 보이면 빈 상자 */
+  visibleBox(id: string): Box3 {
+    const box = new Box3();
+    const node = this.nodes.get(id);
+    if (!node?.group.visible) return box;
+    this.root.updateMatrixWorld(true);
+    const shown = (o: Object3D): boolean => o === node.group || (o.visible && (!o.parent || shown(o.parent)));
+    node.group.traverse((o) => {
+      if (!(o instanceof Mesh) || !shown(o)) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      box.union(o.geometry.boundingBox!.clone().applyMatrix4(o.matrixWorld));
+    });
+    return box;
+  }
+
+  /** 카메라가 이 행위자를 화면에 담을 때 들어와야 할 점: 보이는 상자의 꼭짓점 + 이름 라벨 자리 */
+  framePoints(id: string): Vector3[] {
+    const box = this.visibleBox(id);
+    if (box.isEmpty()) return [];
+    const { min: a, max: b } = box;
+    const corners = [a.x, b.x].flatMap((x) => [a.y, b.y].flatMap((y) => [a.z, b.z].map((z) => new Vector3(x, y, z))));
+    // 자식(탭·보관함)이면 부모 이름표 자리도 담는다: 부모 이름표가 화면 가장자리에 잘리지 않게
+    const labels: Vector3[] = [];
+    for (let n = this.nodes.get(id); n; n = n.actor.parent ? this.nodes.get(n.actor.parent) : undefined) {
+      labels.push(n.labelPoint.clone().add(new Vector3(0, 0.55, 0)));
+      if (labels.length > 4) break;
+    }
+    return [...corners, ...labels];
+  }
+
+  /** 화면에서 이 행위자가 차지하는 사각형(px). 테스트 빌드의 겹침 검사용 */
+  screenRect(id: string, camera: Camera, width: number, height: number) {
+    const box = this.visibleBox(id);
+    if (box.isEmpty()) return undefined;
+    const { min: a, max: b } = box;
+    let l = Infinity, t = Infinity, r = -Infinity, btm = -Infinity;
+    for (const x of [a.x, b.x]) for (const y of [a.y, b.y]) for (const z of [a.z, b.z]) {
+      const p = new Vector3(x, y, z).project(camera);
+      const sx = ((p.x + 1) / 2) * width;
+      const sy = ((1 - p.y) / 2) * height;
+      l = Math.min(l, sx); r = Math.max(r, sx); t = Math.min(t, sy); btm = Math.max(btm, sy);
+    }
+    return { l, t, r, b: btm };
   }
 
   /** 결과 상태를 그대로 반영한다(타임라인 없이). 단계를 넘기거나 동작 줄이기일 때 */

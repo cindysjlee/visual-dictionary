@@ -1,5 +1,5 @@
 // 한 단계의 연출을 타임라인으로 만든다. 효과 어휘(docs/04)만 보고 순서를 정하므로 용어별 코드가 없다 (docs/06 2·3절)
-import { QuadraticBezierCurve3, Vector3, type Object3D, type PerspectiveCamera } from "three";
+import { Box3, PerspectiveCamera, QuadraticBezierCurve3, Vector3, type Object3D } from "three";
 import type { Effect, Term } from "@app/content-schema";
 import { blockTarget, passesGate, type StepView } from "@app/content-schema/scene";
 import type { LabelLayer, LabelTone } from "./labels.ts";
@@ -12,13 +12,19 @@ const vec = (p: readonly [number, number, number]) => new Vector3(...p);
 
 /* ---------- 카메라: 목표(위치·초점)를 정하면 매 프레임 부드럽게 따라간다 ---------- */
 export type Distance = "near" | "mid" | "far";
-const OFFSET: Record<Distance, Vector3> = { near: new Vector3(-0.6, 2.8, 5.0), mid: new Vector3(0.4, 4.6, 8.6), far: new Vector3(0, 9.5, 15.5) };
+/** 위에서 비스듬히(약 40°) 내려다본다: 앞줄 물체가 뒷줄을 덜 가린다 */
+const OFFSET: Record<Distance, Vector3> = { near: new Vector3(-0.6, 3.9, 4.6), mid: new Vector3(0.4, 6.4, 7.6), far: new Vector3(0, 12.5, 14) };
+const VIEW_DIR = new Vector3(0, 0.84, 1).normalize();
+export const FOV = 40;
+/** frame()이 점들을 담는 화면 범위(NDC). 가장자리 9%는 여유로 남긴다 */
+const FRAME_MARGIN = 0.82;
+/** 한 행위자만 담을 때도 주변(부모 상자·이웃)이 보이게 이보다 가까이 가지 않는다 */
+const MIN_FRAME_DISTANCE = 9;
 
 export class CameraRig {
   readonly target = new Vector3(0, 0.8, -1.2);
-  readonly position = new Vector3(0, 9.5, 15.5);
-  private follow: Object3D | null = null;
-  private followDistance: Distance = "mid";
+  readonly position = new Vector3(0, 12.5, 14);
+  private probe = new PerspectiveCamera(FOV, 1.8, 0.1, 200);
   private aspect = 1.8;
 
   setAspect(aspect: number) {
@@ -29,28 +35,58 @@ export class CameraRig {
     return Math.max(1, 1.7 / this.aspect);
   }
   shot(focus: Vector3, distance: Distance = "mid") {
-    this.follow = null;
     this.target.copy(focus);
     this.position.copy(focus).add(OFFSET[distance].clone().multiplyScalar(this.scale()));
   }
-  /** 여러 점이 함께 보이게 (전체·송금 같은 넓은 샷) */
+  /** 여러 점이 모두 화면 안에 여유 있게 들어오는 가장 가까운 거리를 찾는다 (화면 비율 반영) */
   frame(points: Vector3[]) {
-    const center = points.reduce((a, p) => a.add(p), new Vector3()).divideScalar(points.length);
-    const spread = Math.max(...points.map((p) => p.distanceTo(center)));
-    this.follow = null;
-    this.target.copy(center).setY(Math.max(0.8, center.y * 0.6));
-    this.position.copy(this.target).add(new Vector3(0, 0.55, 1).normalize().multiplyScalar((6 + spread * 1.6) * this.scale()));
+    if (points.length === 0) return;
+    const center = new Box3().setFromPoints(points).getCenter(new Vector3());
+    const cam = this.probe;
+    cam.aspect = this.aspect;
+    cam.updateProjectionMatrix();
+    const place = (d: number) => {
+      cam.position.copy(center).addScaledVector(VIEW_DIR, d);
+      cam.lookAt(center);
+      cam.updateMatrixWorld();
+      return points.map((p) => p.clone().project(cam));
+    };
+    const fits = (d: number) => place(d).every((q) => q.z < 1 && Math.abs(q.x) <= FRAME_MARGIN && Math.abs(q.y) <= FRAME_MARGIN);
+    let dist = 90;
+    // 원근 때문에 3D 상자의 가운데가 화면 가운데가 아니다: 거리를 맞추고, 화면에 투영된 범위의 가운데로 초점을 옮기기를 몇 번 되풀이한다
+    for (let pass = 0; pass < 3; pass++) {
+      let lo = MIN_FRAME_DISTANCE;
+      let hi = 90;
+      for (let i = 0; i < 22; i++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) hi = mid;
+        else lo = mid;
+      }
+      dist = hi;
+      const qs = place(dist);
+      const cx = (Math.min(...qs.map((q) => q.x)) + Math.max(...qs.map((q) => q.x))) / 2;
+      const cy = (Math.min(...qs.map((q) => q.y)) + Math.max(...qs.map((q) => q.y))) / 2;
+      const halfH = dist * Math.tan(((FOV / 2) * Math.PI) / 180);
+      const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+      const up = new Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+      center.addScaledVector(right, cx * halfH * this.aspect).addScaledVector(up, cy * halfH);
+    }
+    let lo = MIN_FRAME_DISTANCE;
+    let hi = 90;
+    for (let i = 0; i < 22; i++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) hi = mid;
+      else lo = mid;
+    }
+    this.target.copy(center);
+    this.position.copy(center).addScaledVector(VIEW_DIR, hi);
   }
-  followObject(obj: Object3D, distance: Distance = "mid") {
-    this.follow = obj;
-    this.followDistance = distance;
+  /** 실제 카메라가 목표에 거의 닿았는지 (테스트 빌드의 겹침 검사가 기다린다) */
+  settled(camera: PerspectiveCamera) {
+    return camera.position.distanceTo(this.position) < 0.05;
   }
   /** dt초만큼 실제 카메라를 목표 쪽으로. 즉시(jump)면 바로 옮긴다 */
   apply(camera: PerspectiveCamera, dt: number, jump = false) {
-    if (this.follow) {
-      this.target.lerp(this.follow.getWorldPosition(new Vector3()), jump ? 1 : 1 - Math.exp(-dt * 4));
-      this.position.copy(this.target).add(OFFSET[this.followDistance].clone().multiplyScalar(this.scale()));
-    }
     const k = jump ? 1 : 1 - Math.exp(-dt * 2.6);
     camera.position.lerp(this.position, k);
     const look = (camera.userData.look as Vector3 | undefined) ?? this.target.clone();
@@ -68,6 +104,19 @@ export class CameraRig {
 export function sideStamp(anchor: Vector3) {
   const side = anchor.x > 0.5 ? -2.7 : 2.7;
   return { at: anchor.clone().add(new Vector3(side, 0.6, 0.4)), focus: anchor.clone().add(new Vector3(side / 2, 0.4, 0)) };
+}
+
+/** 이 단계에 등장하는 행위자: 출발·목적지·경유지와 효과 대상. 카메라는 단계마다 이들을 모두 화면에 담는다 */
+export function involvedActors(view: Pick<StepView, "from" | "to" | "via" | "effects">): string[] {
+  const ids = [view.from, view.to, view.via];
+  for (const e of view.effects) {
+    if ("target" in e) ids.push(e.target);
+    if ("into" in e) ids.push(e.into);
+    if ("at" in e) ids.push(e.at);
+    if ("to" in e) ids.push(e.to);
+    if ("from" in e && e.from !== "packet") ids.push(e.from);
+  }
+  return [...new Set(ids.filter((id): id is string => Boolean(id)))];
 }
 
 /* ---------- 단계 연출 ---------- */
@@ -113,6 +162,14 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const self = view.from === view.to; // 제자리 단계(예: 탭 안에서 스크립트 실행): 봉투가 날지 않는다
   const via = view.via && !self && view.via !== view.from && view.via !== view.to ? view.via : undefined;
   const panelPoint = (id: string) => node(id)?.panel?.pivot.getWorldPosition(new Vector3()) ?? anchor(id);
+  const involved = involvedActors(view);
+  /** 등장 행위자 전체(+ 차단 도장, 카메라 힌트 대상)가 들어오는 샷. 근접 연출이 끝나면 여기로 돌아온다 */
+  const frameShot = () => {
+    const ids = view.camera ? [...involved, ...(view.camera.focus === "all" ? [...layout.values()].filter((p) => !p.parent).map((p) => p.id) : [view.camera.focus])] : involved;
+    const pts = ids.flatMap((id) => model.framePoints(id));
+    if (model.stamp.visible) pts.push(model.stamp.position.clone().add(new Vector3(1.3, 0.7, 0)), model.stamp.position.clone().add(new Vector3(-1.3, -0.7, 0)));
+    rig.frame(pts);
+  };
 
   const packetLabel = (text: string, t: Tone = tone, visible = true) =>
     labels.set(PACKET, env.position, { title: text, tone: TONE_LABEL[t] }, visible);
@@ -143,8 +200,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
     if (view.camera) {
       if (view.camera.focus === "all") rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => vec(p.anchor)));
       else rig.shot(anchor(view.camera.focus), view.camera.distance);
-    } else if (self) rig.shot(cur, "near");
-    else rig.followObject(env, "mid");
+    } else frameShot();
   });
 
   // 봉투와 따로 날아가는 물건(토큰 발급·가로채기)은 첫 비행과 동시에
@@ -181,7 +237,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
     tl.wait(300);
     tl.call(() => {
       labels.show(NOTE, false);
-      rig.followObject(env, "mid");
+      frameShot();
     });
   }
 
@@ -195,7 +251,6 @@ export function buildStep(ctx: DirectorContext): Timeline {
   if (via) {
     fly(anchor(via), 1.0);
     tl.call(() => trace("via", { actor: via }));
-    if (gives.some((g) => g.from === "packet")) tl.call(() => rig.shot(anchor(via), "mid"));
   }
   const firstLeg = gate ? vec(gate.entry) : anchor(view.to);
   const legFrom = cur.clone();
@@ -280,7 +335,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
         tl.call(() => {
           labels.show(CHECKS, false);
           packetLabel(label);
-          rig.followObject(env, "mid");
+          frameShot();
         });
         fly(anchor(view.to), 0.7, 1000);
       }
@@ -331,7 +386,6 @@ export function buildStep(ctx: DirectorContext): Timeline {
           const g = node(e.target)!.group;
           tl.call(() => {
             g.visible = true;
-            rig.shot(anchor(e.target), "mid");
           });
           tl.tween(700, (t) => g.scale.setScalar(Math.max(0.001, t)), easeOut);
           break;
@@ -361,7 +415,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
         case "transfer": {
           const from = anchor(e.from);
           const to = anchor(e.to);
-          tl.call(() => rig.frame([from, to]));
+          tl.call(frameShot);
           tl.wait(700);
           const objs = e.item === "coin" ? model.coins : [model.flyers.get("data")!];
           const FLIGHT = 1500;
@@ -402,6 +456,9 @@ export function buildStep(ctx: DirectorContext): Timeline {
     tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);
   }
 
+  // 근접 연출(보관함·뒤집기·도장)을 잠깐 보여 준 뒤 등장 행위자 전체 샷으로 물러나 대기한다
+  tl.wait(700);
+  tl.call(frameShot);
   tl.wait(ctx.hold);
   tl.call(() => trace("stepEnd"));
   tl.call(ctx.onDone);

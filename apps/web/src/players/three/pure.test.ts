@@ -13,18 +13,22 @@ describe("layoutScene", () => {
   const placed = layoutScene(csrf.scenario.actors);
   const pos = (id: string) => placed.get(id)!.position;
 
-  it("구역별 자동 배치: 브라우저 앞, 서버 뒤, 공격자 옆", () => {
-    expect(pos("browser")).toEqual([0, 0, 2.2]);
-    expect(pos("bank")).toEqual([-5, 0, -4.2]);
-    expect(pos("evil")).toEqual([5, 0, -4.2]);
-    expect(pos("attacker")).toEqual([8.6, 0, 1.6]);
+  it("구역별 자동 배치: 브라우저 앞, 서버 뒤, 공격자 옆. 같은 줄의 둘째는 높이고 뒤로 물린다(엇갈림)", () => {
+    expect(pos("browser")).toEqual([0, 0, 3]);
+    expect(pos("bank")).toEqual([-6, 0, -5.6]);
+    expect(pos("evil")).toEqual([6, 0.9, -7]);
+    expect(pos("attacker")).toEqual([10.5, 0, 2.6]);
+  });
+
+  it("높인 행위자의 앵커·검문소도 같이 올라간다", () => {
+    expect(placed.get("evil")!.anchor[1]).toBeCloseTo(0.9 + 1.5);
   });
 
   it("탭은 브라우저 안에 나란히, 보관함은 앞 가운데, 검문소는 서버 앞", () => {
     expect(pos("bankTab")[0]).toBe(-1.45);
     expect(pos("evilTab")[0]).toBe(1.45);
-    pos("jar").forEach((v, i) => expect(v).toBeCloseTo([0, 0.25, 3.05][i]!));
-    expect(placed.get("bank")!.gate!.position).toEqual([-5, 0, -2]);
+    pos("jar").forEach((v, i) => expect(v).toBeCloseTo([0, 0.25, 3.85][i]!));
+    placed.get("bank")!.gate!.position.forEach((v, i) => expect(v).toBeCloseTo([-6, 0, -3.4][i]!));
     expect(placed.get("evil")!.gate).toBeUndefined();
   });
 
@@ -45,10 +49,10 @@ describe("layoutScene", () => {
       },
     }).scenario.actors;
     const p = layoutScene(actors);
-    expect(p.get("wifi")!.position).toEqual([4, 0, -1.2]);
-    expect(p.get("db")!.position[0]).toBe(3); // 사내망에 하나뿐이면 오른쪽으로 비켜 선다
-    expect(p.get("bank")!.position[2]).toBeCloseTo(-6.8);
-    expect(p.get("db")!.position[2]).toBeCloseTo(-12.1);
+    expect(p.get("wifi")!.position).toEqual([4.5, 0, -1.8]);
+    expect(p.get("db")!.position[0]).toBe(3.5); // 사내망에 하나뿐이면 오른쪽으로 비켜 선다
+    expect(p.get("bank")!.position[2]).toBeCloseTo(-8.6);
+    expect(p.get("db")!.position[2]).toBeCloseTo(-14.5);
     expect(p.get("jar")!.zone).toBe("client");
   });
 });

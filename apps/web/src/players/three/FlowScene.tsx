@@ -6,13 +6,13 @@ import { Raycaster, Spherical, Vector3, type Material, type Mesh, type Perspecti
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
-import { CameraRig, buildStep, sideStamp } from "./director.ts";
+import { CameraRig, FOV, buildStep, involvedActors, sideStamp } from "./director.ts";
 import { LabelLayer } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
 import { sceneStateAt, type SceneState } from "./sceneState.ts";
 import { Timeline } from "./timeline.ts";
-import { traceSpeed, tracerFor } from "./trace.ts";
+import { TRACE, traceSpeed, tracerFor } from "./trace.ts";
 import { usePalette } from "./tokens.ts";
 
 type RootProps = StageProps & { labelRoot: RefObject<HTMLDivElement | null>; shadowSize: number; visible: boolean };
@@ -32,6 +32,8 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   const idle = useRef(0);
   const controls = useRef<OrbitControlsImpl>(null);
   const ray = useMemo(() => new Raycaster(), []);
+  const involved = useRef<string[]>([]);
+  const framePoints = (ids: string[]) => ids.flatMap((id) => model.framePoints(id));
 
   const wake = () => {
     idle.current = 0;
@@ -59,7 +61,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       if (balance !== undefined && overview) l.show(`bal-${id}`, false);
       else if (balance !== undefined) {
         const changed = balance !== a.balance;
-        l.set(`bal-${id}`, node.labelPoint.clone().add(new Vector3(-1.6, -0.5, 0)), {
+        l.set(`bal-${id}`, node.labelPoint.clone().add(new Vector3(-2.4, -1.2, 0)), {
           title: `잔액 ${balance.toLocaleString("ko-KR")}원`,
           tone: changed ? "attack" : "plain",
         });
@@ -78,6 +80,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       if (playing.current) onStepDone();
     };
     timelineDone.current = false;
+    involved.current = involvedActors(view);
     const before = sceneStateAt(term, state.defense, state.step);
     model.applyState(before);
     refreshLabels(before);
@@ -89,7 +92,9 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       labels.current!.declutter = true;
       timeline.current = null;
       rig.setAspect(size.width / Math.max(1, size.height)); // useFrame보다 먼저 돌므로 화면 비율을 여기서 넣는다(휴대폰에서 잘리지 않게)
-      rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => new Vector3(...p.anchor)));
+      model.applyState(before); // 상자 계산 전에 숨은 행위자를 반영
+      involved.current = [];
+      rig.frame(framePoints([...layout.values()].filter((p) => !p.parent).map((p) => p.id)));
       jump.current = true;
       wake();
       return;
@@ -118,7 +123,8 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
           });
         }
       }
-      rig.shot(view.blocked && !(placed.gate && inspect) ? sideStamp(new Vector3(...placed.anchor)).focus : new Vector3(...(placed.gate?.mid ?? placed.anchor)), "mid");
+      const stampPts = model.stamp.visible ? [model.stamp.position.clone().addScalar(1.3), model.stamp.position.clone().subScalar(1.3)] : [];
+      rig.frame([...framePoints(involved.current), ...stampPts]);
       jump.current = true;
       trace("stepStart");
       if (view.blocked) trace("blocked", { actor: focusId });
@@ -191,6 +197,20 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [freeView]);
 
+  // 테스트 빌드 전용: 등장 행위자들이 화면에서 차지하는 사각형(겹침 검사, tests/e2e). 배포 빌드에서는 빠진다
+  useEffect(() => {
+    if (!TRACE) return;
+    const w = window as unknown as { __sceneProbe?: () => unknown };
+    w.__sceneProbe = () => ({
+      settled: rig.settled(camera as PerspectiveCamera),
+      width: size.width,
+      height: size.height,
+      rects: Object.fromEntries([...model.nodes.keys()].map((id) => [id, model.screenRect(id, camera, size.width, size.height)])),
+      parents: Object.fromEntries(term.scenario.actors.map((a) => [a.id, a.parent])),
+    });
+    return () => void delete w.__sceneProbe;
+  }, [model, rig, camera, size, term]);
+
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
     const tl = timeline.current;
@@ -208,20 +228,32 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       if (b.userData.roll) b.rotateZ(b.userData.roll as number);
     }
 
-    // 가림 자동 투명: 카메라 → (초점, 봉투)를 막는 물체만 서서히 흐리게, 안 막으면 원래대로
-    const hit = new Set<object>();
-    const goals = [rig.target, ...(model.envelope.visible ? [model.envelope.position] : [])];
-    for (const goal of goals) {
+    // 가림 자동 투명: 카메라 → (초점, 봉투, 이 단계의 등장 행위자)를 막는 물체만 서서히 흐리게, 안 막으면 원래대로.
+    // 모든 행위자가 대상이다. 어떤 행위자를 보려는 시선에서는 그 행위자 자신의 메시는 흐리지 않는다
+    const hit = new Set<Material>();
+    const goals: [Vector3, string | undefined][] = [[rig.target, undefined]];
+    if (model.envelope.visible) goals.push([model.envelope.position, undefined]);
+    for (const id of involved.current) if (model.nodes.get(id)?.group.visible) goals.push([new Vector3(...layout.get(id)!.anchor), id]);
+    for (const [goal, self] of goals) {
       const dir = goal.clone().sub(camera.position);
       ray.set(camera.position, dir.clone().normalize());
       ray.far = dir.length() - 0.3;
-      for (const h of ray.intersectObjects(model.occluders, false)) hit.add(h.object);
+      for (const h of ray.intersectObjects(model.occluders, false)) {
+        if (self && h.object.userData.actor === self) continue;
+        hit.add((h.object as Mesh).material as Material);
+      }
     }
     const k = 1 - Math.exp(-dt * 6);
+    const seen = new Set<Material>(); // 재질을 같이 쓰는 메시(검문소 차단봉·링)는 재질 하나로 한 번만
+    let fading = false;
     for (const m of model.occluders as Mesh[]) {
       const mat = m.material as Material & { opacity: number };
-      const base = (m.userData.baseOpacity ??= mat.opacity) as number;
-      mat.opacity += ((hit.has(m) ? 0.1 : base) - mat.opacity) * k;
+      if (seen.has(mat)) continue;
+      seen.add(mat);
+      const base = (mat.userData.baseOpacity ??= mat.opacity) as number;
+      const goal = hit.has(mat) ? Math.min(base, 0.1) : base;
+      mat.opacity += (goal - mat.opacity) * k;
+      if (Math.abs(goal - mat.opacity) > 0.01) fading = true;
       mat.transparent = true;
       mat.depthWrite = mat.opacity > 0.9;
     }
@@ -229,7 +261,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     labels.current?.update(camera, size.width, size.height);
 
     // 움직임이 없으면 필요할 때만 그린다
-    if (!running && settled && !freeView && hit.size === 0) {
+    if (!running && settled && !freeView && !fading) {
       idle.current += dt;
       if (idle.current > 0.8 && visible) setFrameloop("demand");
     } else idle.current = 0;
@@ -285,7 +317,7 @@ export default function FlowScene(props: StageProps) {
           dpr={[1, 2]}
           shadows="percentage"
           frameloop={visible ? "always" : "never"}
-          camera={{ fov: 40, position: [0, 9.5, 15.5], near: 0.1, far: 120 }}
+          camera={{ fov: FOV, position: [0, 12.5, 14], near: 0.1, far: 160 }}
           gl={{ antialias: true, alpha: true }}
         >
           <SceneRoot {...props} labelRoot={labelRoot} shadowSize={mobile ? 1024 : 1536} visible={visible} />

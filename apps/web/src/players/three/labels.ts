@@ -7,8 +7,11 @@ export type LabelContent = { title: string; sub?: string; tone?: LabelTone; rows
 
 type Entry = { el: HTMLDivElement; point: Vector3; visible: boolean };
 
+/** 행위자에 붙은 고정 라벨(이름·잔액·받은 돈). 재생 중에도 서로 겹치면 비킨다. 봉투·안내·검사 라벨은 움직이므로 비키지 않고 위에 그린다 */
+const STATIC_LABEL = /^(actor|bal|gain)-/;
+
 export class LabelLayer {
-  /** 켜면(시작 전 전체 샷) 겹치는 라벨을 위로 비키고, 그래도 겹치면 숨긴다. 앞에 등록된 라벨(JSON의 행위자 순서)이 자리를 먼저 잡는다 */
+  /** 켜면(시작 전 전체 샷) 가운데 재생 버튼 자리도 비우고, 모든 라벨을 비키게 한다 */
   declutter = false;
   private entries = new Map<string, Entry>();
   private root: HTMLDivElement;
@@ -61,12 +64,14 @@ export class LabelLayer {
     const placed: { l: number; t: number; r: number; b: number }[] = this.declutter
       ? [{ l: width / 2 - half, t: height / 2 - half, r: width / 2 + half, b: height / 2 + half }]
       : [];
-    for (const { el, point, visible } of this.entries.values()) {
+    for (const [id, { el, point, visible }] of this.entries) {
+      const avoid = this.declutter || STATIC_LABEL.test(id);
       const p = point.clone().project(camera);
       let show = visible && p.z < 1 && Math.abs(p.x) < 1.2 && Math.abs(p.y) < 1.2;
       const x = ((p.x + 1) / 2) * width;
       let y = ((1 - p.y) / 2) * height;
-      if (show && this.declutter) {
+      // 겹치는 라벨을 위로 비키고, 그래도 겹치면 숨긴다. 앞에 등록된 라벨(JSON의 행위자 순서)이 자리를 먼저 잡는다
+      if (show && avoid) {
         const w = el.offsetWidth;
         const h = el.offsetHeight;
         const box = () => ({ l: x - w / 2, t: y - h, r: x + w / 2, b: y });
