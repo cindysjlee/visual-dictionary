@@ -1270,3 +1270,142 @@ button:disabled {
 .study-status.is-read {
   color: var(--defense-text);
 }
+
+.filters {
+  gap: 12px;
+}
+
+.term-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 읽음 표시: 색만이 아니라 ✓와 글자로도 */
+.tag-read {
+  --tag-color: var(--defense-text);
+}
+
+.progress-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-total {
+  margin: 0;
+  color: var(--text-sub);
+}
+
+.progress-total strong {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.progress-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--defense);
+}
+
+.progress-cats {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.progress-cats li {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-sub);
+}
+
+.progress-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.page-notice {
+  margin: 0;
+  padding: 14px 20px;
+  color: var(--defense-text);
+  font-weight: 600;
+}
+
+.me-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.me-terms a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 12px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.withdraw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 되돌릴 수 없는 동작: 색(공격색)과 테두리·굵기로 구분 */
+.btn-danger {
+  border: 2px solid var(--attack-text);
+  color: var(--attack-text);
+  font-weight: 700;
+}
+
+.confirm-dialog {
+  max-width: 420px;
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  background: var(--glass-fallback);
+}
+
+/* .card의 display:flex가 브라우저 기본(닫힌 dialog 숨김)을 덮어쓰지 않게 */
+.confirm-dialog:not([open]) {
+  display: none;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(10, 12, 20, 0.45);
+}
+
+/* 아주 좁은 폭: 로고 글자는 화면에서만 숨긴다(링크 이름으로는 읽힌다) */
+@media (max-width: 479px) {
+  .logo-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

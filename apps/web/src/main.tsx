@@ -35,6 +35,7 @@ const router = createBrowserRouter([
       { path: "auth/signup", lazy: { Component: async () => (await import("./features/auth/SignupPage.tsx")).default } },
       { path: "auth/confirm", lazy: { Component: async () => (await import("./features/auth/ConfirmPage.tsx")).default } },
       { path: "auth/reset", lazy: { Component: async () => (await import("./features/auth/ResetPage.tsx")).default } },
+      { path: "me", lazy: { Component: async () => (await import("./features/progress/MePage.tsx")).default } },
       { path: "*", Component: NotFoundPage },
     ],
   },

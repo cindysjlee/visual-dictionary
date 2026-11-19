@@ -72,6 +72,7 @@ function AccountBar() {
 }
 
 export default function Layout() {
+  const user = useAuth();
   // 첫 화면을 그린 뒤 저장된 로그인 상태를 읽는다(인증 구현은 이때 따로 받는다)
   useEffect(() => {
     startAuth();
@@ -89,12 +90,13 @@ export default function Layout() {
         <header className="glass topbar">
           <Link to="/" className="logo">
             <LogoMark />
-            시각화 사전
+            <span className="logo-text">시각화 사전</span>
           </Link>
           <nav className="topbar-nav" aria-label="주 메뉴">
             <NavLink to="/" end>
               용어
             </NavLink>
+            {user.status === "user" && <NavLink to="/me">내 학습</NavLink>}
           </nav>
           <div className="spacer" />
           <AccountBar />

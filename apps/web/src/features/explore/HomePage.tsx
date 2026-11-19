@@ -1,11 +1,51 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { Category, IndexEntry, Term } from "@app/content-schema";
 import { CATEGORY_LABELS, PLAYER_LABELS } from "@app/content-schema/labels";
 import { ArrowIcon, SearchIcon, ShieldIcon } from "../../icons.tsx";
 import { useJson } from "../../useJson.ts";
+import { loginPath } from "../auth/safeNext.ts";
+import { useAuth } from "../auth/store.ts";
+import { ProgressSummary } from "../progress/ProgressSummary.tsx";
+import { isRead, progress, useProgress } from "../progress/store.ts";
+import { passesReadFilter, type ReadFilter } from "../progress/summary.ts";
 
 const CATEGORY_FILTERS: [Category | "all", string][] = [["all", "전체"], ...(Object.entries(CATEGORY_LABELS) as [Category, string][])];
+const READ_FILTERS: [ReadFilter, string][] = [
+  ["all", "전체"],
+  ["read", "읽음"],
+  ["unread", "안 읽음"],
+];
+
+/** 홈 "내 진행률" 카드(FR-PRG-05): 로그아웃이면 로그인 안내, 로그인이면 전체·카테고리별 진행률 */
+function ProgressCard({ index }: { index: IndexEntry[] }) {
+  const auth = useAuth();
+  const state = useProgress();
+  return (
+    <div className="glass card span-2">
+      <h2 className="card-title">내 진행률</h2>
+      {auth.status !== "user" ? (
+        <>
+          <p className="muted">로그인하면 읽은 용어와 분야별 진행률이 여기에 표시돼요.</p>
+          <Link to={loginPath("/")} className="btn btn-sm study-login">
+            로그인
+          </Link>
+        </>
+      ) : state.status === "ready" ? (
+        <ProgressSummary index={index} records={state.records} />
+      ) : state.status === "error" ? (
+        <>
+          <p className="muted">기록을 불러오지 못했어요. 용어는 그대로 볼 수 있어요.</p>
+          <button type="button" className="btn btn-sm study-login" onClick={() => progress.reload()}>
+            다시 불러오기
+          </button>
+        </>
+      ) : (
+        <p className="muted">기록을 불러오는 중…</p>
+      )}
+    </div>
+  );
+}
 
 const matches = (term: IndexEntry, query: string) => {
   const q = query.trim().toLowerCase();
@@ -67,19 +107,31 @@ export default function HomePage() {
   const load = useJson<IndexEntry[]>("/content/index.json");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | "all">("all");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
+  const notice = (useLocation().state as { notice?: string } | null)?.notice; // 예: 탈퇴 완료
+  const state = useProgress();
+  const records = state.status === "ready"; // 기록이 있을 때만 읽음 표시·필터를 쓴다
 
   if (load.state === "loading") return <p className="muted">불러오는 중…</p>;
   if (load.state !== "ok") return <p role="alert">용어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
 
   const terms = load.data;
-  const shown = terms.filter((t) => (category === "all" || t.category === category) && matches(t, query));
+  const shown = terms.filter(
+    (t) => (category === "all" || t.category === category) && matches(t, query) && (!records || passesReadFilter(readFilter, isRead(state, t.id))),
+  );
   const reset = () => {
     setQuery("");
     setCategory("all");
+    setReadFilter("all");
   };
 
   return (
     <>
+      {notice && (
+        <p className="glass card page-notice" role="status">
+          {notice}
+        </p>
+      )}
       <section className="bento">
         <div className="glass card card-lg hero span-2 row-2">
           <div className="stack">
@@ -107,13 +159,10 @@ export default function HomePage() {
 
         {terms[0] && <FeaturedCard entry={terms[0]} />}
 
-        <div className="glass card span-2">
-          <h2 className="card-title">내 진행률</h2>
-          <p className="muted">로그인하면 읽은 용어와 분야별 진행률이 여기에 표시돼요.</p>
-        </div>
+        <ProgressCard index={terms} />
 
-        <div className="glass card span-2" role="group" aria-label="카테고리">
-          <div className="chips">
+        <div className="glass card span-2 filters">
+          <div className="chips" role="group" aria-label="카테고리">
             {CATEGORY_FILTERS.map(([value, label]) => (
               <button
                 key={value}
@@ -126,6 +175,15 @@ export default function HomePage() {
               </button>
             ))}
           </div>
+          {records && (
+            <div className="chips" role="group" aria-label="읽음 상태">
+              {READ_FILTERS.map(([value, label]) => (
+                <button key={value} type="button" className="chip" aria-pressed={readFilter === value} onClick={() => setReadFilter(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -140,8 +198,13 @@ export default function HomePage() {
         ) : (
           shown.map((t, i) => (
             <Link key={t.id} to={`/terms/${t.id}`} className={`glass card term-card${i === 0 ? " span-2" : ""}`}>
-              <span>
+              <span className="term-card-tags">
                 <span className={`tag tag-${t.category}`}>{CATEGORY_LABELS[t.category]}</span>
+                {records && isRead(state, t.id) && (
+                  <span className="tag tag-read">
+                    <span aria-hidden="true">✓</span> 읽음
+                  </span>
+                )}
               </span>
               <span className="term-card-name">{t.name}</span>
               <span className="term-card-desc">{t.summary}</span>
