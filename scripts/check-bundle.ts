@@ -17,10 +17,14 @@ if (/WebGLRenderer|WebGLShadowMap/.test(code.toString())) failures.push("홈 묶
 // 장면 기록(players/three/trace.ts)은 테스트·개발 빌드 전용. 배포 묶음 어디에도 없어야 한다
 const traced = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("__sceneTrace"));
 if (traced.length) failures.push(`배포 묶음에 장면 기록 코드가 있습니다: ${traced.join(", ")}`);
+// 가짜 인증(features/auth/fake.ts)도 테스트·개발 빌드 전용. 인증 구현(Amplify)은 홈 묶음이 아니라 따로 받는다
+const faked = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("fake-auth-users"));
+if (faked.length) failures.push(`배포 묶음에 가짜 인증이 있습니다: ${faked.join(", ")}`);
+if (code.toString().includes("cognito-idp")) failures.push("홈 묶음에 Amplify(Cognito)가 들어 있습니다");
 if (kb > LIMIT_KB) failures.push(`홈 묶음이 gzip ${kb.toFixed(1)}KB로 ${LIMIT_KB}KB를 넘습니다`);
 
 if (failures.length) {
   for (const f of failures) console.error(`실패  ${f}`);
   process.exit(1);
 }
-console.log(`홈 묶음 통과: ${entry} gzip ${kb.toFixed(1)}KB, three.js·장면 기록 없음`);
+console.log(`홈 묶음 통과: ${entry} gzip ${kb.toFixed(1)}KB, three.js·장면 기록·가짜 인증·Amplify 없음`);
