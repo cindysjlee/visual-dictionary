@@ -17,10 +17,11 @@ const termIds = readdirSync(termsDir)
   .filter((t) => t.status === "published")
   .map((t) => t.id)
   .sort();
-new ApiStack(app, "VisualDictionaryApi", { env, userPool: auth.userPool, client: auth.client, termIds });
+const api = new ApiStack(app, "VisualDictionaryApi", { env, userPool: auth.userPool, client: auth.client, termIds });
 new WebStack(app, "VisualDictionaryWeb", {
   env,
   auth: { region: env.region, userPoolId: auth.userPool.userPoolId, userPoolClientId: auth.client.userPoolClientId },
+  apiDomain: api.apiDomain,
   // npm run deploy가 npm run build를 먼저 실행하므로 published 용어만 들어간다
   distPath: fileURLToPath(new URL("../../apps/web/dist", import.meta.url)),
 });

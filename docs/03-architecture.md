@@ -135,6 +135,22 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 상단바 계정 영역 | `Layout.tsx` `AccountBar` |
 | 배포 후 실제 Cognito 확인 | `scripts/smoke-auth.ts` (`npm run smoke:auth`) |
 
+**S6 학습 진행·S5 탈퇴 (6단계)**
+
+| 설계 이름 | 코드 위치 |
+| --- | --- |
+| 학습 진행 API 스택(HTTP API·Lambda·테이블·정리 큐·DLQ) | `infra/lib/api-stack.ts` `ApiStack`, `API_THROTTLE` (테스트 `infra/test/api-stack.test.ts`) |
+| 기록 조회·저장(사용자는 토큰 sub로만, 탈퇴 표시면 403) | `services/api/src/progress.ts` `getProgress()`, `putProgress()` |
+| 회원 탈퇴 순서(표시 → 큐 → Cognito 삭제) | `services/api/src/account.ts` `withdraw()` |
+| 탈퇴 정리(Cognito에서 없어졌을 때만 기록 삭제) | `services/api/src/cleanup.ts` `cleanup()` |
+| DynamoDB 저장소(TransactWriteItems ConditionCheck, 탈퇴 표시) | `services/api/src/dynamo.ts` |
+| Lambda 진입점·로그 | `services/api/src/handlers.ts` `progressHandler`, `accountHandler`, `cleanupHandler` |
+| CloudFront `/api/*`·SPA 라우팅 함수 | `infra/lib/web-stack.ts` `SPA_ROUTER_CODE`, `additionalBehaviors` |
+| 브라우저 기록 상태(실제 `/api`·가짜) | `features/progress/store.ts` `useProgress()`, `progress`, `features/progress/http.ts`, `features/progress/fake.ts` |
+| 진행률 계산 | `features/progress/summary.ts` `summarize()` |
+| 상세 학습 상태 카드·홈 진행률·내 학습 | `features/progress/StudyCard.tsx`, `ProgressSummary.tsx`, `MePage.tsx` |
+| 배포 후 권한·탈퇴 확인 | `scripts/smoke-progress.ts` (`npm run smoke:progress`) |
+
 ## 2. 기술 스택 정의 및 할당뷰 아키텍처
 
 ### 2.1 구현 기술 스택
@@ -145,7 +161,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | --- | --- | --- |
 | Frontend 언어·프레임워크 | TypeScript 6, React 19, Vite 8, React Router 8 | 요구사항 제약(DC-01). 데이터 형식 오류를 타입으로 미리 잡을 수 있다 |
 | Frontend 애니메이션 | three.js + React Three Fiber(3D 장면), 순수 PlaybackEngine(단계 진행), Framer Motion(일반 UI) | 공간·카메라·물체의 앞뒤로 개념을 보여 주고(docs/06), 단계 진행은 엔진 한 곳이 정해 자막과 장면이 어긋나지 않음 (DC-01) |
-| Frontend 인증·데이터 | Amplify Auth 라이브러리, TanStack Query | Cognito 로그인·토큰 갱신을 직접 구현하지 않음. 학습 기록 조회 결과를 캐시해 화면 간 재사용 |
+| Frontend 인증·데이터 | Amplify Auth 라이브러리, 작은 상태 저장소(`useSyncExternalStore`) | Cognito 로그인·토큰 갱신을 직접 구현하지 않음. 학습 기록은 조회·저장 두 가지뿐이라 TanStack Query 대신 로그인 상태를 따라가는 작은 store 하나로 화면 간에 공유한다(홈 묶음을 120KB 아래로 유지, 6단계 결정) |
 | 콘텐츠 형식·검증 | JSON 데이터 파일, Zod 스키마 | 같은 스키마로 빌드 검증(FR-CNT-02)과 화면 타입을 함께 만든다 |
 | Backend 언어·런타임 | TypeScript, Node.js 22 (AWS Lambda) | 호출이 있을 때만 실행되어 상시 서버가 필요 없음 (DC-02) |
 | Backend API | Amazon API Gateway (HTTP API), JWT 인가 | Cognito 토큰을 게이트웨이에서 검증하고, Lambda는 토큰의 사용자 ID로만 대상을 정한다 (NFR-01) |
@@ -163,9 +179,9 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 | --- | --- | --- |
 | Frontend (웹 빌드 결과물) | Amazon S3 (비공개) + CloudFront | OAC로 CloudFront만 버킷에 접근, HTTPS 전용, 403·404를 `index.html`(200)로 응답 (FR-DEP-01, 02) |
 | 콘텐츠 (용어 JSON) | 같은 S3 버킷 + CloudFront | 빌드 때 생성된 `/content/index.json`, `/content/terms/{id}.json`을 정적 파일로 제공 |
-| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`와 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`)뿐이다(와일드카드 없음). API 도메인은 6단계에서 정한다 (FR-DEP-04) |
+| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`와 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`)뿐이다(와일드카드 없음). 학습 기록 API는 CloudFront `/api/*`로 같은 출처라 추가하지 않는다. `/api/*` 응답에도 같은 헤더를 붙인다 (FR-DEP-04) |
 | 인증 | Amazon Cognito User Pool (Lite, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP만·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
-| Backend | API Gateway (HTTP API) + Lambda 3개 | account, progress, activity. 모든 경로에 JWT 인가 적용 (FR-DEP-03) |
+| Backend | API Gateway (HTTP API) + Lambda (스택 `VisualDictionaryApi`) | 6단계: progress(조회·저장), account(탈퇴), 정리(큐 소비자). activity는 7단계. 모든 경로에 JWT 인가, 스테이지 요청 제한 초당 10·버스트 20, CloudFront `/api/*`로 연결 (FR-DEP-03) |
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
 | 이벤트 | Amazon EventBridge + SQS DLQ | 회원 탈퇴 이벤트 전달과 실패 이벤트 보관 |
 | 모니터링 | Amazon CloudWatch | Lambda 로그, 오류율 알람 |
@@ -198,4 +214,33 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 - **비밀번호 "영문 포함":** Cognito는 대·소문자를 따로만 강제할 수 있어 서버는 8자+숫자만 강제하고 "영문 포함"은 화면에서 검사한다. 화면을 우회하면 자기 계정의 비밀번호만 약해진다.
 - **가입 여부 노출(한계):** 로그인·재설정은 사용자 존재 노출 방지로 가입 여부를 드러내지 않지만, 가입 화면의 "이미 가입된 이메일" 안내는 요구사항(FR-AUTH-02) 때문에 남긴다. 그래서 가입 화면으로 어떤 이메일이 가입됐는지 알아낼 수 있다는 한계가 있다.
 - **메일 한도:** Cognito 기본 메일은 계정 전체 하루 50통이라, 누가 가입·코드 재발송을 반복하면 그날 다른 사용자의 인증 메일이 막힐 수 있다. 대안은 사용자 풀에 AWS WAF 요청 수 제한을 거는 것(웹 ACL 월 $5 + 규칙 월 $1 + 요청 100만 건당 $0.60)이고, 과제 규모에서는 적용하지 않는다. 사용자가 늘면 SES 연결(1,000통당 $0.10)과 함께 다시 정한다.
-- **정리 순서:** 사용자 풀은 삭제 보호와 RETAIN이 걸려 있어 `cdk destroy`로 스택을 지워도 남는다. 지우려면 AWS 콘솔(서울 리전) → Amazon Cognito → 사용자 풀 → 해당 풀 → 설정 탭 → 삭제 방지 → 편집에서 끈 뒤 저장하고, 사용자 풀 목록에서 그 풀을 선택해 삭제를 따로 실행한다.
+- **정리 순서:** 사용자 풀은 삭제 보호와 RETAIN이 걸려 있어 `cdk destroy`로 스택을 지워도 남는다. 지우려면 AWS 콘솔(서울 리전) → Amazon Cognito → 사용자 풀 → 해당 풀 → 설정 탭 → 삭제 방지 → 편집에서 끈 뒤 저장하고, 사용자 풀 목록에서 그 풀을 선택해 삭제를 따로 실행한다. 학습 기록 테이블(`LearningRecord`, 스택 `VisualDictionaryApi`)도 삭제 보호와 RETAIN이 걸려 있다. 지우려면 AWS 콘솔(서울 리전) → DynamoDB → 테이블 → 해당 테이블 → 추가 설정 탭 → 삭제 방지 → 편집(또는 끄기)에서 끈 뒤, 테이블 목록에서 선택해 삭제를 따로 실행한다. 탈퇴 정리 DLQ·로그 그룹은 스택과 함께 지워진다.
+
+### 2.5 학습 기록 API와 회원 탈퇴 (6단계)
+
+**API (CloudFront `/api/*` → API Gateway HTTP API, 모든 경로 JWT 인가).** `GET /api/progress`(내 기록), `PUT /api/progress/{termId}` `{read, source: "completed"|"manual"}`(읽음·안 읽음, 안 읽음도 `read:false`로 남긴다), `DELETE /api/account`(탈퇴). 같은 출처라 CSP·CORS를 바꾸지 않는다. CloudFront `/api/*` 동작은 캐시하지 않고(CachingDisabled) Host를 뺀 모든 헤더(Authorization 포함)를 넘긴다(AllViewerExceptHostHeader). 이 때문에 403·404 → index.html 대체 응답을 없애고, 기본 동작에 CloudFront Function(확장자 없는 화면 주소만 `/index.html`)을 붙였다. S3 오리진에 목록 권한(LIST)을 줘서 없는 파일은 403이 아니라 진짜 404가 된다.
+
+**사용자 식별과 입력 제한(NFR-01).** 대상 사용자는 JWT 인가가 검증한 토큰의 `sub`로만 정한다. 경로·본문에 userId가 없고, 본문은 `{read, source}` 외의 필드가 있으면 400이다(본문에 다른 사용자 ID를 넣어도 거부). 용어 ID는 형식(소문자·숫자·하이픈, 64자 이하)과 배포 때 넣은 published 용어 목록으로 검사한다(사용자당 기록 수가 용어 수로 묶인다). 본문은 1KB까지(넘으면 413).
+
+**요청 수 제한.** HTTP API 스테이지 기본값을 **초당 10건, 버스트 20건**으로 둔다. 한 사람이 상세 페이지를 넘기며 내는 요청은 초당 몇 건이라 과제 규모(수십 명)에서 넉넉하고, 반복 호출로 Lambda·DynamoDB 요청이 늘어 비용이 커지거나 계정의 동시 실행을 다 쓰는 것을 막는다. 넘치면 API Gateway가 429로 응답한다.
+
+**로그.** Lambda 로그에는 경로·상태 코드·오류 이름만 남긴다. 토큰·이메일·요청 본문·사용자 ID는 남기지 않는다. 로그 보관은 14일.
+
+**탈퇴 순서(FR-AUTH-06).** ① 그 사용자의 "탈퇴함" 표시(같은 테이블, `termId = "#deleted"`, TTL 2시간)를 쓴다 → ② 기록 삭제 작업을 SQS에 넣는다 → ③ 큐에 들어간 뒤에만 Cognito 사용자를 지운다. 정리 Lambda는 그 사용자가 Cognito에서 정말 없어졌을 때만 학습 기록을 모두 지운다(탈퇴 표시는 TTL까지 남긴다). 실패한 정리는 큐가 다시 보내고(가시성 시간 3분 뒤) 5번 실패하면 DLQ(14일 보관, CloudWatch 알람)로 간다.
+
+| 실패한 곳 | 응답 | 계정 | 학습 기록 | 그 뒤 |
+| --- | --- | --- | --- | --- |
+| ① 탈퇴 표시 쓰기 | 500 탈퇴 실패 | 그대로 | 그대로 | 다시 시도하면 된다 |
+| ② 큐 넣기 | 503 탈퇴 실패 | 그대로 | 그대로(표시를 지워 되돌림) | 다시 시도하면 된다 |
+| ② 큐 넣기 + 표시 되돌리기 | 503 탈퇴 실패 | 그대로 | 그대로 | 표시가 남아 최대 2시간 기록 저장만 막힌다(TTL로 사라짐) |
+| ③ Cognito 삭제 | 500 탈퇴 실패 | 그대로 | 그대로(정리 작업은 계정이 있으면 지우지 않고 재시도) | 다시 탈퇴하면 이어서 진행. 끝내 안 하면 정리 작업은 DLQ로 가고 기록은 보존된다 |
+| 정리(삭제) 중 오류 | 탈퇴는 204 성공 | 삭제됨 | 재시도로 지워진다 | 5번 실패하면 DLQ와 알람. 그동안 탈퇴 표시가 저장을 막는다 |
+| 정리가 DLQ까지 감 | — | 삭제됨 | 남아 있음 | 알람을 보고 DLQ 메시지를 다시 보내거나(콘솔: SQS → DLQ → 메시지 다시 보내기) 원인을 고친다 |
+
+**탈퇴 후 예전 토큰.** 액세스 토큰은 계정을 지워도 만료(1시간)까지 JWT 인가를 통과한다. 그래서 PUT은 `TransactWriteItems`의 ConditionCheck로 "탈퇴 표시가 없을 때(또는 TTL이 지났을 때)만" 저장하고, 표시가 있으면 403이다. 표시는 액세스 토큰보다 긴 2시간 동안 남는다. GET도 표시가 있으면 403이다.
+
+**비밀번호 재확인.** 탈퇴 화면은 비밀번호를 Cognito로 다시 확인해야 탈퇴 버튼이 켜지고, 확인 대화상자에서 한 번 더 묻는다. 로그인한 채로 비밀번호만 확인하는 Cognito·Amplify API가 없어 `ChangePassword`에 같은 비밀번호를 넣어 확인한다(Lite 풀은 비밀번호 재사용 금지가 없어 같은 값으로 바뀐다). 비밀번호를 우리 API로 보내지 않는다.
+
+**테스트.** 처리 로직은 저장소·큐·Cognito를 인터페이스로 받아 단위 테스트한다(탈퇴 실패 단계별 결과, 탈퇴 직후 예전 토큰 PUT 거부와 테이블 0건 포함). 인프라 테스트는 JWT 인가·요청 제한·테이블·DLQ·로그 보관·Lambda별 IAM 권한 범위를 본다. 화면은 테스트 빌드의 가짜 기록 API로 E2E(`@progress`)를 돌리고, 배포 후 `npm run smoke:progress`가 사용자 A·B로 권한(토큰 없음·변조·만료 시각 조작 401, 본문 userId로 남의 기록을 바꿀 수 없음, 남의 기록이 안 보임), 다른 브라우저에서 같은 진행률, 화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건을 확인한다. 서명이 맞는 진짜 만료 토큰은 1시간을 기다려야 해서 smoke에서 만들지 않는다(만료 검사는 API Gateway JWT 인가가 한다).
+
+**비용(과제 규모).** HTTP API 100만 건당 $1(첫 12개월 월 100만 건 무료), Lambda 상시 무료 범위, DynamoDB 요청당 과금(저장 25GB 무료), SQS 월 100만 요청 무료, CloudFront Functions 100만 건당 $0.10(월 200만 건 무료), CloudWatch 알람 1개(첫 10개 무료). 월 $0.01 미만이다. 테이블 시점 복원(PITR)은 비용이 들어 켜지 않는다.

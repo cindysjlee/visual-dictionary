@@ -45,6 +45,16 @@ const missing = await fetch(`${base}/no-such-page/x`);
 const missingBody = await missing.text();
 check(missing.status === 200 && missingBody.includes('id="root"'), `없는 주소 → ${missing.status} (SPA index.html)`);
 
+// 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html): 없는 파일은 진짜 404
+for (const path of ["/assets/no-such-chunk-0000.js", "/content/terms/no-such-term.json"]) {
+  const r = await fetch(`${base}${path}`);
+  check(r.status === 404, `없는 파일 ${path} → ${r.status}`);
+}
+// 학습 기록 API(/api/* → API Gateway): 토큰 없으면 401 JSON(HTML 대체 응답이 아님), 보안 헤더는 API 응답에도
+const api = await fetch(`${base}/api/progress`);
+check(api.status === 401 && (api.headers.get("content-type") ?? "").includes("json"), `/api/progress(토큰 없음) → ${api.status} ${api.headers.get("content-type")}`);
+check(api.headers.get("content-security-policy") === CSP, "/api/* 응답에도 같은 CSP");
+
 const robots = await fetch(`${base}/robots.txt`);
 check(robots.status === 200 && (robots.headers.get("content-type") ?? "").startsWith("text/plain"), `/robots.txt → ${robots.status} ${robots.headers.get("content-type")}`);
 

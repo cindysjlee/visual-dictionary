@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
-import { CSP, INVALIDATION_PATHS, WebStack } from "../lib/web-stack.ts";
+import { CSP, INVALIDATION_PATHS, SPA_ROUTER_CODE, WebStack } from "../lib/web-stack.ts";
 
 const distPath = mkdtempSync(join(tmpdir(), "dist-"));
 writeFileSync(join(distPath, "index.html"), "<!doctype html>");
 const auth = { region: "ap-northeast-2", userPoolId: "ap-northeast-2_test", userPoolClientId: "testclient" };
-const template = Template.fromStack(new WebStack(new App(), "Test", { distPath, auth }));
+const template = Template.fromStack(new WebStack(new App(), "Test", { distPath, auth, apiDomain: "abc123.execute-api.ap-northeast-2.amazonaws.com" }));
 
 describe("WebStack", () => {
   it("버킷은 비공개·SSE-S3", () => {
@@ -35,12 +35,46 @@ describe("WebStack", () => {
           ViewerProtocolPolicy: "redirect-to-https",
           AllowedMethods: ["GET", "HEAD"],
         }),
-        CustomErrorResponses: [403, 404].map((ErrorCode) => ({
-          ErrorCode,
-          ResponseCode: 200,
-          ResponsePagePath: "/index.html",
-          ErrorCachingMinTTL: 10,
-        })),
+        // 403·404 → index.html 대체 응답은 없다(API의 401·404가 HTML 200으로 바뀌지 않게). 화면 주소는 SPA Function이 처리
+        CustomErrorResponses: Match.absent(),
+      }),
+    });
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: Match.objectLike({
+        DefaultCacheBehavior: Match.objectLike({
+          FunctionAssociations: [{ EventType: "viewer-request", FunctionARN: Match.anyValue() }],
+        }),
+      }),
+    });
+  });
+
+  it("SPA 라우팅 함수: 확장자 없는 화면 주소만 /index.html로", () => {
+    const handler = new Function(`${SPA_ROUTER_CODE}; return handler;`)() as (e: { request: { uri: string } }) => { uri: string };
+    const route = (uri: string) => handler({ request: { uri } }).uri;
+    expect(route("/")).toBe("/index.html");
+    expect(route("/terms/csrf")).toBe("/index.html");
+    expect(route("/auth/login")).toBe("/index.html");
+    expect(route("/me")).toBe("/index.html");
+    expect(route("/assets/index-abc.js")).toBe("/assets/index-abc.js");
+    expect(route("/content/terms/csrf.json")).toBe("/content/terms/csrf.json");
+    expect(route("/robots.txt")).toBe("/robots.txt");
+    expect(route("/config.json")).toBe("/config.json");
+  });
+
+  it("/api/*: API Gateway로, 모든 메서드, 캐시 안 함, Host 빼고 모든 헤더(Authorization) 전달, 같은 보안 헤더", () => {
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: Match.objectLike({
+        CacheBehaviors: [
+          Match.objectLike({
+            PathPattern: "/api/*",
+            ViewerProtocolPolicy: "https-only",
+            AllowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+            CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad", // CachingDisabled
+            OriginRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac", // AllViewerExceptHostHeader
+            ResponseHeadersPolicyId: Match.anyValue(),
+          }),
+        ],
+        Origins: Match.arrayWith([Match.objectLike({ DomainName: "abc123.execute-api.ap-northeast-2.amazonaws.com", CustomOriginConfig: Match.objectLike({ OriginProtocolPolicy: "https-only" }) })]),
       }),
     });
   });
@@ -104,7 +138,7 @@ describe("WebStack", () => {
     });
     template.hasResourceProperties("AWS::CloudFront::Distribution", {
       DistributionConfig: Match.objectLike({
-        Origins: [Match.objectLike({ OriginAccessControlId: Match.anyValue(), S3OriginConfig: Match.objectLike({ OriginAccessIdentity: "" }) })],
+        Origins: Match.arrayWith([Match.objectLike({ OriginAccessControlId: Match.anyValue(), S3OriginConfig: Match.objectLike({ OriginAccessIdentity: "" }) })]),
       }),
     });
   });
