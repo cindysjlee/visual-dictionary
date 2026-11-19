@@ -151,6 +151,19 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 상세 학습 상태 카드·홈 진행률·내 학습 | `features/progress/StudyCard.tsx`, `ProgressSummary.tsx`, `MePage.tsx` |
 | 배포 후 권한·탈퇴 확인 | `scripts/smoke-progress.ts` (`npm run smoke:progress`) |
 
+**S6 최근 본 용어·자동 배포 (7단계)**
+
+| 설계 이름 | 코드 위치 |
+| --- | --- |
+| 최근 본 용어 조회·기록(사용자는 sub로만, 탈퇴 표시면 403) | `services/api/src/activity.ts` `getActivity()`, `putActivity()`, `RECENT_LIMIT`, `VIEW_TTL_DAYS` |
+| RecentView 저장소(두 테이블 트랜잭션), 정리 시 함께 삭제 | `services/api/src/dynamo.ts` `dynamoActivityRepo()`, `deleteActivity()`, `services/api/src/cleanup.ts` |
+| 최근 본 용어 표시(홈 이어서 볼 용어·3개, 내 학습 10개) | `features/progress/store.ts` `useRecent()`, `progress.recordView()`, `features/progress/recent.ts` |
+| 관련 용어 카드(JSON 순서, published만) | `features/term/TermPage.tsx`, 자기 참조 금지는 `packages/content-schema` `termSchema` |
+| 자동 배포 역할(GitHub OIDC) | `infra/lib/ci-stack.ts` `CiStack` (테스트 `infra/test/ci-stack.test.ts`) |
+| 배포 관문(보안 변경·삭제/교체) | `scripts/ci-gate.ts` |
+| 워크플로 | `.github/workflows/deploy.yml` |
+| 배포된 리소스 설정 확인(읽기 전용) | `scripts/check-aws.ts` (`npm run check:aws`) |
+
 ## 2. 기술 스택 정의 및 할당뷰 아키텍처
 
 ### 2.1 구현 기술 스택
@@ -165,11 +178,11 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 콘텐츠 형식·검증 | JSON 데이터 파일, Zod 스키마 | 같은 스키마로 빌드 검증(FR-CNT-02)과 화면 타입을 함께 만든다 |
 | Backend 언어·런타임 | TypeScript, Node.js 22 (AWS Lambda) | 호출이 있을 때만 실행되어 상시 서버가 필요 없음 (DC-02) |
 | Backend API | Amazon API Gateway (HTTP API), JWT 인가 | Cognito 토큰을 게이트웨이에서 검증하고, Lambda는 토큰의 사용자 ID로만 대상을 정한다 (NFR-01) |
-| 서비스 간 이벤트 | Amazon EventBridge, SQS DLQ | 탈퇴 이벤트를 Progress·Activity가 각자 처리. 실패한 이벤트는 DLQ에 남겨 다시 처리 |
+| 탈퇴 정리 | Amazon SQS 큐 하나 + 정리 Lambda 하나, SQS DLQ | 탈퇴하면 정리 작업을 큐에 넣고, 정리 함수 하나가 학습 기록(LearningRecord)과 최근 본 용어(RecentView)를 함께 지운다. 실패하면 재시도 5회 뒤 DLQ(경보). 처음 설계의 EventBridge 팬아웃 대신 이 구조로 했다(테이블이 둘뿐이고 순서·재시도를 한 곳에서 다루기 위해, 7단계 결정) |
 | Database | Amazon DynamoDB | 회원의 기록을 회원 ID로만 조회하므로 키-값 구조가 맞고, 사용한 만큼만 과금된다 |
 | 인프라 코드·배포 | AWS CDK (TypeScript), GitHub Actions | 1단계부터 S3·CloudFront를 CDK로 만들고 배포한다(`infra/`, `npm run deploy`). 7단계에서 GitHub Actions로 자동화 (FR-DEP-05) |
 
-DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 ID, 정렬 키가 용어 ID이다. 키 자체가 회원과 용어의 쌍이므로, 클래스 다이어그램의 "회원·용어 쌍마다 학습 기록 하나" 제약이 저장 구조로 지켜지고, 같은 요청이 두 번 와도 같은 항목을 덮어쓸 뿐이다. **RecentView**는 같은 키 구조에 열람 시각을 저장하고, TTL로 일정 기간이 지난 항목을 자동 삭제한다.
+DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 ID, 정렬 키가 용어 ID이다. 키 자체가 회원과 용어의 쌍이므로, 클래스 다이어그램의 "회원·용어 쌍마다 학습 기록 하나" 제약이 저장 구조로 지켜지고, 같은 요청이 두 번 와도 같은 항목을 덮어쓸 뿐이다. 탈퇴 표시(`termId = "#deleted"`, TTL 2시간)도 이 테이블에 둔다. **RecentView**는 같은 키 구조에 본 시각(`viewedAt`)을 저장하고, 같은 용어를 다시 보면 덮어쓰며, TTL(`ttl`)로 30일이 지난 항목을 자동 삭제한다(7단계).
 
 ### 2.2 운영 환경
 
@@ -183,9 +196,9 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 | 인증 | Amazon Cognito User Pool (Lite, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP만·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
 | Backend | API Gateway (HTTP API) + Lambda (스택 `VisualDictionaryApi`) | 6단계: progress(조회·저장), account(탈퇴), 정리(큐 소비자). activity는 7단계. 모든 경로에 JWT 인가, 스테이지 요청 제한 초당 10·버스트 20, CloudFront `/api/*`로 연결 (FR-DEP-03) |
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
-| 이벤트 | Amazon EventBridge + SQS DLQ | 회원 탈퇴 이벤트 전달과 실패 이벤트 보관 |
+| 탈퇴 정리 | Amazon SQS(정리 큐 + DLQ) + 정리 Lambda | 회원 탈퇴 정리 작업 전달, 실패 작업 보관(14일)과 경보 |
 | 모니터링 | Amazon CloudWatch | Lambda 로그, 오류율 알람 |
-| 배포 | AWS CDK (7단계부터 GitHub Actions에서 실행) | 콘텐츠 검증 → 빌드 → `cdk deploy`가 S3 업로드와 CloudFront 캐시 무효화까지 수행. 백엔드도 같은 CDK 앱으로 배포 |
+| 배포 | AWS CDK, GitHub Actions(7단계, OIDC) | 로컬은 `npm run deploy`. main에서는 워크플로가 verify → E2E → 보안·변경 관문 → 같은 변경 세트 실행 → smoke:prod·check:aws (2.6) |
 
 ### 2.3 운영 환경 배치 아키텍처
 
@@ -196,7 +209,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 1. **용어 보기**: 브라우저 → CloudFront → S3. 화면 파일과 용어 JSON을 받아 브라우저에서 애니메이션을 재생한다. 백엔드를 거치지 않는다.
 2. **로그인**: 브라우저 → Cognito. 로그인하면 토큰을 받아 이후 API 요청에 붙인다.
 3. **학습 기록 저장·조회**: 브라우저 → API Gateway(토큰 검증) → progress Lambda → DynamoDB.
-4. **회원 탈퇴**: 브라우저 → API Gateway → account Lambda가 Cognito 사용자를 삭제하고 탈퇴 이벤트를 보낸다. progress·activity Lambda가 이벤트를 받아 각자의 기록을 지운다.
+4. **회원 탈퇴**: 브라우저 → API Gateway → account Lambda가 탈퇴 표시를 쓰고, 정리 작업을 SQS에 넣은 뒤 Cognito 사용자를 삭제한다. 정리 Lambda가 큐에서 받아 학습 기록과 최근 본 용어를 지운다(2.5).
 5. **배포**: `npm run deploy`(7단계부터는 GitHub Actions)가 빌드한 뒤 CDK로 배포한다. 웹·콘텐츠는 S3에 올리고 CloudFront 캐시를 비우며, 백엔드도 같은 CDK 앱으로 배포한다.
 
 그림은 7단계까지 끝난 최종 형태다. 4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 오른쪽 백엔드 영역은 5단계부터 차례로 추가된다. 인프라는 1단계부터 CDK(`infra/`, 리전 ap-northeast-2)로 관리한다.
@@ -243,4 +256,28 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 
 **테스트.** 처리 로직은 저장소·큐·Cognito를 인터페이스로 받아 단위 테스트한다(탈퇴 실패 단계별 결과, 탈퇴 직후 예전 토큰 PUT 거부와 테이블 0건 포함). 인프라 테스트는 JWT 인가·요청 제한·테이블·DLQ·로그 보관·Lambda별 IAM 권한 범위를 본다. 화면은 테스트 빌드의 가짜 기록 API로 E2E(`@progress`)를 돌리고, 배포 후 `npm run smoke:progress`가 사용자 A·B로 권한(토큰 없음·변조·만료 시각 조작 401, 본문 userId로 남의 기록을 바꿀 수 없음, 남의 기록이 안 보임), 다른 브라우저에서 같은 진행률, 화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건을 확인한다. 서명이 맞는 진짜 만료 토큰은 1시간을 기다려야 해서 smoke에서 만들지 않는다(만료 검사는 API Gateway JWT 인가가 한다).
 
+**최근 본 용어(7단계, FR-PRG-06).** `GET /api/activity`(최신순 10개), `PUT /api/activity/{termId}`(본문 없음, 본 시각은 서버 시계, published 용어만). 로그인 상태로 상세 페이지를 열면 한 번 기록하고, 실패해도 화면은 그대로다. 저장은 `TransactWriteItems`로 LearningRecord의 탈퇴 표시를 ConditionCheck한 뒤 RecentView에 쓴다(두 테이블 트랜잭션, 표시가 있으면 403). `ActivityFn` 권한은 RecentView Query·PutItem과 LearningRecord ConditionCheckItem뿐이다. 탈퇴 정리는 같은 큐·같은 정리 함수가 두 테이블을 모두 지운다(위 실패 표가 그대로 적용된다). 홈은 가장 최근 본 용어를 "이어서 볼 용어"로, 최근 3개를 진행률 카드에 보이고, 내 학습은 10개를 "오늘·어제·n일 전"과 보인다. 30일이 지나면 TTL로 사라진다.
+
 **비용(과제 규모).** HTTP API 100만 건당 $1(첫 12개월 월 100만 건 무료), Lambda 상시 무료 범위, DynamoDB 요청당 과금(저장 25GB 무료), SQS 월 100만 요청 무료, CloudFront Functions 100만 건당 $0.10(월 200만 건 무료), CloudWatch 알람 1개(첫 10개 무료). 월 $0.01 미만이다. 테이블 시점 복원(PITR)은 비용이 들어 켜지 않는다.
+
+### 2.6 자동 배포 (7단계, FR-DEP-05)
+
+**자격 증명.** AWS 키를 GitHub에 두지 않는다. GitHub OIDC 공급자와 배포 역할(스택 `VisualDictionaryCi`)을 만들고, 워크플로가 실행될 때마다 OIDC 토큰으로 역할을 맡는다(세션 최대 1시간). 역할의 신뢰 정책은 `aud = sts.amazonaws.com`이고 `sub = repo:<소유자>/<저장소>:ref:refs/heads/main`과 정확히 일치할 때만 허용한다. 다른 브랜치·풀 리퀘스트·포크는 역할을 맡을 수 없다. 저장소 경로는 파일에 적지 않고 CI 스택을 배포할 때 CDK context(`-c githubRepo=…`)로 넣는다. 역할 ARN은 GitHub 저장소 Secret `AWS_DEPLOY_ROLE_ARN`에 둔다(계정 ID가 들어 있어 저장소 파일에 적지 않음). CI 스택은 context가 있을 때만 앱에 들어가므로 평소 배포와 CI 배포에는 포함되지 않는다. 그래서 CI는 자기 역할을 바꿀 수 없고, CI 스택은 로컬에서 사용자 승인 뒤에만 바뀐다.
+
+**역할 권한과 이유.** ① `sts:AssumeRole`: CDK 부트스트랩 역할 deploy(변경 세트 만들기·실행), file-publishing(웹·Lambda 묶음 업로드), lookup(diff)만. 실제 배포 권한은 부트스트랩 역할에 있어 CI 역할은 S3·CloudFormation·IAM을 직접 다루지 않는다. 이미지 자산이 없어 image-publishing은 뺐다. ② 읽기만: 배포 관문의 변경 세트 조회(`cloudformation:DescribeChangeSet`)와 `check:aws`가 쓰는 Describe·Get·List. 프로젝트 리소스 이름(`VisualDictionary*`)으로 좁힐 수 있는 것은 좁혔고, CloudFront·로그 그룹 조회처럼 리소스 지정이 어려운 것만 넓다. 쓰기 권한은 없다(smoke:auth·smoke:progress는 Cognito 사용자를 만들고 지워야 해서 CI에서 돌리지 않고 로컬에서 돌린다).
+
+**워크플로(`.github/workflows/deploy.yml`).** main push와 수동 실행(`workflow_dispatch`)에서만 돈다(main이 아니면 작업을 건너뛴다). 공개 저장소라 `pull_request_target`은 쓰지 않는다. 권한은 `id-token: write`, `contents: read`뿐이고, 외부 액션은 커밋 해시로 고정한다(옆에 버전 주석). 같은 시각에 배포는 하나만 돈다. 순서:
+
+1. `npm ci` → `npm run verify`
+2. `npx playwright install --with-deps chrome` → `npm run test:e2e`(workers 2)
+3. OIDC로 역할 맡기
+4. **보안 관문** `node scripts/ci-gate.ts security`: `cdk diff --all --security-only` 출력에 IAM 문장·IAM 정책·보안 그룹 변경 표가 하나라도 있으면 배포하지 않고 실패한다. 작업 요약에 이유와 diff(계정 ID는 가림)를 남기고, GitHub가 실패 알림을 보낸다. 그 변경은 로컬에서 보안 변경을 보여 주고 사용자 "승인"을 받은 뒤 배포한다. (`cdk diff --fail-on`은 공식 문서에 없어 쓰지 않는다. 기본 `--require-approval broadening`도 터미널 없는 환경에서 권한 확장 배포를 거부하지만, 스택 순서상 앞 스택이 먼저 배포될 수 있어 이 관문이 먼저 모든 스택을 검사한다.)
+5. **변경 관문** `node scripts/ci-gate.ts changes`: `cdk deploy --all --method=prepare-change-set --change-set-name ci-gate`로 변경 세트만 만들고, 각 스택의 변경 세트에 `Remove` 또는 `Replacement: True·Conditional`이 있으면 멈춘다(작업 요약에 스택·리소스·종류).
+6. 배포: 변경이 있는 스택만 `cdk deploy … --exclusively --method=execute-change-set --change-set-name ci-gate`로 **관문에서 검사한 같은 변경 세트**를 실행한다.
+7. `npm run smoke:prod` → `npm run check:aws`
+
+처음에는 수동 실행만 켜 두고, 첫 실행이 성공하면 사용자 확인 뒤 push 실행을 켠다.
+
+**비용.** GitHub Actions: 공개 저장소의 표준 러너는 무료다. AWS: OIDC 공급자·IAM 역할은 무료, 배포마다 CloudFront 무효화 4경로(월 1,000경로 무료, 그 뒤 경로당 $0.005), S3 업로드·CloudFormation은 사실상 $0.
+
+**직접 하는 설정.** ① GitHub 저장소 → Settings → Secrets and variables → Actions → Repository secrets → New repository secret: 이름 `AWS_DEPLOY_ROLE_ARN`, 값은 CI 스택 출력 `DeployRoleArn`. ② (권장) GitHub 프로필 → Settings → Notifications → System → Actions: 실패한 워크플로 메일 알림. ③ 공개 저장소 보안 기능: 저장소 → Settings → Advanced Security(이전 이름 Code security and analysis)에서 Secret Protection(secret scanning)과 Push protection, Dependabot alerts를 켠다.
