@@ -15,23 +15,27 @@ import { BucketDeployment, CacheControl, Source } from "aws-cdk-lib/aws-s3-deplo
 import type { Construct } from "constructs";
 
 /** 배포 때 CloudFront에서 비우는 경로. "/"는 기본 루트 객체(index.html)의 캐시 키가 따로라서 함께 넣는다. 해시 파일은 이름이 바뀌므로 비울 필요가 없다 */
-export const INVALIDATION_PATHS = ["/", "/index.html", "/content/*"];
+export const INVALIDATION_PATHS = ["/", "/index.html", "/config.json", "/content/*"];
 
-// 5단계에서 Cognito·API 도메인을 connect-src에 추가한다
+/** 브라우저가 부르는 Cognito 사용자 풀 엔드포인트(서울). 자격 증명 풀은 쓰지 않으므로 이것 하나뿐이다. 6단계 API 도메인은 그때 정한다 */
+export const COGNITO_ORIGIN = "https://cognito-idp.ap-northeast-2.amazonaws.com";
+
 export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
   "img-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self' ${COGNITO_ORIGIN}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
 
-export type WebStackProps = StackProps & { distPath: string };
+/** 브라우저 설정(/config.json): 배포 때 값이 채워진다. 풀·클라이언트 ID는 공개돼도 되는 값이고 저장소 파일에는 적지 않는다 */
+export type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string };
+export type WebStackProps = StackProps & { distPath: string; auth: WebAuthConfig };
 
 export class WebStack extends Stack {
   constructor(scope: Construct, id: string, props: WebStackProps) {
@@ -84,12 +88,12 @@ export class WebStack extends Stack {
       prune: false,
       cacheControl: [CacheControl.setPublic(), CacheControl.maxAge(Duration.days(365)), CacheControl.immutable()],
     });
-    // 진입 HTML과 콘텐츠: 매번 다시 확인(no-cache). 새 청크가 먼저 올라간 뒤에 바꾼다
+    // 진입 HTML·브라우저 설정·콘텐츠: 매번 다시 확인(no-cache). 새 청크가 먼저 올라간 뒤에 바꾼다
     const pages = new BucketDeployment(this, "DeployPages", {
-      sources: source,
+      sources: [...source, Source.jsonData("config.json", props.auth)],
       destinationBucket: bucket,
       exclude: ["*"],
-      include: ["index.html", "content/*"],
+      include: ["index.html", "config.json", "content/*"],
       cacheControl: [CacheControl.noCache()],
       distribution,
       distributionPaths: INVALIDATION_PATHS,
@@ -99,7 +103,7 @@ export class WebStack extends Stack {
     new BucketDeployment(this, "DeployRest", {
       sources: source,
       destinationBucket: bucket,
-      exclude: ["assets/*", "index.html", "content/*"],
+      exclude: ["assets/*", "index.html", "config.json", "content/*"],
       cacheControl: [CacheControl.setPublic(), CacheControl.maxAge(Duration.hours(1))],
     });
 

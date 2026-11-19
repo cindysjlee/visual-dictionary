@@ -16,7 +16,7 @@
     "build:content": "node scripts/build-index.ts",
     "typecheck": "tsc -p tsconfig.json",
     "build": "npm run typecheck && npm run build -w apps/web",
-    "deploy": "npm run build && npm exec -w infra -- cdk deploy --profile vd",
+    "deploy": "npm run build && npm exec -w infra -- cdk deploy --all --profile vd",
     "test": "vitest run",
     "test:e2e": "npm run typecheck && npm run build:e2e -w apps/web && playwright test",
     "test:e2e:drafts": "node scripts/e2e-drafts.ts",

@@ -8,7 +8,8 @@ import { CSP, INVALIDATION_PATHS, WebStack } from "../lib/web-stack.ts";
 
 const distPath = mkdtempSync(join(tmpdir(), "dist-"));
 writeFileSync(join(distPath, "index.html"), "<!doctype html>");
-const template = Template.fromStack(new WebStack(new App(), "Test", { distPath }));
+const auth = { region: "ap-northeast-2", userPoolId: "ap-northeast-2_test", userPoolClientId: "testclient" };
+const template = Template.fromStack(new WebStack(new App(), "Test", { distPath, auth }));
 
 describe("WebStack", () => {
   it("버킷은 비공개·SSE-S3", () => {
@@ -56,9 +57,12 @@ describe("WebStack", () => {
       }),
     });
     expect(CSP).toContain("frame-ancestors 'none'");
+    // 연결 대상은 자기 사이트와 서울 사용자 풀 엔드포인트뿐(와일드카드 없음, FR-DEP-04)
+    expect(CSP.split("; ").find((d) => d.startsWith("connect-src"))).toBe("connect-src 'self' https://cognito-idp.ap-northeast-2.amazonaws.com");
+    expect(CSP).not.toContain("*");
   });
 
-  it("캐시 정책: 해시 파일은 immutable·지우지 않음, index.html·콘텐츠는 no-cache·무효화, 나머지는 1시간", () => {
+  it("캐시 정책: 해시 파일은 immutable·지우지 않음, index.html·config.json·콘텐츠는 no-cache·무효화, 나머지는 1시간", () => {
     template.resourceCountIs("Custom::CDKBucketDeployment", 3);
     template.hasResourceProperties("Custom::CDKBucketDeployment", {
       Exclude: ["*"],
@@ -69,17 +73,17 @@ describe("WebStack", () => {
     });
     template.hasResourceProperties("Custom::CDKBucketDeployment", {
       Exclude: ["*"],
-      Include: ["index.html", "content/*"],
+      Include: ["index.html", "config.json", "content/*"],
       Prune: true,
       SystemMetadata: { "cache-control": "no-cache" },
       DistributionId: Match.anyValue(),
       DistributionPaths: INVALIDATION_PATHS,
     });
     template.hasResourceProperties("Custom::CDKBucketDeployment", {
-      Exclude: ["assets/*", "index.html", "content/*"],
+      Exclude: ["assets/*", "index.html", "config.json", "content/*"],
       SystemMetadata: { "cache-control": "public, max-age=3600" },
     });
-    expect(INVALIDATION_PATHS).toEqual(expect.arrayContaining(["/index.html", "/content/*"]));
+    expect(INVALIDATION_PATHS).toEqual(expect.arrayContaining(["/index.html", "/config.json", "/content/*"]));
   });
 
   it("index.html·콘텐츠는 해시 파일이 올라간 뒤에 바뀐다", () => {
