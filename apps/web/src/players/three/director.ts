@@ -6,6 +6,7 @@ import type { CameraRig } from "./camera.ts";
 import { screenLabel, type LabelLayer, type LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
+import type { SceneState } from "./sceneState.ts";
 import { Timeline, easeOut, linear } from "./timeline.ts";
 import { TRACE, type Tracer } from "./trace.ts";
 
@@ -48,6 +49,8 @@ export type DirectorContext = {
   onBalance?: () => void;
   /** 테스트·개발 빌드의 장면 기록(trace.ts). 배포 빌드에서는 아무것도 하지 않는다 */
   trace?: Tracer;
+  /** 이 단계 직전의 화면판 내용(sceneState). 뒤집으면 라벨이 뒷면 내용으로 바뀐다 */
+  screens?: SceneState["screens"];
 };
 
 const TONE_LABEL: Record<Tone, LabelTone> = { neutral: "neutral", attack: "attack", defense: "defense" };
@@ -78,6 +81,12 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const via = view.via && !self && view.via !== view.from && view.via !== view.to ? view.via : undefined;
   const panelPoint = (id: string) => node(id)?.panel?.pivot.getWorldPosition(new Vector3()) ?? anchor(id);
   const involved = involvedActors(view);
+  // 화면판 라벨: 라벨은 늘 판의 보이는 면을 보인다. 이 단계에서 rewrite한 판(과 mirrorScreen)만 라벨이 떠 있다
+  const screens = new Map(ctx.screens);
+  const labelled = new Set<string>();
+  const pivotFlipped = (id: string) => Math.abs(node(id)!.panel!.pivot.rotation.y) > Math.PI / 2;
+  const showScreen = (id: string, screen: Parameters<typeof screenLabel>[0]) =>
+    labels.set(`screen-${id}`, model.screenLabelPoint(id), screenLabel(screen, node(id)!.actor.tone === "attack"));
   /** 등장 행위자 전체(+ 차단 도장, 카메라 힌트 대상)가 들어오는 샷. 근접 연출이 끝나면 여기로 돌아온다 */
   const frameShot = () => {
     const ids = view.camera ? [...involved, ...(view.camera.focus === "all" ? [...layout.values()].filter((p) => !p.parent).map((p) => p.id) : [view.camera.focus])] : involved;
@@ -311,7 +320,9 @@ export function buildStep(ctx: DirectorContext): Timeline {
             rig.shot(panelPoint(e.target), "near");
             model.repaintScreen(e.target, e.side, e.screen);
             // 바뀐 내용을 라벨로도: 이 판이 다시 바뀌거나 다음 단계로 넘어갈 때까지 떠 있다(시간으로 내리지 않음, FlowScene refreshLabels)
-            labels.set(`screen-${e.target}`, model.screenLabelPoint(e.target), screenLabel(e.screen, node(e.target)!.actor.tone === "attack"));
+            screens.set(e.target, { ...screens.get(e.target), [e.side]: e.screen });
+            labelled.add(e.target);
+            if (e.side === (pivotFlipped(e.target) ? "back" : "front")) showScreen(e.target, e.screen);
           });
           tl.wait(500);
           break;
@@ -320,6 +331,9 @@ export function buildStep(ctx: DirectorContext): Timeline {
           tl.call(() => rig.shot(anchor(e.target), "near"));
           tl.wait(900);
           tl.tween(1400, (t) => (pivot.rotation.y = t * Math.PI));
+          tl.call(() => {
+            if (labelled.has(e.target) || node(e.target)!.actor.mirrorScreen) showScreen(e.target, screens.get(e.target)?.back);
+          });
           break;
         }
         case "run": {

@@ -6,6 +6,8 @@ import type { Term } from "../../packages/content-schema/src/index.ts";
 import { modeDefenses, lastStepIndex, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
 import { terms } from "./terms.ts";
 
+const SCENE_SPEED = 10; // 테스트 빌드 전용 장면 배속(player.e2e.ts와 같은 값)
+
 const MAX_OVERLAP = Number(process.env.MAX_OVERLAP ?? 0.2);
 type Rect = { l: number; t: number; r: number; b: number };
 type Probe = { settled: boolean; width: number; height: number; rects: Record<string, Rect | undefined>; parents: Record<string, string | undefined>; stamp?: Rect };
@@ -26,24 +28,26 @@ const visibleLabels = (page: Page) =>
       });
   });
 
-/** i단계가 끝난 뒤 보여야 할 화면판 라벨 → 첫 줄. mirrorScreen 행위자는 보이는 면의 현재 내용, 이 단계에서 rewrite된 판은 마지막으로 쓴 내용 (docs/04 mirrorScreen) */
+/** i단계가 끝난 뒤 보여야 할 화면판 라벨 → 첫 줄. mirrorScreen 행위자와 이 단계에서 rewrite된 판, 내용은 판의 보이는 면 (docs/04 mirrorScreen) */
 function expectedScreenLabels(term: Term, mode: Mode, i: number): Map<string, string> {
   const actors = term.scenario.actors;
   type Screen = Term["scenario"]["actors"][number]["screen"];
   const screens = new Map<string, { front?: Screen; back?: Screen }>(actors.map((a) => [a.id, { front: a.screen, back: a.back }]));
   const flipped = new Set<string>();
   const out = new Map<string, string>();
+  const shown = new Set<string>();
   for (let k = 0; k <= i; k++) {
     for (const e of stepView(term, mode, k).effects) {
       if (e.type === "flip") flipped.add(e.target);
       if (e.type !== "rewrite") continue;
       screens.set(e.target, { ...screens.get(e.target), [e.side]: e.screen });
-      if (k === i) out.set(e.target, e.screen.lines[0] ?? e.screen.title ?? "");
+      if (k === i) shown.add(e.target);
     }
   }
-  for (const a of actors.filter((x) => x.mirrorScreen && !out.has(x.id))) {
-    const s = flipped.has(a.id) ? screens.get(a.id)?.back : screens.get(a.id)?.front;
-    out.set(a.id, s?.lines[0] ?? s?.title ?? "");
+  for (const a of actors) if (a.mirrorScreen) shown.add(a.id);
+  for (const id of shown) {
+    const s = flipped.has(id) ? screens.get(id)?.back : screens.get(id)?.front;
+    out.set(id, s?.lines[0] ?? s?.title ?? "");
   }
   return out;
 }
@@ -97,7 +101,9 @@ for (const term of terms) {
   for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
     const modeName = mode === null ? (term.category === "web-security" ? "공격 흐름" : "기본 흐름") : term.defenses[mode]!.name;
     test(`${term.id} · ${modeName}: 단계마다 등장 행위자가 모두 화면 안에 있고 ${MAX_OVERLAP * 100}% 넘게 겹치지 않는다`, async ({ page }) => {
-      await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));
+      // 연출을 재생하지 않고 단계 결과 상태로 바로 간다(동작 줄이기 경로: 결과 적용 → 등장 행위자 샷). 남은 자막 대기는 테스트 배속으로 줄인다
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.addInitScript((x) => Object.assign(globalThis, { __sceneSpeed: x }), SCENE_SPEED);
       await page.goto(`/terms/${term.id}`);
       await expect(page.locator(".scene3d canvas")).toBeVisible({ timeout: 15_000 });
       await selectMode(page, term, mode);

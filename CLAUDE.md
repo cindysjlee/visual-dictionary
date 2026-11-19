@@ -96,7 +96,11 @@ docs/                     설계 문서
 - 한 단계를 끝내면 위 "현재 단계" 줄을 갱신하고, 다음 세션이 이어갈 수 있게 남은 일을 한두 줄로 적는다.
 - 의미 있는 작업 단위가 끝나면 커밋한다.
 - 커밋 전에는 `ecc:verification-loop`(또는 `ecc:quality-gate`) 수준의 검증을 돌린다. 최소 `npm run verify`(콘텐츠 검증·단위 테스트·빌드·홈 묶음 검사)가 통과해야 한다.
-- 용어를 추가하거나 플레이어를 바꾸면 `npm run test:e2e`(Playwright, 자막·단계·차단 표시와 axe 접근성)를 돌린다. 테스트 대상 용어는 content/terms에서 자동으로 늘어난다.
+- 테스트 실행 규칙(E2E는 Playwright: 자막·단계·차단 표시, 장면 기록, 겹침, axe 접근성. 대상 용어는 content/terms에서 자동으로 늘어난다):
+  - 코드를 고칠 때마다: `npm run verify`만.
+  - 특정 용어나 플레이어를 고쳤을 때: 그 용어만 골라서 E2E. 테스트 이름이 용어 id로 시작하므로 `npm run test:e2e:drafts -- --grep "tcp-handshake|deadlock"`(draft가 없으면 `npm run test:e2e -- --grep …`).
+  - push·배포 직전에만: 전체 E2E 한 번. draft가 있으면 `npm run test:e2e:drafts`만 돌린다(published를 포함하므로 `test:e2e`와 중복). draft가 없으면 `npm run test:e2e`.
+  - 장면 기록·겹침 검사는 테스트 빌드 전용 장면 배속(`__sceneSpeed` 10×, 타임라인·카메라)으로 돌고, 겹침 검사는 연출 없이 단계 결과 상태(동작 줄이기 경로)에서 잰다. 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐이다.
 - 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
 - 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지)를 돌린다.
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.

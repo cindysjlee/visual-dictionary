@@ -179,6 +179,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         hold: holdMs(view, true),
         onDone: done,
         onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1), false, null),
+        screens: before.screens,
         trace,
       });
     }
@@ -237,7 +238,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
 
     rig.setAspect(size.width / Math.max(1, size.height));
     let settled = true;
-    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt, jump.current);
+    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt * traceSpeed(), jump.current); // 테스트 배속은 카메라에도(배포 빌드는 1)
     jump.current = false;
 
     // wifi 전파 고리: 봉투가 가까이 지날 때만 퍼진다. 동작 줄이기면 멈춰 있다

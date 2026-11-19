@@ -386,7 +386,7 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     tl?.advance(dt * 1000 * speed.current * traceSpeed());
     rig.setAspect(size.width / Math.max(1, size.height));
     let settled = true;
-    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt, jump.current);
+    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt * traceSpeed(), jump.current); // 테스트 배속은 카메라에도(배포 빌드는 1)
     jump.current = false;
     labels.current?.update(camera, size.width, size.height);
     if (!running && settled && !freeView) {

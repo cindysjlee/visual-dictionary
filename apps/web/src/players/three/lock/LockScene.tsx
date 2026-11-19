@@ -307,7 +307,9 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
         refreshLabels(after);
         trace(view.action as "acquire" | "wait" | "release", { actor: view.from });
         for (const e of view.effects) trace("effect", { effect: e.type, actor: effectActor(e), refused: "refused" in e ? e.refused : false });
+        // 연출 끝 샷과 같게: 고리는 위에서, 도장이 있으면 모두가 들어오는 샷(도장이 위 조건 패널까지 올라가지 않게)
         if (cycle) rig.frame(everyonePoints(), TOP_VIEW);
+        else if (after.stamp) rig.frame(everyonePoints());
       });
       tl.wait(holdMs(view, false));
     } else {
@@ -432,7 +434,7 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
     tl?.advance(dt * 1000 * speed.current * traceSpeed());
     rig.setAspect(size.width / Math.max(1, size.height));
     let settled = true;
-    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt, jump.current);
+    if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt * traceSpeed(), jump.current); // 테스트 배속은 카메라에도(배포 빌드는 1)
     jump.current = false;
     faceCamera(model.billboards, camera);
     labels.current?.update(camera, size.width, size.height, model.stamp.visible ? [billboardRect(model.stamp, camera, size.width, size.height)] : []);

@@ -7,6 +7,8 @@ import { blockTarget, modeDefenses, lastStepIndex, passesGate, stepView, type Mo
 import { terms } from "./terms.ts";
 
 const csrf = terms.find((t) => t.id === "csrf")!;
+/** 테스트 빌드 전용 장면 배속(타임라인·카메라). 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐 */
+const SCENE_SPEED = 10;
 const TOKEN = csrf.defenses.findIndex((d) => d.name === "CSRF 토큰");
 const SAMESITE = csrf.defenses.findIndex((d) => d.name === "SameSite 쿠키");
 
@@ -18,7 +20,7 @@ const stagePlay = (page: Page) => player(page).locator(".stage-play");
 
 async function open(page: Page, id: string, query = "") {
   await page.goto(`/terms/${id}${query}`);
-  await expect(playButton(page)).toBeVisible();
+  await expect(playButton(page)).toBeVisible({ timeout: 15_000 }); // 병렬 실행 중 개발 서버(draft)는 첫 로드가 느리다
 }
 
 test("상세 진입: 1단계에서 멈춰 있고, 무대 가운데 재생 버튼을 누르면 사라지며 재생된다", async ({ page }) => {
@@ -57,7 +59,7 @@ test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", asy
   await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
 });
 
-test("CSRF 공격 흐름: 재생 버튼을 누르면 6단계까지 자막과 단계 번호가 맞고 멈춘다", async ({ page }) => {
+test("CSRF 공격 흐름 1×(실제 속도): 재생 버튼을 누르면 6단계까지 자막과 단계 번호가 맞고 멈춘다", async ({ page }) => {
   await open(page, "csrf");
   await stagePlay(page).click();
   const last = lastStepIndex(csrf, null);
@@ -70,6 +72,7 @@ test("CSRF 공격 흐름: 재생 버튼을 누르면 6단계까지 자막과 단
 });
 
 test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에서 차단된다", async ({ page }) => {
+  await page.addInitScript((x) => Object.assign(globalThis, { __sceneSpeed: x }), SCENE_SPEED);
   await open(page, "csrf");
   await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   await stagePlay(page).click();
@@ -99,22 +102,25 @@ test("재생 속도 2×: 선택 상자가 현재 속도를 알리고, 끝까지 
   const last = lastStepIndex(csrf, null);
   await expect(stepPos(page)).toHaveText(`${last + 1} / ${last + 1} 단계`, { timeout: 60_000 });
   await expect(playButton(page)).toHaveAttribute("aria-label", "재생", { timeout: 20_000 });
-  // 2×면 단계 연출(+대기)이 1× 기준 시간의 절반 남짓으로 끝난다: 첫 단계 길이를 1×로 다시 재서 비교
-  const firstAt = (s: number) =>
+  // 2×면 단계 연출(+대기)이 1× 기준 시간의 절반 남짓으로 끝난다. 둘 다 같은 페이지의 2단계로 잰다(첫 재생 단계는 셰이더 준비 지연이 섞인다)
+  const durationOf = (k: number) =>
     page.evaluate((k) => {
       const tr = (globalThis as unknown as { __sceneTrace: { step: number; kind: string; t: number }[] }).__sceneTrace.filter((e) => e.step === k);
       return tr.find((e) => e.kind === "stepEnd")!.t - tr.find((e) => e.kind === "stepStart")!.t;
-    }, s);
-  const fast = await firstAt(0);
-  await page.reload();
-  await expect(player(page).getByRole("combobox", { name: "재생 속도" })).toHaveValue("2");
-  await player(page).getByRole("combobox", { name: "재생 속도" }).selectOption("1");
+    }, k);
+  const fast = await durationOf(1);
+  await speed.selectOption("1");
   await page.evaluate(() => Object.assign(globalThis, { __sceneTrace: [] }));
-  await player(page).getByRole("button", { name: "1단계로 이동" }).click();
+  await player(page).getByRole("button", { name: "2단계로 이동" }).click();
   await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __sceneTrace: { kind: string }[] }).__sceneTrace.some((e) => e.kind === "stepEnd")), { timeout: 30_000 }).toBe(true);
-  const normal = await firstAt(0);
+  const normal = await durationOf(1);
   expect(fast / normal).toBeGreaterThan(0.4);
   expect(fast / normal).toBeLessThan(0.62);
+
+  // 새로고침해도 고른 속도를 기억한다
+  await speed.selectOption("2");
+  await page.reload();
+  await expect(player(page).getByRole("combobox", { name: "재생 속도" })).toHaveValue("2");
 });
 
 test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", async ({ page }) => {
@@ -209,7 +215,7 @@ for (const term of terms) {
       const errors: string[] = [];
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
       page.on("pageerror", (e) => errors.push(e.message));
-      await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));
+      await page.addInitScript((x) => Object.assign(globalThis, { __sceneSpeed: x }), SCENE_SPEED);
       await open(page, term.id);
       await expect(page.locator(".scene3d canvas")).toBeVisible({ timeout: 15_000 }); // 2D 대체 화면으로 넘어가지 않았는지
       await selectMode(page, term, mode);
