@@ -1,5 +1,5 @@
 // 자동 배포 관문(.github/workflows/deploy.yml, docs/03 2.6). 멈출 때는 작업 요약(GITHUB_STEP_SUMMARY)에 이유를 남기고 종료 코드 1.
-//   node scripts/ci-gate.ts security  → `cdk diff --all --security-only`에 IAM·보안 그룹 변경 표가 있으면 멈춘다(권한 확장은 사람이 승인해 로컬에서 배포)
+//   node scripts/ci-gate.ts security  → `cdk diff --security-only`(모든 스택)에 IAM·보안 그룹 변경 표가 있으면 멈춘다(권한 확장은 사람이 승인해 로컬에서 배포)
 //   node scripts/ci-gate.ts changes   → 변경 세트(ci-gate)를 만들고(prepare-change-set) 리소스 삭제(Remove)·교체(Replacement True/Conditional)가 있으면 멈춘다.
 //                                       없으면 변경이 있는 스택 목록을 GITHUB_OUTPUT stacks에 남긴다(배포 단계가 같은 변경 세트를 실행)
 // 로컬에서도 돌릴 수 있다(프로필 vd). 출력·요약의 12자리 숫자(계정 ID)는 가린다
@@ -29,7 +29,7 @@ const stop = (title: string, reason: string, detail: string) => {
 const mode = process.argv[2];
 
 if (mode === "security") {
-  const r = cdk("diff", "--all", "--security-only");
+  const r = cdk("diff", "--security-only");
   if (r.status !== 0) stop("diff 실패", "`cdk diff --security-only`가 실패했습니다.", r.out);
   // --security-only는 권한을 넓히는 변경만 보여 준다. 표 제목이 하나라도 있으면 사람 승인 대상
   const found = ["IAM Statement Changes", "IAM Policy Changes", "Security Group Changes"].filter((h) => r.out.includes(h));

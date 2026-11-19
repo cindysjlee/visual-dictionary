@@ -20,7 +20,7 @@ export class CiStack extends Stack {
 
     // 신뢰: 이 저장소의 main 브랜치에서 실행된 워크플로만(정확히 일치, 와일드카드 없음). 다른 브랜치·풀 리퀘스트·포크는 맡을 수 없다
     const role = new Role(this, "DeployRole", {
-      description: "GitHub Actions(main)에서 CDK 배포: 부트스트랩 역할 맡기와 배포 확인용 읽기만",
+      description: "GitHub Actions (main) CDK deploy: assume bootstrap roles and read-only checks", // IAM 설명은 라틴 문자만 허용
       maxSessionDuration: Duration.hours(1),
       assumedBy: new WebIdentityPrincipal(provider.oidcProviderArn, {
         StringEquals: {
