@@ -6,5 +6,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["scripts", "packages", "infra/bin", "infra/lib", "infra/test", "tests", "playwright.config.ts"]
+  "include": ["scripts", "packages", "services", "infra/bin", "infra/lib", "infra/test", "tests", "playwright.config.ts"]
 }
