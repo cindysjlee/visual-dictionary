@@ -100,7 +100,7 @@ const stepEnded = (page: Page, step: number) =>
 for (const term of terms) {
   for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
     const modeName = mode === null ? (term.category === "web-security" ? "공격 흐름" : "기본 흐름") : term.defenses[mode]!.name;
-    test(`${term.id} · ${modeName}: 단계마다 등장 행위자가 모두 화면 안에 있고 ${MAX_OVERLAP * 100}% 넘게 겹치지 않는다`, async ({ page }) => {
+    test(`${term.id} · ${modeName}: 단계마다 등장 행위자가 모두 화면 안에 있고 ${MAX_OVERLAP * 100}% 넘게 겹치지 않는다`, { tag: `@${term.id}` }, async ({ page }) => {
       // 연출을 재생하지 않고 단계 결과 상태로 바로 간다(동작 줄이기 경로: 결과 적용 → 등장 행위자 샷). 남은 자막 대기는 테스트 배속으로 줄인다
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.addInitScript((x) => Object.assign(globalThis, { __sceneSpeed: x }), SCENE_SPEED);

@@ -6,6 +6,7 @@ const drafts = process.env.E2E_INCLUDE_DRAFTS === "1";
 const port = drafts ? 5174 : 4173;
 /** 실제 속도 테스트: "CSRF 공격 흐름 1×(실제 속도)", "재생 속도 2×" (tests/e2e/player.e2e.ts) */
 const REALTIME = /\(실제 속도\)|재생 속도 2×/;
+const FILTERED = process.argv.some((a) => a === "--grep" || a === "-g" || a.startsWith("--grep="));
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -18,7 +19,8 @@ export default defineConfig({
   // 실제 속도로 재는 두 테스트는 나머지가 다 끝난 뒤 따로 돈다(병렬 부하로 프레임이 떨어지면 장면 시간이 느려져 배속 비율이 틀어진다)
   projects: [
     { name: "main", grepInvert: REALTIME },
-    { name: "realtime", grep: REALTIME, dependencies: ["main"] },
+    // --grep으로 고를 때는 의존을 끈다: 의존 프로젝트(main)는 grep과 상관없이 통째로 돌아, @csrf가 "CSRF 1×"를 잡으면 전체가 따라온다(grep은 대소문자 무시)
+    { name: "realtime", grep: REALTIME, dependencies: FILTERED ? [] : ["main"] },
   ],
   use: {
     baseURL: `http://localhost:${port}`,

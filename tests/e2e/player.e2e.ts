@@ -1,5 +1,6 @@
 // 플레이어 E2E: 3D 화면 모양이 아니라 자막·단계 번호·차단 표시로 확인한다.
 // 재생 버튼을 눌러 끝까지는 CSRF만, 모든 용어 × 모든 모드는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다).
+// 용어별 테스트에는 @<id> 태그(CSRF 전용 테스트도 @csrf): npm run test:e2e -- --grep @csrf
 // 3D 연출은 테스트 빌드의 장면 기록(window.__sceneTrace)으로 단계마다 출발·도착·효과·차단이 실제로 일어났는지 본다(픽셀 비교 없음)
 import { expect, test, type Page } from "@playwright/test";
 import type { Term } from "../../packages/content-schema/src/index.ts";
@@ -23,7 +24,7 @@ async function open(page: Page, id: string, query = "") {
   await expect(playButton(page)).toBeVisible({ timeout: 15_000 }); // 병렬 실행 중 개발 서버(draft)는 첫 로드가 느리다
 }
 
-test("상세 진입: 1단계에서 멈춰 있고, 무대 가운데 재생 버튼을 누르면 사라지며 재생된다", async ({ page }) => {
+test("상세 진입: 1단계에서 멈춰 있고, 무대 가운데 재생 버튼을 누르면 사라지며 재생된다", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf");
   await expect(stagePlay(page)).toHaveAttribute("aria-label", "재생");
   await expect(playButton(page)).toHaveAttribute("aria-label", "재생");
@@ -35,7 +36,7 @@ test("상세 진입: 1단계에서 멈춰 있고, 무대 가운데 재생 버튼
   await expect(player(page).locator(".stage-slot")).toBeFocused();
 });
 
-test("아래 재생 버튼·스페이스로 시작해도 가운데 버튼이 사라진다", async ({ page }) => {
+test("아래 재생 버튼·스페이스로 시작해도 가운데 버튼이 사라진다", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf");
   await playButton(page).click();
   await expect(stagePlay(page)).toHaveCount(0);
@@ -48,7 +49,7 @@ test("아래 재생 버튼·스페이스로 시작해도 가운데 버튼이 사
   await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
 });
 
-test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", async ({ page }) => {
+test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf");
   await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
   await expect(stagePlay(page)).toBeVisible();
@@ -59,7 +60,7 @@ test("모드 탭을 바꾸면 1단계로 가고 재생 상태는 그대로", asy
   await expect(playButton(page)).toHaveAttribute("aria-label", "일시정지");
 });
 
-test("CSRF 공격 흐름 1×(실제 속도): 재생 버튼을 누르면 6단계까지 자막과 단계 번호가 맞고 멈춘다", async ({ page }) => {
+test("CSRF 공격 흐름 1×(실제 속도): 재생 버튼을 누르면 6단계까지 자막과 단계 번호가 맞고 멈춘다", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf");
   await stagePlay(page).click();
   const last = lastStepIndex(csrf, null);
@@ -71,7 +72,7 @@ test("CSRF 공격 흐름 1×(실제 속도): 재생 버튼을 누르면 6단계�
   await expect(stepPos(page)).toHaveText(`${last + 1} / ${last + 1} 단계`);
 });
 
-test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에서 차단된다", async ({ page }) => {
+test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에서 차단된다", { tag: "@csrf" }, async ({ page }) => {
   await page.addInitScript((x) => Object.assign(globalThis, { __sceneSpeed: x }), SCENE_SPEED);
   await open(page, "csrf");
   await player(page).getByRole("button", { name: /방어 모드|해결 방법/ }).click();
@@ -90,7 +91,7 @@ test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에�
   await expect(player(page).locator(".caption-text")).toContainText("401");
 });
 
-test("재생 속도 2×: 선택 상자가 현재 속도를 알리고, 끝까지 재생되며, 새로고침해도 기억한다", async ({ page }) => {
+test("재생 속도 2×: 선택 상자가 현재 속도를 알리고, 끝까지 재생되며, 새로고침해도 기억한다", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf");
   const speed = player(page).getByRole("combobox", { name: "재생 속도" });
   await expect(speed).toHaveValue("1");
@@ -123,7 +124,7 @@ test("재생 속도 2×: 선택 상자가 현재 속도를 알리고, 끝까지 
   await expect(player(page).getByRole("combobox", { name: "재생 속도" })).toHaveValue("2");
 });
 
-test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", async ({ page }) => {
+test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", { tag: "@csrf" }, async ({ page }) => {
   await open(page, "csrf", "?no3d");
   await expect(page.locator("canvas")).toHaveCount(0);
   await expect(page.locator(".steps2d-item")).toHaveCount(csrf.scenario.steps.length);
@@ -211,7 +212,7 @@ function expectedEvents(term: Term, mode: Mode, i: number): string[] {
 for (const term of terms) {
   for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
     const modeName = mode === null ? (term.category === "web-security" ? "공격 흐름" : "기본 흐름") : term.defenses[mode]!.name;
-    test(`${term.id} · ${modeName}: 3D 장면이 단계마다 기대한 출발·도착·효과·차단을 실제로 연출한다`, async ({ page }) => {
+    test(`${term.id} · ${modeName}: 3D 장면이 단계마다 기대한 출발·도착·효과·차단을 실제로 연출한다`, { tag: `@${term.id}` }, async ({ page }) => {
       const errors: string[] = [];
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
       page.on("pageerror", (e) => errors.push(e.message));
@@ -264,7 +265,7 @@ for (const term of terms) {
       expect(errors).toEqual([]);
     });
 
-    test(`${term.id} · ${modeName}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, async ({ page }) => {
+    test(`${term.id} · ${modeName}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, { tag: `@${term.id}` }, async ({ page }) => {
       await open(page, term.id);
       await selectMode(page, term, mode);
       const last = lastStepIndex(term, mode);
