@@ -16,6 +16,8 @@ export interface AuthClient {
 }
 
 export const FAKE_AUTH = import.meta.env.MODE !== "production";
+/** 가짜 인증의 고정 코드. 화면 안내도 이 값을 쓴다(fake.ts를 직접 import하면 가짜 구현이 배포 묶음에 들어간다) */
+export const FAKE_CODE = "123456";
 
 export function importAuthClient(): Promise<AuthClient> {
   return FAKE_AUTH ? import("./fake.ts").then((m) => m.fakeAuthClient()) : import("./cognito.ts").then((m) => m.cognitoAuthClient());

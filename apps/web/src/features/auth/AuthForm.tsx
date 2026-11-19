@@ -1,6 +1,7 @@
 // /auth/* 화면 공통 조각: 카드, 입력칸, 오류·안내 영역, 제출 처리. 이메일은 URL이 아니라 라우터 state로 넘긴다(주소창·기록에 개인정보를 남기지 않음)
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useLocation, useSearchParams } from "react-router";
+import { FAKE_AUTH, FAKE_CODE } from "./client.ts";
 import { authMessage } from "./errors.ts";
 import { PASSWORD_RULES } from "./password.ts";
 import { safeNext } from "./safeNext.ts";
@@ -22,6 +23,12 @@ export function AuthCard({ title, lead, children }: { title: string; lead?: stri
       <div className="glass card card-lg auth-card">
         <h1 className="auth-title">{title}</h1>
         {lead && <p className="muted">{lead}</p>}
+        {/* 개발 서버·테스트 빌드에서 실제 가입으로 착각하지 않게(배포 빌드에는 이 분기가 없다) */}
+        {FAKE_AUTH && (
+          <p className="fake-auth-note" role="note">
+            개발용 가짜 인증이에요. 실제로 가입되지 않고 메일도 가지 않아요. 인증 코드는 {FAKE_CODE}이에요.
+          </p>
+        )}
         {children}
       </div>
     </section>

@@ -1247,3 +1247,14 @@ button:disabled {
     padding: 0 10px;
   }
 }
+
+/* 개발 서버·테스트 빌드 전용 안내(가짜 인증). 배포 빌드에는 이 요소가 없다 */
+.fake-auth-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-btn);
+  border: 1px dashed var(--attack-text);
+  color: var(--attack-text);
+  font-size: 13px;
+  font-weight: 600;
+}

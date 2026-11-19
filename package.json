@@ -23,7 +23,8 @@
     "check:bundle": "node scripts/check-bundle.ts",
     "verify": "npm run validate && npm test && npm run build && npm run check:bundle",
     "smoke:prod": "node scripts/smoke-prod.ts",
-    "smoke:auth": "node scripts/smoke-auth.ts"
+    "smoke:auth": "node scripts/smoke-auth.ts",
+    "smoke:auth:signup": "node scripts/smoke-auth-signup.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

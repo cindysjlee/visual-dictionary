@@ -1,9 +1,9 @@
 // 가짜 인증(테스트·개발 빌드 전용, 배포 묶음에 없음). 실제 메일 없이 가입·인증·로그인·재설정 흐름을 E2E로 확인한다.
 // 사용자와 세션은 localStorage에 두어 새로고침해도 로그인이 유지되는 것까지 흉내 낸다. 인증 코드는 늘 FAKE_CODE
-import type { AuthClient } from "./client.ts";
+import { FAKE_CODE, type AuthClient } from "./client.ts";
 import { authError } from "./errors.ts";
 
-export const FAKE_CODE = "123456";
+export { FAKE_CODE };
 const USERS = "fake-auth-users";
 const SESSION = "fake-auth-session";
 

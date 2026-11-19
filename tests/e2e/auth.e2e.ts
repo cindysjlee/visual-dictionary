@@ -26,6 +26,8 @@ async function login(page: Page, email: string, password = PW) {
 
 test("가입 → 틀린 코드 → 맞는 코드로 로그인되어 next로 돌아오고, 새로고침해도 유지되며, 로그아웃된다", tag, async ({ page }) => {
   await page.goto("/auth/signup?next=%2Fterms%2Fcsrf");
+  // 테스트·개발 빌드는 가짜 인증임을 화면에 밝힌다(실제 가입으로 착각하지 않게. 배포 빌드에는 없다: check:bundle)
+  await expect(page.getByRole("note")).toContainText("개발용 가짜 인증");
   await field(page, "이메일").fill("new@example.com");
   await field(page, "비밀번호").fill("12345678");
   await field(page, "비밀번호 확인").fill("12345678");
@@ -89,6 +91,8 @@ test("비밀번호 재설정: 코드와 새 비밀번호 → 새 비밀번호로
   await seedUser(page, "reset@example.com");
   await page.goto("/auth/login");
   await page.getByRole("link", { name: "비밀번호를 잊었어요" }).click();
+  // 재설정 화면(lazy)이 뜬 뒤에 입력한다: 먼저 입력하면 아직 남은 로그인 화면의 칸에 들어간다(병렬 실행에서 드러남)
+  await expect(page.getByRole("heading", { name: "비밀번호 재설정" })).toBeVisible();
   await field(page, "이메일").fill("reset@example.com");
   await page.getByRole("button", { name: "인증 코드 받기" }).click();
   await expect(page.getByRole("status")).toContainText("가입된 이메일이라면");
