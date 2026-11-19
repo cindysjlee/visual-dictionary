@@ -74,7 +74,7 @@ docs/                     설계 문서
 남은 일:
 - 7단계(선택): 최근 본 용어(Activity API, 탈퇴 정리 큐를 같이 구독), 관련 용어, 자동 배포(GitHub Actions). 비회원 기록 이전(FR-PRG-07)도 선택.
 - 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
-- 배포에 IAM 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 변경 내용을 확인하고(권한 범위가 인프라 테스트와 같은지) `npm exec -w infra -- cdk deploy --all --require-approval never --profile vd`로 그때만 배포한다.
+- 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
@@ -95,6 +95,8 @@ docs/                     설계 문서
 - ponytail 모드는 `full` 이하로 쓴다. `ultra`는 요구사항으로 정한 기능까지 줄이려 하므로 쓰지 않는다.
 - 한 단계를 끝내면 위 "현재 단계" 줄을 갱신하고, 다음 세션이 이어갈 수 있게 남은 일을 한두 줄로 적는다.
 - 의미 있는 작업 단위가 끝나면 커밋한다.
+- **배포 승인(`--require-approval never`)은 사용자 확인 없이 쓰지 않는다.** 배포가 IAM·보안 그룹 변경 승인 단계에서 멈추면, `cdk diff`의 보안 관련 변경(IAM 문장, 권한)을 사용자에게 보여 주고, 사용자가 "승인"이라고 답한 뒤에만 그 옵션으로 배포한다. "테스트가 통과하면 확인 없이 배포" 같은 지시도 이 승인을 대신하지 않는다.
+- **운영 리소스의 데이터를 지우거나 바꾸는 명령은 매번 먼저 묻는다.** DynamoDB 항목 삭제·수정, Cognito 사용자 삭제·수정, S3 객체 삭제, SQS 메시지 삭제·다시 보내기 등이 해당한다. 예외는 smoke 스크립트가 자기가 만든 테스트 데이터(예약 도메인 테스트 사용자와 그 기록)를 지우는 경우뿐이다. 스크립트 밖에서 남은 테스트 데이터를 지우는 것도 먼저 묻는다. 확인용 조회(describe·get·list·query·scan)는 묻지 않아도 된다.
 - 커밋 전에는 `ecc:verification-loop`(또는 `ecc:quality-gate`) 수준의 검증을 돌린다. 최소 `npm run verify`(콘텐츠 검증·단위 테스트·빌드·홈 묶음 검사)가 통과해야 한다.
 - 테스트 실행 규칙(E2E는 Playwright: 자막·단계·차단 표시, 장면 기록, 겹침, axe 접근성. 대상 용어는 content/terms에서 자동으로 늘어난다):
   - 코드를 고칠 때마다: `npm run verify`만.
@@ -103,6 +105,7 @@ docs/                     설계 문서
   - 장면 기록·겹침 검사는 테스트 빌드 전용 장면 배속(`__sceneSpeed` 10×, 타임라인·카메라)으로 돌고, 겹침 검사는 연출 없이 단계 결과 상태(동작 줄이기 경로)에서 잰다. 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐이다.
 - 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
 - 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지·`/config.json`)와 `npm run smoke:auth`(실제 Cognito: 메일 없는 테스트 사용자로 로그인·새로고침 유지·로그아웃, 끝나면 사용자 삭제), `npm run smoke:progress`(사용자 A·B로 API 권한·다른 브라우저 진행률·화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건, 끝나면 사용자 삭제)를 돌린다.
+- 배포 후에는 smoke와 함께 `npm run check:aws`(읽기 전용 명령만으로 배포된 리소스 설정을 기대값과 비교: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 권한·로그 보존, CloudFront 동작·함수·오류 페이지·CSP, Cognito 설정)도 돌린다. 콘솔 확인 대신 이것을 쓴다.
 - 인증 관련 코드(`apps/web/src/features/auth/`, `infra/lib/auth-stack.ts`, CSP)를 바꿔 배포했을 때만 `npm run smoke:auth:signup`(운영 화면에서 실제 가입 → 관리자 API로 UNCONFIRMED 확인 → 삭제)을 돌린다. 인증 메일을 1통 쓰므로(계정 전체 하루 50통) 배포마다 돌리지 않는다. 개발 서버(localhost)는 가짜 인증이라 거기서 가입하면 Cognito에 아무것도 생기지 않는다(화면에 "개발용 가짜 인증" 안내가 뜬다).
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.
 - 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고, 커밋한 뒤 push한다.

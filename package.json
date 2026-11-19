@@ -26,7 +26,8 @@
     "smoke:prod": "node scripts/smoke-prod.ts",
     "smoke:auth": "node scripts/smoke-auth.ts",
     "smoke:auth:signup": "node scripts/smoke-auth-signup.ts",
-    "smoke:progress": "node scripts/smoke-progress.ts"
+    "smoke:progress": "node scripts/smoke-progress.ts",
+    "check:aws": "node scripts/check-aws.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
