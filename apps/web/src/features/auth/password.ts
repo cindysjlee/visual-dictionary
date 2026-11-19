@@ -7,3 +7,10 @@ export const PASSWORD_RULES = [
 
 /** 지키지 못한 조건의 이름들. 비어 있으면 통과 */
 export const passwordProblems = (pw: string) => PASSWORD_RULES.filter((r) => !r.test(pw)).map((r) => r.label);
+
+/** 가입·재설정 공통 검사: 조건과 확인 일치. 문제가 없으면 undefined */
+export function checkNewPassword(password: string, again: string): string | undefined {
+  const problems = passwordProblems(password);
+  if (problems.length) return `비밀번호 조건을 확인해 주세요: ${problems.join(", ")}`;
+  if (password !== again) return "비밀번호 확인이 일치하지 않아요.";
+}

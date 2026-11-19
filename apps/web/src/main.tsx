@@ -25,9 +25,16 @@ installStaleChunkReload();
 const router = createBrowserRouter([
   {
     Component: Layout,
+    // 계정 화면(lazy)으로 바로 들어올 때 받는 동안은 비워 둔다(잠깐이라 자리 표시 없음)
+    HydrateFallback: () => null,
     children: [
       { index: true, Component: HomePage },
       { path: "terms/:id", Component: TermPage },
+      // 계정 화면은 따로 받는다(홈 묶음을 가볍게). 인증 구현(Amplify)은 store가 따로 받는다
+      { path: "auth/login", lazy: { Component: async () => (await import("./features/auth/LoginPage.tsx")).default } },
+      { path: "auth/signup", lazy: { Component: async () => (await import("./features/auth/SignupPage.tsx")).default } },
+      { path: "auth/confirm", lazy: { Component: async () => (await import("./features/auth/ConfirmPage.tsx")).default } },
+      { path: "auth/reset", lazy: { Component: async () => (await import("./features/auth/ResetPage.tsx")).default } },
       { path: "*", Component: NotFoundPage },
     ],
   },

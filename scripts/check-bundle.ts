@@ -21,6 +21,8 @@ if (traced.length) failures.push(`배포 묶음에 장면 기록 코드가 있�
 const faked = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("fake-auth-users"));
 if (faked.length) failures.push(`배포 묶음에 가짜 인증이 있습니다: ${faked.join(", ")}`);
 if (code.toString().includes("cognito-idp")) failures.push("홈 묶음에 Amplify(Cognito)가 들어 있습니다");
+const cognito = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("cognito-idp"));
+if (!cognito.length) failures.push("배포 묶음에 Cognito 인증 구현이 없습니다(가짜 구현만 남았는지 확인)");
 if (kb > LIMIT_KB) failures.push(`홈 묶음이 gzip ${kb.toFixed(1)}KB로 ${LIMIT_KB}KB를 넘습니다`);
 
 if (failures.length) {

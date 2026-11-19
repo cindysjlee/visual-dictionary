@@ -1085,3 +1085,165 @@ button:disabled {
   padding: 0 12px;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 계정(/auth/*)·상단바 계정 영역·끝까지 봄 안내 (5단계, docs/05 계정) ---------- */
+.btn-sm {
+  min-height: var(--tap-min);
+  padding: 0 14px;
+  border-radius: var(--radius-btn);
+}
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.account-email {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+/* 로그인 상태를 읽는 동안 자리만 잡아 상단바가 흔들리지 않게 */
+.account-slot {
+  width: 72px;
+  height: var(--tap-min);
+}
+
+.auth-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  gap: 16px;
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.field-box {
+  height: 52px;
+}
+
+.form-error {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--attack-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-error:empty {
+  min-height: 0;
+}
+
+.form-notice {
+  margin: 0;
+  color: var(--defense-text);
+  font-size: 14px;
+}
+
+.password-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: -4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.password-rules .is-ok {
+  color: var(--defense-text);
+  font-weight: 600;
+}
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.auth-links a,
+.link-btn {
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  color: var(--defense-text);
+  font-weight: 600;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.study-login {
+  align-self: flex-start;
+}
+
+.complete-notice {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.complete-notice p {
+  margin: 0;
+}
+
+@media (max-width: 639px) {
+  .account-email {
+    display: none;
+  }
+
+  /* 휴대폰 폭: 로고·메뉴·로그인(아웃)·테마 버튼이 한 줄에 들어가게 간격을 줄인다 */
+  .topbar {
+    gap: 8px;
+    padding-left: 12px;
+  }
+
+  .topbar-nav a,
+  .topbar .btn-sm {
+    padding: 0 10px;
+  }
+}

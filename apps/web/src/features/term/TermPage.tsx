@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import type { IndexEntry, Term } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
 import { defenseCounts } from "@app/content-schema/scene";
@@ -6,7 +6,9 @@ import NotFoundPage from "../../NotFoundPage.tsx";
 import { ShieldIcon } from "../../icons.tsx";
 import { useJson } from "../../useJson.ts";
 import { termMeta } from "../explore/HomePage.tsx";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useCallback, useState } from "react";
+import { loginPath } from "../auth/safeNext.ts";
+import { useAuth } from "../auth/store.ts";
 
 // 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
 const Player = lazy(() => import("../../players/Player.tsx"));
@@ -16,6 +18,11 @@ function TermDetail({ term }: { term: Term }) {
   // 배포된(published) 용어만 링크한다
   const related = index.state === "ok" ? index.data.filter((t) => term.related.includes(t.id)) : [];
   const isSecurity = term.category === "web-security";
+  const auth = useAuth();
+  const { pathname } = useLocation();
+  // 끝까지 봄: 로그아웃 상태면 로그인 안내를 띄운다. 읽음 저장은 6단계(Progress API)에서 연결한다
+  const [completed, setCompleted] = useState(false);
+  const onComplete = useCallback(() => setCompleted(true), []);
 
   return (
     <>
@@ -40,14 +47,32 @@ function TermDetail({ term }: { term: Term }) {
         </div>
         <div className="glass card card-lg">
           <h2 className="card-title">학습 상태</h2>
-          <p className="muted">로그인하면 끝까지 재생한 용어가 자동으로 읽음 처리돼요.</p>
+          {auth.status === "user" ? (
+            <p className="muted">로그인했어요. 끝까지 본 용어를 읽음으로 저장하는 기능은 곧 연결돼요.</p>
+          ) : (
+            <>
+              <p className="muted">로그인하면 끝까지 재생한 용어가 자동으로 읽음 처리돼요.</p>
+              <Link to={loginPath(pathname)} className="btn btn-sm study-login">
+                로그인
+              </Link>
+            </>
+          )}
         </div>
       </section>
 
-      {/* 끝까지 봄(onComplete) → 읽음 저장은 6단계에서 연결한다 */}
       <Suspense fallback={<PlayerSkeleton />}>
-        <Player term={term} />
+        <Player term={term} onComplete={onComplete} />
       </Suspense>
+      {completed && auth.status !== "user" && (
+        <section className="glass card complete-notice" role="status">
+          <p>
+            <strong>끝까지 봤어요.</strong> 로그인하면 다 본 용어가 저장되어 다른 기기에서도 이어서 볼 수 있어요.
+          </p>
+          <Link to={loginPath(pathname)} className="btn btn-cta">
+            로그인하고 저장하기
+          </Link>
+        </section>
+      )}
 
       <section className="bento">
         {term.defenses.length > 0 && (
