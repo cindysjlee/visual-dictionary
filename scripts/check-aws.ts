@@ -1,6 +1,6 @@
 // 배포된 AWS 리소스 설정 확인: node scripts/check-aws.ts. 읽기 전용 명령(describe·get·list)만 쓴다(AWS CLI, 프로필 vd).
 // 콘솔에서 보던 항목을 기대값과 비교한다: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 런타임·역할 권한·로그 보존,
-// CloudFront 동작·함수·오류 페이지·CSP, Cognito 사용자 풀·앱 클라이언트. ARN은 계정 ID가 들어 있어 출력하지 않는다
+// CloudFront 동작·함수·오류 페이지·CSP, Cognito 사용자 풀·앱 클라이언트, CI 배포 역할(신뢰 정책·권한). ARN은 계정 ID가 들어 있어 출력하지 않는다
 import { execFileSync } from "node:child_process";
 import { CSP } from "../infra/lib/csp.ts";
 
@@ -224,6 +224,56 @@ check(
   client.AccessTokenValidity === 60 && client.IdTokenValidity === 60 && client.RefreshTokenValidity === 43200 && client.TokenValidityUnits?.RefreshToken === "minutes",
   `토큰 유효 시간(분): 액세스 ${client.AccessTokenValidity}, ID ${client.IdTokenValidity}, 리프레시 ${client.RefreshTokenValidity} (기대 60/60/43200=30일)`,
 );
+
+// ---------- CI 배포 역할(GitHub OIDC, docs/03 2.6) ----------
+// CI 안에서는 건너뛴다: CI 역할은 자기 역할을 읽는 권한(iam:GetRole)이 없고, 이 검사를 위해 넓히지 않는다
+const ciRes = process.env.CI ? undefined : (() => {
+  try {
+    return resources("VisualDictionaryCi");
+  } catch {
+    return undefined; // 아직 배포 안 됨
+  }
+})();
+if (ciRes) {
+  // 기대 저장소는 파일에 적지 않고 git remote에서 읽는다
+  const repo = execFileSync("git", ["remote", "get-url", "origin"], { encoding: "utf8" }).trim().replace(/^.*github\.com[:/]/, "").replace(/\.git$/, "");
+  const roleName = find(ciRes, "AWS::IAM::Role", "DeployRole")[0]!.PhysicalResourceId;
+  type Stmt = { Effect: string; Action: string | string[]; Resource?: string | string[]; Principal?: { Federated?: string }; Condition?: Record<string, Record<string, string>> };
+  const role = aws<{ Role: { MaxSessionDuration: number; AssumeRolePolicyDocument: { Statement: Stmt[] } } }>("iam", "get-role", "--role-name", roleName).Role;
+  const trust = role.AssumeRolePolicyDocument.Statement;
+  const t = trust[0];
+  check(
+    trust.length === 1 && t!.Effect === "Allow" && t!.Action === "sts:AssumeRoleWithWebIdentity" && !!t!.Principal?.Federated?.endsWith(":oidc-provider/token.actions.githubusercontent.com"),
+    "CI 역할 신뢰: GitHub OIDC 공급자(Federated)만, sts:AssumeRoleWithWebIdentity",
+  );
+  check(
+    same(Object.keys(t?.Condition ?? {}), ["StringEquals"]) &&
+      same(t!.Condition!.StringEquals, {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+        "token.actions.githubusercontent.com:sub": `repo:${repo}:ref:refs/heads/main`,
+      }),
+    `CI 역할 조건: StringEquals만, aud = sts.amazonaws.com, sub = repo:${repo}:ref:refs/heads/main (와일드카드 없음)`,
+  );
+  check(role.MaxSessionDuration <= 3600, `CI 역할 최대 세션: ${role.MaxSessionDuration}초 (기대 3600 이하)`);
+  const managed = aws<{ AttachedPolicies: unknown[] }>("iam", "list-attached-role-policies", "--role-name", roleName).AttachedPolicies;
+  const stmts = aws<{ PolicyNames: string[] }>("iam", "list-role-policies", "--role-name", roleName).PolicyNames.flatMap(
+    (name) => aws<{ PolicyDocument: { Statement: Stmt[] } }>("iam", "get-role-policy", "--role-name", roleName, "--policy-name", name).PolicyDocument.Statement,
+  );
+  const actions = stmts.flatMap((s) => [s.Action].flat());
+  const assume = stmts.filter((s) => [s.Action].flat().includes("sts:AssumeRole"));
+  const bootstrap = ["deploy", "file-publishing", "lookup"].map((r) => new RegExp(`^arn:aws:iam::(\\d{12}):role/cdk-hnb659fds-${r}-role-\\1-${REGION}$`));
+  const assumeTargets = assume.flatMap((s) => [s.Resource ?? []].flat());
+  check(
+    assume.length === 1 && same([assume[0]!.Action].flat(), ["sts:AssumeRole"]) && assumeTargets.length === 3 && bootstrap.every((re) => assumeTargets.some((a) => re.test(a))),
+    "CI 역할 sts:AssumeRole: cdk-hnb659fds deploy·file-publishing·lookup 역할 3개만(이 계정·서울)",
+  );
+  // IAM 동작 이름은 대소문자를 가리지 않는다(apigateway:GET = 읽기)
+  const others = actions.filter((a) => a !== "sts:AssumeRole");
+  const notRead = others.filter((a) => !/^[\w-]+:(describe|get|list)/i.test(a));
+  check(!managed.length && stmts.every((s) => s.Effect === "Allow") && !notRead.length, `CI 역할 나머지 권한은 읽기만(Describe·Get·List)${notRead.length ? ` / 범위 밖: ${notRead.join(", ")}` : ""}, 관리형 정책 ${managed.length}개`);
+  const forbidden = actions.filter((a) => a === "*" || /^(iam:(PassRole|Create|Put|Attach)|s3:(Put|Delete)|dynamodb:Delete|cognito-idp:Admin)/i.test(a) || a.endsWith(":*"));
+  check(!forbidden.length && !stmts.some((s) => [s.Resource ?? []].flat().includes("*")), `CI 역할 금지 권한 없음(PassRole·IAM 쓰기·S3 쓰기·삭제·Admin·*)${forbidden.length ? `: ${forbidden.join(", ")}` : ""}`);
+} else console.log(process.env.CI ? "건너뜀  CI 역할 검사(CI 안에서는 자기 역할을 읽지 않음)" : "건너뜀  CI 역할 검사(VisualDictionaryCi 스택 없음)");
 
 for (const [ok, what] of results) console.log(`${ok ? "통과" : "실패"}  ${what}`);
 const failed = results.filter(([ok]) => !ok).length;
