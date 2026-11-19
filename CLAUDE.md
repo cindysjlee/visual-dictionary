@@ -75,6 +75,7 @@ docs/                     설계 문서
 - 가림 투명·빌보드가 `FlowScene.tsx`의 `SceneRoot` 안에 있음. StackScene·LockScene이 같이 쓰도록 `players/three/` 공통 모듈로 분리할 것.
 - 다른 공통 부분(layout, sceneState, timeline, camera, tokens, labels)도 FlowScene에 묶인 게 있는지 그때 같이 확인할 것.
 - R3F 제거 여부(휴대폰 실기기 확인은 끝남, 성능 보고 결정)와 같이 진행할 것.
+- 5~6단계에서 API 경로를 CloudFront에 붙일 때: 403·404→index.html 대체 응답을 CloudFront Functions(확장자 없는 경로만 index.html로)로 바꿔 `/assets/`·`/content/` 없는 파일이 진짜 404가 되게 할지 경로별 처리와 함께 다시 정할 것.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 2단계 주의: 403/404→index.html 때문에 없는 `/content/terms/<id>.json`도 HTML 200이 오므로 상세 페이지는 JSON 파싱 실패를 "없는 용어"로 처리할 것. CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
