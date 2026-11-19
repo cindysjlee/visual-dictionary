@@ -577,8 +577,14 @@ export class SceneModel {
 
   /** 카메라가 이 행위자를 화면에 담을 때 들어와야 할 점: 보이는 상자의 꼭짓점 + 이름 라벨 자리 */
   framePoints(id: string): Vector3[] {
-    const box = this.visibleBox(id);
-    if (box.isEmpty()) return [];
+    const node = this.nodes.get(id);
+    if (!node) return [];
+    let box = this.visibleBox(id);
+    // 아직 숨은 행위자(이 단계에 나타날 대상 등)도 나타날 자리를 담는다: 봉투가 날아가는 목적지가 처음부터 화면에 있어야 한다
+    if (box.isEmpty()) {
+      const p = new Vector3(...node.placed.position);
+      box = new Box3(p.clone().add(new Vector3(-1.2, 0, -0.6)), p.clone().add(new Vector3(1.2, 1.4, 0.6)));
+    }
     const { min: a, max: b } = box;
     const corners = [a.x, b.x].flatMap((x) => [a.y, b.y].flatMap((y) => [a.z, b.z].map((z) => new Vector3(x, y, z))));
     // 자식(탭·보관함)이면 부모 이름표 자리도 담는다: 부모 이름표가 화면 가장자리에 잘리지 않게

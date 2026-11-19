@@ -9,6 +9,9 @@ type Entry = { el: HTMLDivElement; point: Vector3; visible: boolean };
 
 /** 행위자에 붙은 고정 라벨(이름·잔액·받은 돈). 재생 중에도 서로 겹치면 비킨다. 봉투·안내·검사 라벨은 움직이므로 비키지 않고 위에 그린다 */
 const STATIC_LABEL = /^(actor|bal|gain)-/;
+/** 검사 목록은 움직이지 않는 패널이라 도장을 피해 비킨다 */
+const AVOIDS_KEEP_OUT = /^(actor|bal|gain)-|^checks$/;
+type Rect = { l: number; t: number; r: number; b: number };
 
 export class LabelLayer {
   /** 켜면(시작 전 전체 샷) 가운데 재생 버튼 자리도 비우고, 모든 라벨을 비키게 한다 */
@@ -23,6 +26,7 @@ export class LabelLayer {
     let entry = this.entries.get(id);
     if (!entry) {
       const el = document.createElement("div");
+      el.dataset.label = id; // E2E가 라벨 종류를 구분한다
       this.root.appendChild(el);
       entry = { el, point, visible };
       this.entries.set(id, entry);
@@ -58,20 +62,22 @@ export class LabelLayer {
   }
 
   /** 매 프레임: 3D 점을 화면 좌표로 투영해 옮긴다 (CSSOM이라 CSP style-src 'self'에 걸리지 않음) */
-  update(camera: Camera, width: number, height: number) {
+  update(camera: Camera, width: number, height: number, keepOut: Rect[] = []) {
     // 시작 전에는 무대 가운데에 큰 재생 버튼(.stage-play, 88px)이 있으므로 그 자리도 비워 둔다
     const half = 52;
-    const placed: { l: number; t: number; r: number; b: number }[] = this.declutter
-      ? [{ l: width / 2 - half, t: height / 2 - half, r: width / 2 + half, b: height / 2 + half }]
-      : [];
+    // keepOut: 차단 도장·내용 카드처럼 늘 보여야 하는 자리. 고정 라벨과 검사 목록이 피한다
+    const placed: Rect[] = [...keepOut];
+    if (this.declutter) placed.push({ l: width / 2 - half, t: height / 2 - half, r: width / 2 + half, b: height / 2 + half });
     // 움직이는 라벨(봉투·안내·검사)이 먼저 자리를 잡고(움직이지 않음), 고정 라벨은 그 자리까지 피한다
     const ordered = [...this.entries].sort(([a], [b]) => Number(STATIC_LABEL.test(a)) - Number(STATIC_LABEL.test(b)));
     for (const [id, { el, point, visible }] of ordered) {
-      const avoid = this.declutter || STATIC_LABEL.test(id);
+      const avoid = this.declutter || AVOIDS_KEEP_OUT.test(id);
       const p = point.clone().project(camera);
       let show = visible && p.z < 1 && Math.abs(p.x) < 1.2 && Math.abs(p.y) < 1.2;
-      const x = ((p.x + 1) / 2) * width;
-      let y = ((1 - p.y) / 2) * height;
+      // 라벨이 무대 가장자리 밖으로 잘리지 않게 안쪽으로 밀어 넣는다(휴대폰처럼 좁은 화면). 위쪽은 아래 비키기 단계에서 다룬다
+      const edge = el.offsetWidth / 2 + 4;
+      const x = width > edge * 2 ? Math.min(Math.max(((p.x + 1) / 2) * width, edge), width - edge) : width / 2;
+      let y = Math.min(((1 - p.y) / 2) * height, height - 4);
       // 겹치는 라벨을 위로 비키고, 그래도 겹치면 숨긴다. 앞에 등록된 라벨(JSON의 행위자 순서)이 자리를 먼저 잡는다
       if (show && avoid) {
         const w = el.offsetWidth;
@@ -84,7 +90,10 @@ export class LabelLayer {
         if (hits(box()) || y - h < 0) for (let tries = 1, base = y0; tries <= 3 && (hits(box()) || y - h < 0 || y > height); tries++) y = base + tries * (h + 4);
         if (hits(box()) || y - h < 0 || y > height) show = false;
         else placed.push(box());
-      } else if (show) placed.push({ l: x - el.offsetWidth / 2, t: y - el.offsetHeight, r: x + el.offsetWidth / 2, b: y });
+      } else if (show) {
+        y = Math.max(y, el.offsetHeight + 4);
+        placed.push({ l: x - el.offsetWidth / 2, t: y - el.offsetHeight, r: x + el.offsetWidth / 2, b: y });
+      }
       el.style.opacity = show ? "1" : "0";
       if (show) el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
     }

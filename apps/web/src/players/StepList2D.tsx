@@ -4,7 +4,7 @@ import { holdMs, type StageProps } from "./stage.ts";
 import { useHold } from "./useHold.ts";
 
 export default function StepList2D({ term, state, view, onStepDone }: StageProps) {
-  useHold(holdMs(view, false), state.playing, `${state.defense}-${state.step}`, onStepDone);
+  useHold(holdMs(view, false) / state.speed, state.playing, `${state.defense}-${state.step}`, onStepDone);
   const last = lastStepIndex(term, state.defense);
 
   return (

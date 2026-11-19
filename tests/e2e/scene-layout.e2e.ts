@@ -8,7 +8,23 @@ import { terms } from "./terms.ts";
 
 const MAX_OVERLAP = Number(process.env.MAX_OVERLAP ?? 0.2);
 type Rect = { l: number; t: number; r: number; b: number };
-type Probe = { settled: boolean; width: number; height: number; rects: Record<string, Rect | undefined>; parents: Record<string, string | undefined> };
+type Probe = { settled: boolean; width: number; height: number; rects: Record<string, Rect | undefined>; parents: Record<string, string | undefined>; stamp?: Rect };
+/** 라벨끼리·라벨과 도장은 거의 겹치지 않아야 한다(경계에 닿는 정도만 허용) */
+const MAX_LABEL_OVERLAP = 0.02;
+
+/** 지금 보이는 HTML 라벨의 사각형(무대 기준 px). data-label: actor-<id>, bal-<id>, gain-<id>, checks, packet, note */
+const visibleLabels = (page: Page) =>
+  page.evaluate(() => {
+    type El = { style: { opacity: string }; dataset: { label: string }; getBoundingClientRect(): { left: number; top: number; right: number; bottom: number } };
+    const doc = (globalThis as unknown as { document: { querySelector(s: string): El; querySelectorAll(s: string): Iterable<El> } }).document;
+    const root = doc.querySelector(".scene-labels").getBoundingClientRect();
+    return [...doc.querySelectorAll(".scene-labels [data-label]")]
+      .filter((el) => el.style.opacity === "1")
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return { id: el.dataset.label, l: r.left - root.left, t: r.top - root.top, r: r.right - root.left, b: r.bottom - root.top };
+      });
+  });
 
 /** 등장 행위자: 출발·목적지·경유지와 효과가 가리키는 행위자 (docs/04 효과 어휘) */
 function involved(term: Term, mode: Mode, i: number): string[] {
@@ -65,6 +81,17 @@ for (const term of terms) {
         for (const id of ids) {
           const r = p.rects[id]!;
           if (r.l < 0 || r.t < 0 || r.r > p.width || r.b > p.height) problems.push(`${i + 1}단계 ${id}: 화면 밖 (${[r.l, r.t, r.r, r.b].map(Math.round).join(",")})`);
+        }
+        // 차단 도장은 늘 맨 위에 보이고, 이름표·잔액·검사 목록은 도장을 피하며 서로 겹치지 않는다
+        const labels = await visibleLabels(page);
+        for (const lb of labels) {
+          if (p.stamp && overlap(p.stamp, lb) > MAX_LABEL_OVERLAP) problems.push(`${i + 1}단계 도장↔${lb.id}: ${Math.round(overlap(p.stamp, lb) * 100)}% 겹침`);
+        }
+        const fixed = labels.filter((lb) => /^(actor|bal|gain)-|^checks$/.test(lb.id));
+        for (const [k, a] of fixed.entries()) {
+          for (const b of fixed.slice(k + 1)) {
+            if (overlap(a, b) > MAX_LABEL_OVERLAP) problems.push(`${i + 1}단계 라벨 ${a.id}↔${b.id}: ${Math.round(overlap(a, b) * 100)}% 겹침`);
+          }
         }
         for (const [k, a] of ids.entries()) {
           for (const b of ids.slice(k + 1)) {

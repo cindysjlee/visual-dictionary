@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Term } from "@app/content-schema";
 import { blockingDefenses, type StepView, type Tone } from "@app/content-schema/scene";
 import { NextIcon, OrbitIcon, PauseIcon, PlayIcon, PrevIcon, ShieldIcon } from "../icons.tsx";
+import { SPEEDS, type Speed } from "./engine.ts";
 import type { Playback } from "./usePlayback.ts";
 
 const TONE_CLASS: Record<Tone, string> = { neutral: "step-neutral", attack: "step-danger", defense: "step-blocked" };
@@ -26,6 +27,7 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
 
   // 단축키는 플레이어 안에 포커스가 있을 때만. 스페이스는 버튼의 기본 동작과 겹치지 않게 무대에서만 쓴다
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.target instanceof HTMLSelectElement) return; // 재생 속도 선택 상자는 화살표로 값을 바꾼다
     const onStage = e.target === stageRef.current;
     if (freeView && onStage && e.key.startsWith("Arrow")) return; // 자유 시점에서는 무대가 화살표로 회전한다
     if (e.key === "ArrowLeft") dispatch({ type: "prev" });
@@ -143,6 +145,18 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
             </button>
           ))}
         </div>
+        <select
+          className="btn speed-select"
+          aria-label="재생 속도"
+          value={state.speed}
+          onChange={(e) => dispatch({ type: "setSpeed", speed: Number(e.target.value) as Speed })}
+        >
+          {SPEEDS.map((s) => (
+            <option key={s} value={s}>
+              {s}×
+            </option>
+          ))}
+        </select>
         <button type="button" className="btn" onClick={() => dispatch({ type: "replay" })}>
           다시 보기
         </button>

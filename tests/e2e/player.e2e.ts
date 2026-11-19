@@ -87,6 +87,36 @@ test("CSRF 방어 모드: CSRF 토큰은 5단계 403에서, SameSite는 401에�
   await expect(player(page).locator(".caption-text")).toContainText("401");
 });
 
+test("재생 속도 2×: 선택 상자가 현재 속도를 알리고, 끝까지 재생되며, 새로고침해도 기억한다", async ({ page }) => {
+  await open(page, "csrf");
+  const speed = player(page).getByRole("combobox", { name: "재생 속도" });
+  await expect(speed).toHaveValue("1");
+  await speed.selectOption("2");
+  await expect(speed).toHaveValue("2");
+  await expect(speed.locator("option:checked")).toHaveText("2×");
+  await page.evaluate(() => Object.assign(globalThis, { __sceneTrace: [] }));
+  await stagePlay(page).click();
+  const last = lastStepIndex(csrf, null);
+  await expect(stepPos(page)).toHaveText(`${last + 1} / ${last + 1} 단계`, { timeout: 60_000 });
+  await expect(playButton(page)).toHaveAttribute("aria-label", "재생", { timeout: 20_000 });
+  // 2×면 단계 연출(+대기)이 1× 기준 시간의 절반 남짓으로 끝난다: 첫 단계 길이를 1×로 다시 재서 비교
+  const firstAt = (s: number) =>
+    page.evaluate((k) => {
+      const tr = (globalThis as unknown as { __sceneTrace: { step: number; kind: string; t: number }[] }).__sceneTrace.filter((e) => e.step === k);
+      return tr.find((e) => e.kind === "stepEnd")!.t - tr.find((e) => e.kind === "stepStart")!.t;
+    }, s);
+  const fast = await firstAt(0);
+  await page.reload();
+  await expect(player(page).getByRole("combobox", { name: "재생 속도" })).toHaveValue("2");
+  await player(page).getByRole("combobox", { name: "재생 속도" }).selectOption("1");
+  await page.evaluate(() => Object.assign(globalThis, { __sceneTrace: [] }));
+  await player(page).getByRole("button", { name: "1단계로 이동" }).click();
+  await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __sceneTrace: { kind: string }[] }).__sceneTrace.some((e) => e.kind === "stepEnd")), { timeout: 30_000 }).toBe(true);
+  const normal = await firstAt(0);
+  expect(fast / normal).toBeGreaterThan(0.4);
+  expect(fast / normal).toBeLessThan(0.62);
+});
+
 test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", async ({ page }) => {
   await open(page, "csrf", "?no3d");
   await expect(page.locator("canvas")).toHaveCount(0);
@@ -108,7 +138,10 @@ async function selectMode(page: Page, term: Term, mode: Mode) {
 
 /* ---------- 장면 기록: 기대한 연출이 실제로 일어났는지 (테스트 빌드 전용 기록, apps/web/src/players/three/trace.ts) ---------- */
 type Effect = Term["scenario"]["steps"][number]["effects"][number];
-type TraceEvent = { step: number; mode: Mode; kind: string; actor?: string; effect?: string; refused?: boolean };
+type TraceEvent = { step: number; mode: Mode; kind: string; actor?: string; effect?: string; refused?: boolean; inShot?: boolean };
+type Rect = { l: number; t: number; r: number; b: number };
+type Probe = { settled: boolean; width: number; height: number; rects: Record<string, Rect | undefined> };
+const RINGS = new Set(["ringsStart", "ringsEnd"]);
 
 const effectActor = (e: Effect) => ("target" in e ? e.target : "into" in e ? e.into : e.type === "attach" ? e.from : e.type === "inspect" ? e.at : e.to);
 const effectKey = (e: Effect, refused = "refused" in e && e.refused) => `effect:${e.type}:${effectActor(e)}${refused ? "!" : ""}`;
@@ -165,7 +198,30 @@ for (const term of terms) {
             [i, mode] as const,
           );
         await expect.poll(async () => (await events()).some((e) => e.kind === "stepEnd"), { timeout: 30_000, message: `${i + 1}단계 연출이 끝나지 않음` }).toBe(true);
-        expect((await events()).map(eventKey), `${i + 1}단계`).toEqual(expectedEvents(term, mode, i));
+        const got = await events();
+        expect(got.filter((e) => !RINGS.has(e.kind)).map(eventKey), `${i + 1}단계`).toEqual(expectedEvents(term, mode, i));
+
+        // 출발 샷이 처음부터 목적지를 담는다(멀리 날아가는 동안 출발지만 비추지 않는다)
+        const depart = got.find((e) => e.kind === "depart");
+        if (depart) expect(depart.inShot, `${i + 1}단계 출발 샷에 목적지 ${stepView(term, mode, i).to}가 없음`).toBe(true);
+
+        // wifi 전파 고리: 봉투가 그 길목을 지나는 단계에서만 퍼졌다 멈춘다
+        const v = stepView(term, mode, i);
+        const wifi = term.scenario.actors.filter((a) => a.look === "wifi").map((a) => a.id);
+        for (const id of wifi) {
+          const passes = v.from !== v.to && [v.via, v.from, v.to].includes(id);
+          const rings = got.filter((e) => RINGS.has(e.kind) && e.actor === id).map((e) => e.kind);
+          expect(rings, `${i + 1}단계 ${id} 전파 고리`).toEqual(passes ? ["ringsStart", "ringsEnd"] : []);
+        }
+
+        // 단계 끝: 카메라가 멈췄을 때 목적지와 효과 대상이 화면 안에 있다
+        await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe().settled), { timeout: 15_000 }).toBe(true);
+        const probe = await page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe());
+        const targets = [v.to, ...v.effects.flatMap((e) => ("target" in e ? [e.target] : "into" in e ? [e.into] : e.type === "inspect" ? [e.at] : e.type === "give" || e.type === "transfer" ? [e.to] : []))];
+        for (const id of new Set(targets)) {
+          const r = probe.rects[id];
+          expect(r && r.l >= 0 && r.t >= 0 && r.r <= probe.width && r.b <= probe.height, `${i + 1}단계 끝 화면에 ${id}가 없음`).toBe(true);
+        }
       }
       await expect(page.locator(".steps2d")).toHaveCount(0);
       expect(errors).toEqual([]);

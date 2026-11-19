@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { Raycaster, Spherical, Vector3, type Material, type Mesh, type PerspectiveCamera } from "three";
+import { Raycaster, Spherical, Vector3, type Camera, type Material, type Mesh, type PerspectiveCamera, type PlaneGeometry } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
@@ -12,7 +12,7 @@ import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
 import { sceneStateAt, type SceneState } from "./sceneState.ts";
 import { Timeline } from "./timeline.ts";
-import { TRACE, traceSpeed, tracerFor } from "./trace.ts";
+import { TRACE, traceSpeed, tracerFor, type Tracer } from "./trace.ts";
 import { usePalette } from "./tokens.ts";
 
 type RootProps = StageProps & { labelRoot: RefObject<HTMLDivElement | null>; shadowSize: number; visible: boolean };
@@ -28,6 +28,12 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   const timeline = useRef<Timeline | null>(null);
   const timelineDone = useRef(false);
   const playing = useRef(state.playing);
+  const speed = useRef(state.speed);
+  const traceRef = useRef<Tracer>(() => {});
+  const ringsOn = useRef(new Set<string>());
+  /** 이 단계 봉투의 경로(출발·경유·목적지). 전파 고리는 경로에 있는 길목만 퍼진다 */
+  const route = useRef<(string | undefined)[]>([]);
+  speed.current = state.speed; // 재생 속도: 타임라인(연출 + 대기)을 같은 배수로 돌린다. 동작 줄이기는 타임라인이 대기뿐이라 대기에만 걸린다
   const jump = useRef(true);
   const idle = useRef(0);
   const controls = useRef<OrbitControlsImpl>(null);
@@ -84,7 +90,12 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
 
   // 단계·모드가 바뀌면: 진행 중인 연출을 버리고 직전 단계까지의 결과를 바로 적용한 뒤 이 단계만 재생한다 (docs/06 4절)
   useEffect(() => {
+    // 퍼지던 고리는 이전 단계 기록으로 닫는다(다음 단계 기록에 섞이지 않게)
+    for (const id of ringsOn.current) traceRef.current("ringsEnd", { actor: id });
+    ringsOn.current.clear();
     const trace = tracerFor(state.step, state.defense);
+    traceRef.current = trace;
+    route.current = view.from === view.to ? [] : [view.from, view.via, view.to];
     const done = () => {
       timelineDone.current = true;
       if (playing.current) onStepDone();
@@ -219,6 +230,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       width: size.width,
       height: size.height,
       rects: Object.fromEntries([...model.nodes.keys()].map((id) => [id, model.screenRect(id, camera, size.width, size.height)])),
+      stamp: model.stamp.visible ? billboardRect(model.stamp, camera, size.width, size.height) : undefined,
       parents: Object.fromEntries(term.scenario.actors.map((a) => [a.id, a.parent])),
     });
     return () => void delete w.__sceneProbe;
@@ -228,7 +240,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     const dt = Math.min(delta, 0.1);
     const tl = timeline.current;
     const running = Boolean(tl && !tl.finished);
-    tl?.advance(dt * 1000 * traceSpeed());
+    tl?.advance(dt * 1000 * speed.current * traceSpeed());
 
     rig.setAspect(size.width / Math.max(1, size.height));
     let settled = true;
@@ -238,8 +250,14 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     // wifi 전파 고리: 봉투가 가까이 지날 때만 퍼진다. 동작 줄이기면 멈춰 있다
     for (const [id, node] of model.nodes) {
       if (!node.rings) continue;
-      const near = model.envelope.visible && model.envelope.position.distanceTo(new Vector3(...layout.get(id)!.anchor)) < 3.2;
-      model.pulseRings(id, clock.elapsedTime, near && !reducedMotion);
+      const near = route.current.includes(id) && model.envelope.visible && model.envelope.position.distanceTo(new Vector3(...layout.get(id)!.anchor)) < 3.2;
+      const active = near && !reducedMotion;
+      model.pulseRings(id, clock.elapsedTime, active);
+      if (active !== ringsOn.current.has(id)) {
+        if (active) ringsOn.current.add(id);
+        else ringsOn.current.delete(id);
+        traceRef.current(active ? "ringsStart" : "ringsEnd", { actor: id });
+      }
     }
 
     for (const b of model.billboards) {
@@ -278,7 +296,8 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       mat.depthWrite = mat.opacity > 0.9;
     }
 
-    labels.current?.update(camera, size.width, size.height);
+    // 차단 도장·내용 카드는 늘 맨 위에 보여야 하므로 라벨이 그 자리를 피한다
+    labels.current?.update(camera, size.width, size.height, [model.stamp, model.card].flatMap((m) => (m.visible ? [billboardRect(m, camera, size.width, size.height)] : [])));
 
     // 움직임이 없으면 필요할 때만 그린다
     if (!running && settled && !freeView && !fading) {
@@ -308,6 +327,19 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       {freeView && <OrbitControls ref={controls} makeDefault enableDamping maxPolarAngle={1.35} minDistance={4} maxDistance={30} />}
     </>
   );
+}
+
+/** 카메라를 향한 판(도장·카드)이 화면에서 차지하는 사각형(px) */
+function billboardRect(m: Mesh, camera: Camera, width: number, height: number) {
+  const geo = m.geometry as PlaneGeometry;
+  const { width: w, height: h } = geo.parameters;
+  const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar((w / 2) * m.scale.x);
+  const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar((h / 2) * m.scale.y);
+  const pts = [right.clone().add(up), right.clone().sub(up), right.clone().negate().add(up), right.clone().negate().sub(up)].map((d) => {
+    const p = m.position.clone().add(d).project(camera);
+    return [((p.x + 1) / 2) * width, ((1 - p.y) / 2) * height] as const;
+  });
+  return { l: Math.min(...pts.map((p) => p[0])), r: Math.max(...pts.map((p) => p[0])), t: Math.min(...pts.map((p) => p[1])), b: Math.max(...pts.map((p) => p[1])) };
 }
 
 export default function FlowScene(props: StageProps) {

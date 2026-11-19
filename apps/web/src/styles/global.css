@@ -1079,3 +1079,9 @@ button:disabled {
 .detail-skeleton {
   min-height: 300px;
 }
+
+/* 재생 속도 선택 상자: .btn 모양에 기본 화살표만 남긴다 */
+.speed-select {
+  padding: 0 12px;
+  font-variant-numeric: tabular-nums;
+}

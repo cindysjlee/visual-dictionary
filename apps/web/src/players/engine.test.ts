@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialState, lastStep, reduce, type PlaybackAction, type PlaybackConfig, type PlaybackState } from "./engine.ts";
+import { SPEEDS, initialState, lastStep, reduce, type PlaybackAction, type PlaybackConfig, type PlaybackState } from "./engine.ts";
 import { holdMs } from "./stage.ts";
 
 // CSRF와 같은 모양: 6단계, 방어 2개 모두 5단계에서 차단
@@ -96,10 +96,29 @@ describe("PlaybackEngine", () => {
 });
 
 describe("holdMs: 자막을 다 읽을 시간", () => {
-  it("1.7초 + 글자 수 비례, 최소 3초, 연출이 없으면 더 길다", () => {
-    expect(holdMs({ title: "짧음", caption: "한 줄" }, true)).toBe(3000);
+  it("3D는 0.8초 + 글자당 35ms(최소 2초), 연출이 없으면 1.5초 + 글자당 90ms(최소 2.6초)", () => {
+    expect(holdMs({ title: "짧음", caption: "한 줄" }, true)).toBe(2000);
+    expect(holdMs({ title: "짧음", caption: "한 줄" }, false)).toBe(2600);
     const view = { title: "세션 쿠키 발급", caption: "가".repeat(80) };
-    expect(holdMs(view, true)).toBe(1700 + 86 * 50);
-    expect(holdMs(view, false)).toBe(1700 + 86 * 100);
+    expect(holdMs(view, true)).toBe(800 + 86 * 35);
+    expect(holdMs(view, false)).toBe(1500 + 86 * 90);
+  });
+});
+
+describe("재생 속도", () => {
+  it("기본 1×, 저장된 값으로 시작할 수 있다", () => {
+    expect(initialState().speed).toBe(1);
+    expect(initialState(2).speed).toBe(2);
+  });
+
+  it("속도를 바꿔도 단계·재생·방어 상태는 그대로이고 시작으로 치지 않는다", () => {
+    const { state } = run([{ type: "goTo", step: 3 }, { type: "play" }, { type: "setSpeed", speed: 1.5 }]);
+    expect(state).toMatchObject({ step: 3, playing: true, speed: 1.5 });
+    expect(reduce(config, initialState(), { type: "setSpeed", speed: 2 }).state).toMatchObject({ started: false, speed: 2 });
+  });
+
+  it("정한 배수(0.75·1·1.5·2)가 아니면 무시한다", () => {
+    expect(reduce(config, PLAYING, { type: "setSpeed", speed: 3 as never }).state.speed).toBe(1);
+    expect(SPEEDS).toEqual([0.75, 1, 1.5, 2]);
   });
 });

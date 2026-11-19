@@ -56,14 +56,14 @@
   --blob-4: rgba(79, 209, 197, 0.45);
 
   /* 3D 장면 면 색 (useSceneTokens가 런타임에 읽어 재질에 넣는다. 반드시 #rrggbb) */
-  --scene-object: #f3f5fb;
-  --scene-object-dim: #d3d9e8;
+  --scene-object: #e3e8f2;
+  --scene-object-dim: #b7c0d4;
   --scene-object-attack: #3a2f3a;
   --scene-villain: #2a2e3e;
   --scene-grid: #9aa3bf;
   --scene-paper: #ffffff;
   --scene-gold: #d99a1e;
-  --scene-island: #dce2f0;
+  --scene-island: #cdd4e4;
 
   --font-sans: "Noto Sans KR", system-ui, sans-serif;
   --font-num: "Sora", "Noto Sans KR", system-ui, sans-serif;

@@ -16,10 +16,11 @@ export type StageProps = {
 };
 
 /**
- * 단계 연출이 끝난 뒤 다음 단계로 넘어가기 전 대기 시간. 자막(제목+본문, 공백 제외)을 다 읽기 전에 넘어가지 않게 글자 수에 비례한다.
- * 연출이 있으면(3D) 연출 중에도 자막을 읽으므로 글자당 50ms, 연출이 없으면(동작 줄이기·2D) 읽는 시간 전부인 글자당 100ms. 최소 3초.
+ * 단계 연출이 끝난 뒤 다음 단계로 넘어가기 전 대기 시간(1× 기준, 재생 속도로 나눈다). 자막(제목+본문, 공백 제외) 글자 수에 비례한다.
+ * 연출이 있으면(3D) 연출 중에도 자막을 읽으므로 0.8초 + 글자당 35ms(최소 2초),
+ * 연출이 없으면(동작 줄이기·2D) 읽는 시간 전부라 1.5초 + 글자당 90ms(최소 2.6초)
  */
 export function holdMs(view: Pick<StepView, "title" | "caption">, animated: boolean): number {
   const chars = (view.title + view.caption).replace(/\s/g, "").length;
-  return Math.max(3000, 1700 + chars * (animated ? 50 : 100));
+  return animated ? Math.max(2000, 800 + chars * 35) : Math.max(2600, 1500 + chars * 90);
 }

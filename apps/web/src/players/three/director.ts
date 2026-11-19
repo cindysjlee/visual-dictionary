@@ -6,7 +6,7 @@ import type { LabelLayer, LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
 import { Timeline, easeOut, linear } from "./timeline.ts";
-import type { Tracer } from "./trace.ts";
+import { TRACE, type Tracer } from "./trace.ts";
 
 const vec = (p: readonly [number, number, number]) => new Vector3(...p);
 
@@ -80,6 +80,19 @@ export class CameraRig {
     }
     this.target.copy(center);
     this.position.copy(center).addScaledVector(VIEW_DIR, hi);
+  }
+  /** 목표 샷(카메라가 가려는 자리)에서 점들이 모두 화면 안에 들어오는지 */
+  covers(points: Vector3[]) {
+    const cam = this.probe;
+    cam.aspect = this.aspect;
+    cam.updateProjectionMatrix();
+    cam.position.copy(this.position);
+    cam.lookAt(this.target);
+    cam.updateMatrixWorld();
+    return points.every((p) => {
+      const q = p.clone().project(cam);
+      return q.z < 1 && Math.abs(q.x) <= 1 && Math.abs(q.y) <= 1;
+    });
   }
   /** 실제 카메라가 목표에 거의 닿았는지 (테스트 빌드의 겹침 검사가 기다린다) */
   settled(camera: PerspectiveCamera) {
@@ -192,7 +205,6 @@ export function buildStep(ctx: DirectorContext): Timeline {
   // 출발
   tl.call(() => {
     trace("stepStart");
-    if (!self) trace("depart", { actor: view.from });
     env.position.copy(cur);
     env.visible = !self;
     model.setEnvelopeTone(tone);
@@ -201,6 +213,8 @@ export function buildStep(ctx: DirectorContext): Timeline {
       if (view.camera.focus === "all") rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => vec(p.anchor)));
       else rig.shot(anchor(view.camera.focus), view.camera.distance);
     } else frameShot();
+    // 출발 샷이 목적지(숨은 대상이면 나타날 자리)를 처음부터 담는지 기록한다(테스트 빌드). 멀리 날아가는 동안 출발지만 보이면 안 된다
+    if (!self) trace("depart", { actor: view.from, ...(TRACE ? { inShot: rig.covers([anchor(view.to), ...model.framePoints(view.to).slice(0, 8)]) } : {}) });
   });
 
   // 봉투와 따로 날아가는 물건(토큰 발급·가로채기)은 첫 비행과 동시에

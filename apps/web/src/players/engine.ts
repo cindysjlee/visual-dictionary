@@ -6,12 +6,18 @@ export type PlaybackConfig = {
   blockedAtStep: (number | undefined)[];
 };
 
+/** 재생 속도 배수. 장면 연출 시간과 단계 사이 대기 시간에 같이 곱한다(동작 줄이기는 대기에만) */
+export const SPEEDS = [0.75, 1, 1.5, 2] as const;
+export type Speed = (typeof SPEEDS)[number];
+export const isSpeed = (v: unknown): v is Speed => SPEEDS.includes(v as Speed);
+
 export type PlaybackState = {
   step: number; // 0부터
   playing: boolean;
   defense: number | null; // null = 공격 흐름
   completed: boolean; // "끝까지 봄"을 이미 내보냈는지 (페이지당 한 번)
   started: boolean; // 사용자가 재생하거나 단계를 옮겼는지. 아니면 1단계 장면에서 멈춰 있고 무대 가운데 재생 버튼을 띄운다
+  speed: Speed;
 };
 
 export type PlaybackAction =
@@ -23,14 +29,15 @@ export type PlaybackAction =
   | { type: "toggle" }
   | { type: "stepDone" } // 장면이 이 단계의 연출과 대기를 마쳤다
   | { type: "replay" }
-  | { type: "setDefense"; defense: number | null }; // 1단계로, 재생 상태는 그대로
+  | { type: "setDefense"; defense: number | null } // 1단계로, 재생 상태는 그대로
+  | { type: "setSpeed"; speed: Speed }; // 단계·재생 상태는 그대로
 
 export type PlaybackEvent = "completed";
 
 const STARTS = new Set<PlaybackAction["type"]>(["play", "toggle", "next", "prev", "goTo", "replay"]);
 
 /** 상세 진입 시 항상 1단계에서 멈춘 상태 (설명을 먼저 읽을 수 있게) */
-export const initialState = (): PlaybackState => ({ step: 0, playing: false, defense: null, completed: false, started: false });
+export const initialState = (speed: Speed = 1): PlaybackState => ({ step: 0, playing: false, defense: null, completed: false, started: false, speed });
 
 /** 이 모드의 마지막 단계(0부터). 방어 모드면 차단 단계에서 끝난다 */
 export const lastStep = (config: PlaybackConfig, state: Pick<PlaybackState, "defense">) =>
@@ -86,5 +93,7 @@ function transition(
       return set({ step: 0, playing: true });
     case "setDefense":
       return set({ defense: action.defense, step: 0 });
+    case "setSpeed":
+      return isSpeed(action.speed) ? set({ speed: action.speed }) : same;
   }
 }
