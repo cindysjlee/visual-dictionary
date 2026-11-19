@@ -111,3 +111,9 @@
 - **WebGL을 쓸 수 없을 때:** 단계 목록과 자막만 있는 2D 화면으로 대체한다. 이때도 방어 모드와 차단 단계 표시는 동작해야 한다.
 - 자유 시점은 키보드로도 조작할 수 있게 하거나(화살표로 회전), 최소한 끄고 켤 수 있어야 한다.
 - CSP는 그대로 둔다. three.js와 R3F는 번들에 포함되므로 `script-src 'self'`로 충분하다. 외부 CDN, `eval`, 인라인 스크립트를 쓰지 않는다.
+
+## 7. 검증 (장면 기록)
+
+- 테스트·개발 빌드(`import.meta.env.MODE !== "production"`)에서만 장면 타임라인이 `window.__sceneTrace`에 기록을 남긴다(`players/three/trace.ts`): 단계 시작, 봉투 출발(`depart`)·경유지(`via`)·검문소(`gate`)·도착(`arrive`)·왕복 귀환(`return`), 효과 실행(`effect`, 거부면 `refused`), 차단 도장(`blocked`), 단계 끝(`stepEnd`).
+- 배포 빌드에서는 상수 조건으로 코드가 빠진다. `npm run check:bundle`이 배포 묶음에 `__sceneTrace`가 없는지 확인한다.
+- `npm run test:e2e`는 `--mode e2e`로 따로 빌드한 `apps/web/dist-e2e`를 대상으로 한다. 용어 × 모드 × 단계마다 JSON 규칙으로 계산한 기대 이벤트 순서와 실제 기록을 비교한다(화면 픽셀 비교는 하지 않는다). 테스트 빌드 전용 `window.__sceneSpeed`로 연출을 빨리 돌린다.

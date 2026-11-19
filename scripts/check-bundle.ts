@@ -1,5 +1,5 @@
 // 빌드 후 홈 묶음 검사: three.js가 들어 있거나 gzip 120KB를 넘으면 실패 (docs/06 5절)
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
@@ -14,10 +14,13 @@ const code = readFileSync(dist + entry);
 const kb = gzipSync(code).length / 1024;
 const failures: string[] = [];
 if (/WebGLRenderer|WebGLShadowMap/.test(code.toString())) failures.push("홈 묶음에 three.js가 들어 있습니다");
+// 장면 기록(players/three/trace.ts)은 테스트·개발 빌드 전용. 배포 묶음 어디에도 없어야 한다
+const traced = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("__sceneTrace"));
+if (traced.length) failures.push(`배포 묶음에 장면 기록 코드가 있습니다: ${traced.join(", ")}`);
 if (kb > LIMIT_KB) failures.push(`홈 묶음이 gzip ${kb.toFixed(1)}KB로 ${LIMIT_KB}KB를 넘습니다`);
 
 if (failures.length) {
   for (const f of failures) console.error(`실패  ${f}`);
   process.exit(1);
 }
-console.log(`홈 묶음 통과: ${entry} gzip ${kb.toFixed(1)}KB, three.js 없음`);
+console.log(`홈 묶음 통과: ${entry} gzip ${kb.toFixed(1)}KB, three.js·장면 기록 없음`);

@@ -18,7 +18,7 @@
     "build": "npm run typecheck && npm run build -w apps/web",
     "deploy": "npm run build && npm exec -w infra -- cdk deploy --profile vd",
     "test": "vitest run",
-    "test:e2e": "npm run build && playwright test",
+    "test:e2e": "npm run typecheck && npm run build:e2e -w apps/web && playwright test",
     "test:e2e:drafts": "node scripts/e2e-drafts.ts",
     "check:bundle": "node scripts/check-bundle.ts",
     "verify": "npm run validate && npm test && npm run build && npm run check:bundle",

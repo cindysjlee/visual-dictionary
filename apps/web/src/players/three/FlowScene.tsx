@@ -12,6 +12,7 @@ import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
 import { sceneStateAt, type SceneState } from "./sceneState.ts";
 import { Timeline } from "./timeline.ts";
+import { traceSpeed, tracerFor } from "./trace.ts";
 import { usePalette } from "./tokens.ts";
 
 type RootProps = StageProps & { labelRoot: RefObject<HTMLDivElement | null>; shadowSize: number; visible: boolean };
@@ -71,6 +72,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
 
   // 단계·모드가 바뀌면: 진행 중인 연출을 버리고 직전 단계까지의 결과를 바로 적용한 뒤 이 단계만 재생한다 (docs/06 4절)
   useEffect(() => {
+    const trace = tracerFor(state.step, state.defense);
     const done = () => {
       timelineDone.current = true;
       if (playing.current) onStepDone();
@@ -118,7 +120,12 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       }
       rig.shot(view.blocked && !(placed.gate && inspect) ? sideStamp(new Vector3(...placed.anchor)).focus : new Vector3(...(placed.gate?.mid ?? placed.anchor)), "mid");
       jump.current = true;
-      timeline.current = new Timeline().wait(holdMs(view, false)).call(done);
+      trace("stepStart");
+      if (view.blocked) trace("blocked", { actor: focusId });
+      timeline.current = new Timeline()
+        .wait(holdMs(view, false))
+        .call(() => trace("stepEnd"))
+        .call(done);
     } else {
       timeline.current = buildStep({
         term,
@@ -130,6 +137,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         hold: holdMs(view, true),
         onDone: done,
         onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1)),
+        trace,
       });
     }
     wake();
@@ -187,7 +195,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     const dt = Math.min(delta, 0.1);
     const tl = timeline.current;
     const running = Boolean(tl && !tl.finished);
-    tl?.advance(dt * 1000);
+    tl?.advance(dt * 1000 * traceSpeed());
 
     rig.setAspect(size.width / Math.max(1, size.height));
     let settled = true;

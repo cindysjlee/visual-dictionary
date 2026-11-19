@@ -1,8 +1,9 @@
 // 플레이어 E2E: 3D 화면 모양이 아니라 자막·단계 번호·차단 표시로 확인한다.
-// 재생 버튼을 눌러 끝까지는 CSRF만, 모든 용어 × 모든 모드는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다)
+// 재생 버튼을 눌러 끝까지는 CSRF만, 모든 용어 × 모든 모드는 "다음" 버튼으로 넘기며 확인(용어를 추가하면 대상이 자동으로 늘어난다).
+// 3D 연출은 테스트 빌드의 장면 기록(window.__sceneTrace)으로 단계마다 출발·도착·효과·차단이 실제로 일어났는지 본다(픽셀 비교 없음)
 import { expect, test, type Page } from "@playwright/test";
 import type { Term } from "../../packages/content-schema/src/index.ts";
-import { blockingDefenses, lastStepIndex, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
+import { blockTarget, blockingDefenses, lastStepIndex, passesGate, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
 import { terms } from "./terms.ts";
 
 const csrf = terms.find((t) => t.id === "csrf")!;
@@ -105,9 +106,71 @@ async function selectMode(page: Page, term: Term, mode: Mode) {
   }
 }
 
+/* ---------- 장면 기록: 기대한 연출이 실제로 일어났는지 (테스트 빌드 전용 기록, apps/web/src/players/three/trace.ts) ---------- */
+type Effect = Term["scenario"]["steps"][number]["effects"][number];
+type TraceEvent = { step: number; mode: Mode; kind: string; actor?: string; effect?: string; refused?: boolean };
+
+const effectActor = (e: Effect) => ("target" in e ? e.target : "into" in e ? e.into : e.type === "attach" ? e.from : e.type === "inspect" ? e.at : e.to);
+const effectKey = (e: Effect, refused = "refused" in e && e.refused) => `effect:${e.type}:${effectActor(e)}${refused ? "!" : ""}`;
+const eventKey = (e: TraceEvent) => (e.kind === "effect" ? `effect:${e.effect}:${e.actor}${e.refused ? "!" : ""}` : e.actor ? `${e.kind}:${e.actor}` : e.kind);
+
+/** JSON 규칙(docs/04 "3D 장면 필드"·"방어 모드 동작")으로 정한 한 단계의 기대 이벤트 순서 */
+function expectedEvents(term: Term, mode: Mode, i: number): string[] {
+  const v = stepView(term, mode, i);
+  const self = v.from === v.to;
+  const via = v.via && !self && v.via !== v.from && v.via !== v.to ? v.via : undefined;
+  const inspect = v.effects.find((e) => e.type === "inspect");
+  const gate = passesGate(term, v.from, v.to);
+  const out = ["stepStart"];
+  if (!self) out.push(`depart:${v.from}`);
+  for (const e of v.effects) if (e.type === "attach") out.push(effectKey(e));
+  if (via) out.push(`via:${via}`);
+  for (const e of v.effects) if (e.type === "give") out.push(effectKey(e));
+  if (gate) out.push(`gate:${v.to}`);
+  else if (!self) out.push(`arrive:${v.to}`);
+  let ended = false;
+  if (gate && inspect?.type === "inspect") {
+    const failed = inspect.checks.some((c) => c.status === "fail");
+    out.push(effectKey(inspect, failed && v.blocked));
+    if (failed && v.blocked) {
+      out.push(`blocked:${v.to}`);
+      ended = true;
+    }
+  }
+  if (gate && !ended) out.push(`arrive:${v.to}`);
+  if (!ended && v.roundTrip) out.push(`return:${v.from}`);
+  if (!ended) for (const e of v.effects) if (!["attach", "give", "inspect"].includes(e.type)) out.push(effectKey(e));
+  if (v.blocked && !inspect) out.push(`blocked:${blockTarget(v)}`);
+  out.push("stepEnd");
+  return out;
+}
+
 for (const term of terms) {
   for (const mode of [null, ...blockingDefenses(term)] as Mode[]) {
     const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
+    test(`${term.id} · ${modeName}: 3D 장면이 단계마다 기대한 출발·도착·효과·차단을 실제로 연출한다`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      page.on("pageerror", (e) => errors.push(e.message));
+      await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));
+      await open(page, term.id);
+      await expect(page.locator(".scene3d canvas")).toBeVisible(); // 2D 대체 화면으로 넘어가지 않았는지
+      await selectMode(page, term, mode);
+      for (let i = 0; i <= lastStepIndex(term, mode); i++) {
+        await page.evaluate(() => Object.assign(globalThis, { __sceneTrace: [] }));
+        await player(page).getByRole("button", { name: `${i + 1}단계로 이동` }).click();
+        const events = () =>
+          page.evaluate(
+            ([step, m]) => ((globalThis as unknown as { __sceneTrace?: TraceEvent[] }).__sceneTrace ?? []).filter((e) => e.step === step && e.mode === m),
+            [i, mode] as const,
+          );
+        await expect.poll(async () => (await events()).some((e) => e.kind === "stepEnd"), { timeout: 30_000, message: `${i + 1}단계 연출이 끝나지 않음` }).toBe(true);
+        expect((await events()).map(eventKey), `${i + 1}단계`).toEqual(expectedEvents(term, mode, i));
+      }
+      await expect(page.locator(".steps2d")).toHaveCount(0);
+      expect(errors).toEqual([]);
+    });
+
     test(`${term.id} · ${modeName}: "다음" 버튼으로 모든 단계의 자막·단계 번호를 확인`, async ({ page }) => {
       await open(page, term.id);
       await selectMode(page, term, mode);

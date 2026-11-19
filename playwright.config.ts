@@ -1,4 +1,4 @@
-// E2E: npm run test:e2e (빌드 → 로컬 미리보기 → Playwright). 브라우저는 설치된 Chrome을 쓴다
+// E2E: npm run test:e2e (테스트 빌드 dist-e2e → 로컬 미리보기 → Playwright). 테스트 빌드에만 장면 기록(players/three/trace.ts)이 들어 있다. 브라우저는 설치된 Chrome을 쓴다
 // draft 포함: npm run test:e2e:drafts (E2E_INCLUDE_DRAFTS=1) → draft까지 든 개발 서버(generated/dev)를 대상으로 같은 검사를 돌린다
 import { defineConfig } from "@playwright/test";
 
@@ -18,7 +18,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: drafts ? `npm run dev -- --port ${port} --strictPort` : `npx vite preview --port ${port} --strictPort`,
+    command: drafts ? `npm run dev -- --port ${port} --strictPort` : `npx vite preview --outDir dist-e2e --port ${port} --strictPort`,
     cwd: "apps/web",
     url: `http://localhost:${port}`,
     reuseExistingServer: true,

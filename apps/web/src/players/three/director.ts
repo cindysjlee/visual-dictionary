@@ -6,6 +6,7 @@ import type { LabelLayer, LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
 import { Timeline, easeOut, linear } from "./timeline.ts";
+import type { Tracer } from "./trace.ts";
 
 const vec = (p: readonly [number, number, number]) => new Vector3(...p);
 
@@ -81,6 +82,8 @@ export type DirectorContext = {
   onDone: () => void;
   /** 돈이 넘어간 뒤 잔액 라벨을 다시 그린다 */
   onBalance?: () => void;
+  /** 테스트·개발 빌드의 장면 기록(trace.ts). 배포 빌드에서는 아무것도 하지 않는다 */
+  trace?: Tracer;
 };
 
 const TONE_LABEL: Record<Tone, LabelTone> = { neutral: "neutral", attack: "attack", defense: "defense" };
@@ -97,6 +100,7 @@ const flightMs = (a: Vector3, b: Vector3) => Math.min(2000, Math.max(900, a.dist
 
 export function buildStep(ctx: DirectorContext): Timeline {
   const { view, layout, model, labels, rig } = ctx;
+  const trace: Tracer = ctx.trace ?? (() => {});
   const tl = new Timeline();
   const env = model.envelope;
   const node = (id: string) => model.nodes.get(id);
@@ -130,6 +134,8 @@ export function buildStep(ctx: DirectorContext): Timeline {
 
   // 출발
   tl.call(() => {
+    trace("stepStart");
+    if (!self) trace("depart", { actor: view.from });
     env.position.copy(cur);
     env.visible = !self;
     model.setEnvelopeTone(tone);
@@ -151,6 +157,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
     const stop = from.clone().add(new Vector3(0.9, 0.6, 0.3));
     fly(stop, 0.6, 1000);
     tl.call(() => {
+      trace("effect", { effect: "attach", actor: e.from, refused: e.refused });
       rig.shot(from, "near");
       const site = layout.get(view.to) && ctx.term.scenario.actors.find((a) => a.id === view.to)?.site;
       labels.set(
@@ -187,6 +194,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
   // 경유지(via): 먼저 들렀다 간다. 봉투에서 빠져나가는 물건(엿보기·가로채기)은 경유지에서 출발한다
   if (via) {
     fly(anchor(via), 1.0);
+    tl.call(() => trace("via", { actor: via }));
     if (gives.some((g) => g.from === "packet")) tl.call(() => rig.shot(anchor(via), "mid"));
   }
   const firstLeg = gate ? vec(gate.entry) : anchor(view.to);
@@ -207,7 +215,12 @@ export function buildStep(ctx: DirectorContext): Timeline {
     else tl.with(Math.max(1200, tl.duration - legStart), update);
   }
   tl.call(() => {
-    for (const g of gives) if (!g.refused) model.setHolding(g.to, g.item, true);
+    for (const g of gives) {
+      trace("effect", { effect: "give", actor: g.to, refused: g.refused });
+      if (!g.refused) model.setHolding(g.to, g.item, true);
+    }
+    if (gate) trace("gate", { actor: view.to });
+    else if (!self) trace("arrive", { actor: view.to });
   });
 
   if (gate) {
@@ -234,8 +247,10 @@ export function buildStep(ctx: DirectorContext): Timeline {
         tl.wait(650);
       });
       const failed = inspect.checks.some((c) => c.status === "fail");
+      tl.call(() => trace("effect", { effect: "inspect", actor: inspect.at, refused: failed && view.blocked }));
       if (failed && view.blocked) {
         tl.call(() => {
+          trace("blocked", { actor: view.to });
           model.setGateTone(view.to, "defense");
           model.setEnvelopeTone("defense");
           model.showStamp(view.blockedLabel ?? "차단", env.position.clone().add(new Vector3(0, 1.4, 0.4)));
@@ -273,6 +288,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
       armOpen();
       fly(anchor(view.to), 0.6, 900);
     }
+    if (!ended) tl.call(() => trace("arrive", { actor: view.to }));
   }
 
   // 3) 왕복
@@ -282,6 +298,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
       packetLabel(label);
     });
     fly(anchor(view.from));
+    tl.call(() => trace("return", { actor: view.from }));
   }
 
   // 4) 도착한 뒤의 효과 (적힌 순서대로)
@@ -291,6 +308,10 @@ export function buildStep(ctx: DirectorContext): Timeline {
       labels.show(PACKET, false);
     });
     for (const e of effects) {
+      if (!["attach", "give", "inspect"].includes(e.type)) {
+        const actor = "target" in e ? e.target : "into" in e ? e.into : "to" in e ? e.to : undefined;
+        tl.call(() => trace("effect", { effect: e.type, actor, refused: "refused" in e ? e.refused : false }));
+      }
       switch (e.type) {
         case "store": {
           const into = anchor(e.into);
@@ -372,6 +393,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
   if (blockedWithoutInspect) {
     const stamp = sideStamp(anchor(blockTarget(view)));
     tl.call(() => {
+      trace("blocked", { actor: blockTarget(view) });
       labels.show(NOTE, false);
       model.setEnvelopeTone("defense");
       model.showStamp(view.blockedLabel ?? "차단", stamp.at);
@@ -381,6 +403,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
   }
 
   tl.wait(ctx.hold);
+  tl.call(() => trace("stepEnd"));
   tl.call(ctx.onDone);
   return tl;
 }

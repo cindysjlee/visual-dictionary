@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node ../../scripts/build-index.ts --include-drafts && vite",
     "build": "node ../../scripts/build-index.ts && tsc -p tsconfig.json && vite build",
+    "build:e2e": "node ../../scripts/build-index.ts && tsc -p tsconfig.json && vite build --mode e2e --outDir dist-e2e",
     "preview": "vite preview"
   },
   "dependencies": {
