@@ -14,7 +14,7 @@ export default defineConfig({
   workers: 4, // 16코어 데스크톱에서 잰 값: 6이면 3D 페이지가 몰려 테스트마다 2~5배 느려진다
   globalTimeout: 20 * 60_000, // 브라우저가 닫히지 않고 멈춰도 전체 실행은 20분에서 끊는다
   fullyParallel: true, // 같은 파일의 테스트도 나눠 돈다(테스트마다 새 페이지라 서로 독립)
-  reporter: [["list"]],
+  reporter: [["list"], ["./tests/e2e/progress-reporter.ts"]], // 진단 리포터: 끊기면 돌던 테스트·마지막 단계를 남긴다
   // 실제 속도로 재는 두 테스트는 나머지가 다 끝난 뒤 따로 돈다(병렬 부하로 프레임이 떨어지면 장면 시간이 느려져 배속 비율이 틀어진다)
   projects: [
     { name: "main", grepInvert: REALTIME },
