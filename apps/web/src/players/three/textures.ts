@@ -91,3 +91,28 @@ export function paintCard(p: Painter, lines: readonly string[], c: Palette) {
   });
   p.texture.needsUpdate = true;
 }
+
+export function signPainter() {
+  return makeCanvas(512, 128);
+}
+
+/** 간판·주소판: 사이트 이름(행위자 site)을 크게. 라벨이 가려져도 건물만 보고 구분되게 한다. 공격 쪽은 공격색 테두리 */
+export function paintSign(p: Painter, text: string, tone: "attack" | "neutral", c: Palette) {
+  const { ctx: g, canvas } = p;
+  const { width: w, height: h } = canvas;
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = c.paper;
+  roundRect(g, 4, 4, w - 8, h - 8, 22);
+  g.fill();
+  g.lineWidth = 8;
+  g.strokeStyle = tone === "attack" ? c.attack : c.objectDim;
+  g.stroke();
+  g.fillStyle = tone === "attack" ? c.attack : c.villain;
+  g.font = `700 ${Math.min(64, (w - 48) / Math.max(4, text.length * 0.56))}px ${FONT}`;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(text, w / 2, h / 2 + 3, w - 40);
+  g.textAlign = "start";
+  g.textBaseline = "alphabetic";
+  p.texture.needsUpdate = true;
+}

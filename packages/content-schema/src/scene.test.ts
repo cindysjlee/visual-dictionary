@@ -143,3 +143,17 @@ describe("checkScene (검증기)", () => {
     expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "explode", target: "bank" }])).length).toBeGreaterThan(0);
   });
 });
+
+describe("look", () => {
+  const bankIndex = () => raw().scenario.actors.findIndex((a: { id: string }) => a.id === "bank");
+  it("kind에 맞는 look은 통과한다", () => {
+    expect(issuePaths((t) => (t.scenario.actors[bankIndex()].look = "bank"))).toEqual([]);
+    expect(issuePaths((t) => (t.scenario.actors[bankIndex()].look = "database"))).toEqual([]);
+  });
+  it("kind에 안 맞는 look(서버에 wifi)과 없는 look은 빌드에서 거부된다", () => {
+    expect(issuePaths((t) => (t.scenario.actors[bankIndex()].look = "wifi"))).toEqual([
+      `scenario.actors.${bankIndex()}.look: look wifi은(는) network에만 쓸 수 있습니다(지금 kind: server)`,
+    ]);
+    expect(issuePaths((t) => (t.scenario.actors[bankIndex()].look = "castle")).length).toBe(1);
+  });
+});

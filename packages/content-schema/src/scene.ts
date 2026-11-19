@@ -1,5 +1,5 @@
 // 장면 해석 규칙(zod 없음). 검증기·2D 대체 화면·3D 장면이 같은 규칙을 쓰도록 한 곳에 둔다. 규칙: docs/04, docs/06
-import type { Actor, ActorKind, Effect, Item, Term, Zone } from "./index.ts";
+import type { Actor, ActorKind, Effect, Item, Look, Term, Zone } from "./index.ts";
 
 /** null = 공격 흐름, 숫자 = 켜진 방어의 defenses 인덱스 */
 export type Mode = number | null;
@@ -25,6 +25,17 @@ export const passesGate = (term: Term, from: string, to: string) => {
   const a = actors.find((x) => x.id === from);
   const b = actors.find((x) => x.id === to);
   return Boolean(a && b && b.gate && from !== to && ZONE_DEPTH[zoneOf(a, actors)] <= ZONE_DEPTH[zoneOf(b, actors)]);
+};
+
+/** look을 쓸 수 있는 kind. 건물형(bank·web·shop·community)·메타데이터는 서버, database는 서버·DB, wifi는 네트워크 */
+export const LOOK_KINDS: Record<Look, readonly ActorKind[]> = {
+  bank: ["server"],
+  web: ["server"],
+  shop: ["server"],
+  community: ["server"],
+  "cloud-metadata": ["server"],
+  database: ["server", "database"],
+  wifi: ["network"],
 };
 
 /** 화면판이 있는 행위자: 탭은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
@@ -141,6 +152,9 @@ export function checkScene(term: Term): Issue[] {
   const byId = new Map(actors.map((a) => [a.id, a]));
 
   actors.forEach((a, i) => {
+    if (a.look && !LOOK_KINDS[a.look].includes(kindOf(a))) {
+      issues.push({ path: ["scenario", "actors", i, "look"], message: `look ${a.look}은(는) ${LOOK_KINDS[a.look].join("·")}에만 쓸 수 있습니다(지금 kind: ${kindOf(a)})` });
+    }
     if (!a.parent) return;
     if (!byId.has(a.parent)) {
       issues.push({ path: ["scenario", "actors", i, "parent"], message: `actors에 없는 행위자: ${a.parent}` });

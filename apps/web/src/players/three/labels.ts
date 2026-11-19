@@ -64,7 +64,9 @@ export class LabelLayer {
     const placed: { l: number; t: number; r: number; b: number }[] = this.declutter
       ? [{ l: width / 2 - half, t: height / 2 - half, r: width / 2 + half, b: height / 2 + half }]
       : [];
-    for (const [id, { el, point, visible }] of this.entries) {
+    // 움직이는 라벨(봉투·안내·검사)이 먼저 자리를 잡고(움직이지 않음), 고정 라벨은 그 자리까지 피한다
+    const ordered = [...this.entries].sort(([a], [b]) => Number(STATIC_LABEL.test(a)) - Number(STATIC_LABEL.test(b)));
+    for (const [id, { el, point, visible }] of ordered) {
       const avoid = this.declutter || STATIC_LABEL.test(id);
       const p = point.clone().project(camera);
       let show = visible && p.z < 1 && Math.abs(p.x) < 1.2 && Math.abs(p.y) < 1.2;
@@ -76,10 +78,13 @@ export class LabelLayer {
         const h = el.offsetHeight;
         const box = () => ({ l: x - w / 2, t: y - h, r: x + w / 2, b: y });
         const hits = (a: ReturnType<typeof box>) => placed.some((o) => a.l < o.r && o.l < a.r && a.t < o.b && o.t < a.b);
+        const y0 = y;
         for (let tries = 0; hits(box()) && tries < 3; tries++) y -= h + 4;
-        if (hits(box()) || y - h < 0) show = false;
+        // 위로 자리가 없으면(화면 위 끝 포함) 아래로도 찾아본다
+        if (hits(box()) || y - h < 0) for (let tries = 1, base = y0; tries <= 3 && (hits(box()) || y - h < 0 || y > height); tries++) y = base + tries * (h + 4);
+        if (hits(box()) || y - h < 0 || y > height) show = false;
         else placed.push(box());
-      }
+      } else if (show) placed.push({ l: x - el.offsetWidth / 2, t: y - el.offsetHeight, r: x + el.offsetWidth / 2, b: y });
       el.style.opacity = show ? "1" : "0";
       if (show) el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
     }

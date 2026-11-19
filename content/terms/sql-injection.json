@@ -26,6 +26,7 @@
         "name": "쇼핑몰 서버",
         "role": "server",
         "kind": "server",
+        "look": "web",
         "zone": "server",
         "site": "shop.example",
         "screen": { "title": "쿼리 틀", "lines": ["SELECT * FROM users", "WHERE id = '[아이디]'", "AND pw = '[비밀번호]'"] }
@@ -35,6 +36,7 @@
         "name": "회원 DB",
         "role": "database",
         "kind": "database",
+        "look": "database",
         "zone": "internal",
         "screen": { "title": "users", "lines": ["admin | ****", "kim | ****", "lee | ****"] }
       }

@@ -12,6 +12,8 @@ const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
 export const ACTOR_KINDS = ["browser", "tab", "cookieJar", "server", "database", "network", "attacker", "person"] as const;
 export const ZONES = ["client", "between", "server", "internal", "outside"] as const;
 export const ITEMS = ["cookie", "token", "script", "data", "coin"] as const;
+/** 행위자 생김새(docs/06 2절 "생김새"). 없으면 kind의 기본 모양. 어느 kind에 쓸 수 있는지는 scene.ts의 LOOK_KINDS */
+export const LOOKS = ["bank", "web", "shop", "community", "database", "cloud-metadata", "wifi"] as const;
 
 const item = z.enum(ITEMS);
 const screenSchema = z.strictObject({ title: text.optional(), lines: z.array(text).default([]) });
@@ -53,6 +55,7 @@ const actorSchema = z.strictObject({
   name: text,
   role: text,
   kind: z.enum(ACTOR_KINDS).optional(),
+  look: z.enum(LOOKS).optional(),
   zone: z.enum(ZONES).optional(),
   parent: text.optional(),
   site: text.optional(),
@@ -174,6 +177,7 @@ export type Effect = z.output<typeof effectSchema>;
 export type Item = (typeof ITEMS)[number];
 export type ActorKind = (typeof ACTOR_KINDS)[number];
 export type Zone = (typeof ZONES)[number];
+export type Look = (typeof LOOKS)[number];
 
 /** /content/index.json의 항목 하나 */
 export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | "category" | "summary"> & {

@@ -98,12 +98,12 @@ export class CameraRig {
 }
 
 /**
- * 검사 없는 차단의 도장 위치: 대상 옆(장면 가운데 쪽). 위에 두면 대상·부모의 이름 라벨(HTML, 캔버스 위)과 겹친다.
+ * 검사 없는 차단의 도장 위치: 대상 옆(장면 가운데 쪽), 이름표보다 낮게. 위에 두면 대상·부모의 이름 라벨(HTML, 캔버스 위)과 겹친다.
  * focus는 대상과 도장이 함께 보이는 카메라 초점
  */
 export function sideStamp(anchor: Vector3) {
   const side = anchor.x > 0.5 ? -2.7 : 2.7;
-  return { at: anchor.clone().add(new Vector3(side, 0.6, 0.4)), focus: anchor.clone().add(new Vector3(side / 2, 0.4, 0)) };
+  return { at: anchor.clone().add(new Vector3(side, -0.4, 0.4)), focus: anchor.clone().add(new Vector3(side / 2, 0.4, 0)) };
 }
 
 /** 이 단계에 등장하는 행위자: 출발·목적지·경유지와 효과 대상. 카메라는 단계마다 이들을 모두 화면에 담는다 */
@@ -167,7 +167,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const frameShot = () => {
     const ids = view.camera ? [...involved, ...(view.camera.focus === "all" ? [...layout.values()].filter((p) => !p.parent).map((p) => p.id) : [view.camera.focus])] : involved;
     const pts = ids.flatMap((id) => model.framePoints(id));
-    if (model.stamp.visible) pts.push(model.stamp.position.clone().add(new Vector3(1.3, 0.7, 0)), model.stamp.position.clone().add(new Vector3(-1.3, -0.7, 0)));
+    if (model.stamp.visible) pts.push(model.stamp.position.clone().add(new Vector3(1.9, 0.9, 0)), model.stamp.position.clone().add(new Vector3(-1.9, -0.9, 0)));
     rig.frame(pts);
   };
 

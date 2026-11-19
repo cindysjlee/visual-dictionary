@@ -21,8 +21,8 @@
         "screen": { "title": "마이페이지", "lines": ["주문 내역 3건", "배송지: 서울시 …"] }
       },
       { "id": "jar", "name": "쿠키 보관함", "role": "user", "kind": "cookieJar", "parent": "browser" },
-      { "id": "wifi", "name": "공용 와이파이", "role": "network", "kind": "network", "zone": "between", "site": "cafe-free-wifi" },
-      { "id": "site", "name": "쇼핑몰 서버", "role": "server", "kind": "server", "zone": "server", "site": "shop.example", "gate": true },
+      { "id": "wifi", "name": "공용 와이파이", "role": "network", "kind": "network", "look": "wifi", "zone": "between", "site": "cafe-free-wifi" },
+      { "id": "site", "name": "쇼핑몰 서버", "role": "server", "kind": "server", "look": "shop", "zone": "server", "site": "shop.example", "gate": true },
       { "id": "attacker", "name": "같은 와이파이의 공격자", "role": "attacker", "kind": "attacker", "zone": "outside" }
     ],
     "steps": [

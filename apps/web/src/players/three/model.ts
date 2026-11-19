@@ -31,7 +31,7 @@ import type { Actor, Item, Term } from "@app/content-schema";
 import { hasPanel } from "@app/content-schema/scene";
 import { BROWSER_SIZE, type Placed, type Vec3 } from "./layout.ts";
 import type { SceneState, Screen } from "./sceneState.ts";
-import { paintCard, paintScreen, paintStamp, screenPainter, type Painter } from "./textures.ts";
+import { paintCard, paintScreen, paintSign, paintStamp, screenPainter, signPainter, type Painter } from "./textures.ts";
 import type { Palette } from "./tokens.ts";
 
 export type Tone = "neutral" | "attack" | "defense";
@@ -45,6 +45,8 @@ export type ActorNode = {
   panel?: { pivot: Group; front: Painter; back: Painter };
   slots: Map<Item, Object3D>;
   gate?: { arm: Group; ring: Mesh; toneMats: MeshStandardMaterial[] };
+  /** wifi look의 전파 고리. 봉투가 가까이 지날 때만 퍼진다(pulseRings) */
+  rings?: Mesh[];
 };
 
 const v = (p: Vec3) => new Vector3(...p);
@@ -68,6 +70,7 @@ export class SceneModel {
   private bound: { mat: MeshStandardMaterial | MeshBasicMaterial | LineBasicMaterial; key: ColorKey; emissive?: number }[] = [];
   private layout: Map<string, Placed>;
   private palette: Palette;
+  private signs: { painter: Painter; text: string; tone: "attack" | "neutral" }[] = [];
 
   constructor(term: Term, layout: Map<string, Placed>, palette: Palette) {
     this.layout = layout;
@@ -93,7 +96,7 @@ export class SceneModel {
     }
     const plane = (p: Painter, w: number, h: number) =>
       new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ map: p.texture, transparent: true, depthTest: false, toneMapped: false }));
-    this.stamp = plane(this.stampPaint, 2.4, 1.1);
+    this.stamp = plane(this.stampPaint, 3.6, 1.65);
     this.card = plane(this.cardPaint, 1.7, 1.17);
     for (const m of [this.stamp, this.card]) {
       m.visible = false;
@@ -119,6 +122,7 @@ export class SceneModel {
     this.palette = palette;
     for (const b of this.bound) this.paint(b.mat, b.key, b.emissive);
     this.setEnvelopeTone(this.envTone);
+    for (const sg of this.signs) paintSign(sg.painter, sg.text, sg.tone, palette);
     this.repaintScreens(state);
   }
 
@@ -162,7 +166,11 @@ export class SceneModel {
     let labelY = 2.4;
     let labelAt: Vector3 | undefined;
 
-    switch (placed.kind) {
+    if (actor.look) {
+      labelY = this.buildLook(actor, node, tone);
+      if (placed.gate) node.gate = this.buildGate(placed, group);
+      if (hasPanel(actor)) node.panel = this.buildStandPanel(group, tone);
+    } else switch (placed.kind) {
       case "browser": {
         const [w, h, d] = BROWSER_SIZE;
         this.mesh(new BoxGeometry(w + 0.3, 0.16, d + 0.3), this.std("objectDim"), [0, 0.08, 0], group);
@@ -252,6 +260,138 @@ export class SceneModel {
       o.userData.actor = actor.id;
       if (!this.occluders.includes(o)) this.occluders.push(o);
     });
+  }
+
+  /** 간판·주소판(행위자 site를 글자로). 테마가 바뀌면 다시 그린다 */
+  private sign(parent: Object3D, text: string | undefined, tone: Tone, at: Vec3, w: number, h: number, tiltX = 0) {
+    if (!text) return;
+    const painter = signPainter();
+    const t = tone === "attack" ? "attack" : "neutral";
+    this.signs.push({ painter, text, tone: t });
+    paintSign(painter, text, t, this.palette);
+    const m = this.mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ map: painter.texture, transparent: true, toneMapped: false }), at, parent);
+    m.rotation.x = tiltX;
+    m.castShadow = false;
+  }
+
+  /**
+   * 생김새(look, docs/06 2절). 모두 기본 도형 조합이고 외부 모델 파일은 쓰지 않는다. 공격 쪽(tone: attack)은 어두운 재질에 공격색 띠.
+   * 돌려주는 값은 이름 라벨 높이
+   */
+  private buildLook(actor: Actor, node: ActorNode, tone: Tone): number {
+    const g = node.group;
+    const attack = tone === "attack";
+    const body: ColorKey = attack ? "objectAttack" : "object";
+    const dim: ColorKey = attack ? "objectAttack" : "objectDim";
+    const glow = (key: ColorKey, emissive: number) => this.std(key, { emissive });
+    const box = (w: number, h: number, d: number, at: Vec3, mat: Material = this.std(body)) => this.mesh(new BoxGeometry(w, h, d), mat, at, g);
+    const cyl = (r: number, h: number, at: Vec3, mat: Material = this.std(body), seg = 32) => this.mesh(new CylinderGeometry(r, r, h, seg), mat, at, g);
+    /** 공격 쪽 띠(색만이 아니라 형태로도 구분: 위쪽 가장자리를 두른다) */
+    const stripe = (w: number, d: number, y: number) => {
+      if (attack) box(w + 0.06, 0.06, d + 0.06, [0, y, 0], glow("attack", 0.8));
+    };
+    const site = actor.site;
+
+    switch (actor.look!) {
+      case "bank": {
+        // 기둥 건물(바닥판 → 본체·기둥 → 받침판 → 지붕) + 오른쪽 앞 금고(상자 + 둥근 문 + 손잡이)
+        this.island(g);
+        box(2.6, 0.24, 1.7, [0, 0.42, 0], this.std(dim));
+        box(2.0, 1.1, 0.9, [-0.1, 1.09, -0.3]);
+        for (const x of [-1.0, -0.34, 0.34, 1.0]) cyl(0.11, 1.1, [x - 0.1, 1.09, 0.5], this.std(body), 16);
+        box(2.6, 0.2, 1.7, [0, 1.74, 0], this.std(dim));
+        const roofGeo = new ConeGeometry(1.3 * Math.SQRT2, 0.6, 4);
+        roofGeo.rotateY(Math.PI / 4);
+        this.mesh(roofGeo, this.std(dim), [0, 2.14, 0], g).scale.set(1, 1, 1.7 / 2.6);
+        this.sign(g, site, tone, [0, 2.12, 0.6], 1.7, 0.4, -0.35);
+        box(0.8, 0.8, 0.7, [1.65, 0.7, 0.75], this.std(dim));
+        cyl(0.27, 0.06, [1.65, 0.7, 1.12], glow("gold", 0.2)).rotation.x = Math.PI / 2;
+        box(0.22, 0.05, 0.05, [1.65, 0.7, 1.17]);
+        stripe(2.6, 1.7, 1.86);
+        return 2.9;
+      }
+      case "web": {
+        // 랙 서버: 납작한 칸 4개(칸마다 표시등·슬롯) + 위에 사이트 이름이 뜬 작은 모니터
+        this.island(g);
+        for (let i = 0; i < 4; i++) {
+          const y = 0.52 + i * 0.42;
+          box(1.5, 0.36, 1.0, [0, y, 0]);
+          for (const x of [0.45, 0.6]) this.mesh(new SphereGeometry(0.045, 10, 8), glow(attack ? "attack" : "neutral", 0.9), [x, y, 0.51], g).castShadow = false;
+          box(0.9, 0.04, 0.02, [-0.25, y, 0.51], this.std(dim));
+        }
+        box(0.08, 0.3, 0.08, [0, 2.32, 0], this.std(dim));
+        box(1.5, 0.6, 0.1, [0, 2.72, 0], this.std(dim));
+        this.sign(g, site, tone, [0, 2.72, 0.06], 1.36, 0.46);
+        stripe(1.5, 1.0, 2.16);
+        return 3.4;
+      }
+      case "shop":
+      case "community": {
+        // 상점 몸통 + 문·창. shop은 줄무늬 차양과 지붕 위 간판, community는 앞 게시판(기둥 2개 위 판에 사이트 이름) + 지붕 위 말풍선
+        this.island(g);
+        const shop = actor.look === "shop";
+        const z = shop ? 0 : -0.35;
+        box(2.0, 1.2, 1.3, [0, 0.9, z]);
+        box(0.5, 0.75, 0.04, [0.5, 0.68, z + 0.66], this.std(dim));
+        box(0.6, 0.4, 0.04, [-0.45, 1.0, z + 0.66], this.std("paper"));
+        stripe(2.0, 1.3, 1.5);
+        if (shop) {
+          for (let i = 0; i < 5; i++) box(0.42, 0.06, 0.6, [-0.84 + i * 0.42, 1.48, 0.86], this.std(i % 2 ? dim : "paper")).rotation.x = 0.35;
+          box(1.9, 0.5, 0.08, [0, 1.85, 0.2], this.std(dim));
+          this.sign(g, site, tone, [0, 1.85, 0.25], 1.78, 0.42);
+          return 2.5;
+        }
+        for (const x of [-0.95, 0.95]) box(0.1, 1.3, 0.1, [x, 0.95, 0.85], this.std(dim));
+        box(2.1, 0.75, 0.08, [0, 1.3, 0.85], this.std(dim));
+        this.sign(g, site, tone, [0, 1.3, 0.9], 1.95, 0.6);
+        const bubbleMat = glow(attack ? "attack" : "paper", attack ? 0.4 : 0.1);
+        this.mesh(new SphereGeometry(0.42, 24, 16), bubbleMat, [0.5, 2.05, -0.35], g).scale.set(1.3, 0.8, 0.5);
+        this.mesh(new ConeGeometry(0.12, 0.3, 12), bubbleMat, [0.25, 1.7, -0.35], g).rotation.z = Math.PI * 0.85;
+        return 2.8;
+      }
+      case "database": {
+        // 층층 원통 3단 + 위 뚜껑
+        this.island(g, 1.8);
+        for (let i = 0; i < 3; i++) cyl(0.8, 0.45, [0, 0.55 + i * 0.5, 0]);
+        cyl(0.86, 0.08, [0, 1.84, 0], this.std(dim));
+        stripe(1.6, 1.6, 1.92);
+        return 2.4;
+      }
+      case "cloud-metadata": {
+        // 구름 받침(구 4개) 위에 칩 상자(납작 상자 + 양옆 핀 + 가운데 코어) + 그 위 주소판(site, 예: 169.254.169.254)
+        this.island(g);
+        for (const [x, y, z, r] of [[-0.6, 0.75, 0, 0.55], [0.1, 0.85, 0.1, 0.7], [0.75, 0.72, -0.05, 0.5], [0, 0.7, -0.45, 0.55]] as const) {
+          this.mesh(new SphereGeometry(r, 24, 16), glow(attack ? "objectAttack" : "paper", 0.05), [x, y, z], g).scale.y = 0.7;
+        }
+        box(1.1, 0.22, 1.1, [0.05, 1.42, 0], this.std(dim));
+        for (let i = 0; i < 4; i++) for (const side of [-1, 1]) box(0.16, 0.05, 0.08, [0.05 + side * 0.62, 1.42, -0.39 + i * 0.26], this.std("gold"));
+        box(0.5, 0.06, 0.5, [0.05, 1.56, 0], glow(attack ? "attack" : "neutral", 0.5));
+        // 주소판은 칩 위에 세운다(앞에 두면 검문소 링에 가린다)
+        box(0.08, 0.3, 0.08, [0.05, 1.72, 0], this.std(dim));
+        box(2.0, 0.5, 0.06, [0.05, 2.1, 0], this.std(dim));
+        this.sign(g, site, tone, [0.05, 2.1, 0.04], 1.86, 0.4);
+        return 2.8;
+      }
+      case "wifi": {
+        // 공유기 상자 + 안테나 2개 + 위로 퍼지는 전파 고리 3개(반원). 고리는 봉투가 지날 때만 퍼진다
+        this.island(g, 1.6);
+        box(1.4, 0.35, 0.9, [0, 0.5, 0]);
+        for (const x of [-0.45, 0.45]) cyl(0.04, 0.9, [x, 1.1, -0.2], this.std(dim), 8);
+        node.rings = [0.45, 0.75, 1.05].map((r) => {
+          const ring = this.mesh(new TorusGeometry(r, 0.04, 8, 40, Math.PI), glow(attack ? "attack" : "neutral", 0.6), [0, 1.0, 0.1], g);
+          ring.castShadow = false;
+          return ring;
+        });
+        return 2.4;
+      }
+    }
+  }
+
+  /** wifi 전파 고리: active면 바깥으로 퍼지며 되풀이, 아니면 제자리(봉투가 멀거나 동작 줄이기) */
+  pulseRings(id: string, time: number, active: boolean) {
+    const rings = this.nodes.get(id)?.rings;
+    if (!rings) return;
+    rings.forEach((ring, k) => ring.scale.setScalar(1 + (active ? (time * 0.9 + k / rings.length) % 1 : 0) * 0.8));
   }
 
   /** 앞뒤 화면이 있는 판(탭, 서버·DB 화면). 뒤집기(flip)는 pivot을 돌린다 */

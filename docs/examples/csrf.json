@@ -68,6 +68,7 @@
         "name": "은행 서버",
         "role": "server",
         "kind": "server",
+        "look": "bank",
         "zone": "server",
         "site": "bank.example",
         "gate": true,

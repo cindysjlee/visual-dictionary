@@ -33,6 +33,16 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   const controls = useRef<OrbitControlsImpl>(null);
   const ray = useMemo(() => new Raycaster(), []);
   const involved = useRef<string[]>([]);
+  /** 가림 검사 시선의 목표: 등장 행위자마다 보이는 상자의 가운데와 윗면 가운데(앵커만 보면 높은 카메라에서 윗부분 가림을 놓친다) */
+  const sightPoints = useRef<Vector3[]>([]);
+  const aimAt = (ids: string[]) => {
+    sightPoints.current = ids.flatMap((id) => {
+      const box = model.visibleBox(id);
+      if (box.isEmpty()) return [];
+      const c = box.getCenter(new Vector3());
+      return [c, c.clone().setY(box.max.y - 0.1)];
+    });
+  };
   const framePoints = (ids: string[]) => ids.flatMap((id) => model.framePoints(id));
 
   const wake = () => {
@@ -83,6 +93,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     involved.current = involvedActors(view);
     const before = sceneStateAt(term, state.defense, state.step);
     model.applyState(before);
+    aimAt(involved.current);
     refreshLabels(before);
     labels.current!.declutter = false;
 
@@ -94,6 +105,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       rig.setAspect(size.width / Math.max(1, size.height)); // useFrame보다 먼저 돌므로 화면 비율을 여기서 넣는다(휴대폰에서 잘리지 않게)
       model.applyState(before); // 상자 계산 전에 숨은 행위자를 반영
       involved.current = [];
+      aimAt([]);
       rig.frame(framePoints([...layout.values()].filter((p) => !p.parent).map((p) => p.id)));
       jump.current = true;
       wake();
@@ -104,6 +116,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       // 동작 줄이기: 날아가기·카메라 이동 없이 이 단계의 결과 상태로 바로
       const after = sceneStateAt(term, state.defense, state.step + 1);
       model.applyState(after);
+      aimAt(involved.current);
       refreshLabels(after);
       const inspect = view.effects.find((e) => e.type === "inspect");
       // 카메라는 결과가 보이는 곳: 검사한 곳 → 마지막 효과의 대상 → 목적지
@@ -123,7 +136,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
           });
         }
       }
-      const stampPts = model.stamp.visible ? [model.stamp.position.clone().addScalar(1.3), model.stamp.position.clone().subScalar(1.3)] : [];
+      const stampPts = model.stamp.visible ? [model.stamp.position.clone().addScalar(1.9), model.stamp.position.clone().subScalar(1.9)] : [];
       rig.frame([...framePoints(involved.current), ...stampPts]);
       jump.current = true;
       trace("stepStart");
@@ -211,7 +224,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     return () => void delete w.__sceneProbe;
   }, [model, rig, camera, size, term]);
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 0.1);
     const tl = timeline.current;
     const running = Boolean(tl && !tl.finished);
@@ -222,6 +235,13 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt, jump.current);
     jump.current = false;
 
+    // wifi 전파 고리: 봉투가 가까이 지날 때만 퍼진다. 동작 줄이기면 멈춰 있다
+    for (const [id, node] of model.nodes) {
+      if (!node.rings) continue;
+      const near = model.envelope.visible && model.envelope.position.distanceTo(new Vector3(...layout.get(id)!.anchor)) < 3.2;
+      model.pulseRings(id, clock.elapsedTime, near && !reducedMotion);
+    }
+
     for (const b of model.billboards) {
       if (!b.visible) continue;
       b.quaternion.copy(camera.quaternion);
@@ -229,18 +249,18 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     }
 
     // 가림 자동 투명: 카메라 → (초점, 봉투, 이 단계의 등장 행위자)를 막는 물체만 서서히 흐리게, 안 막으면 원래대로.
-    // 모든 행위자가 대상이다. 어떤 행위자를 보려는 시선에서는 그 행위자 자신의 메시는 흐리지 않는다
+    // 모든 행위자가 대상이지만, 이 단계의 등장 행위자 자신은 흐리지 않는다(보여 줘야 할 것). 등장 행위자끼리 겹치는 것은 배치·카메라가 막는다
     const hit = new Set<Material>();
-    const goals: [Vector3, string | undefined][] = [[rig.target, undefined]];
-    if (model.envelope.visible) goals.push([model.envelope.position, undefined]);
-    for (const id of involved.current) if (model.nodes.get(id)?.group.visible) goals.push([new Vector3(...layout.get(id)!.anchor), id]);
-    for (const [goal, self] of goals) {
+    const shown = new Set(involved.current);
+    const goals = [rig.target];
+    if (model.envelope.visible) goals.push(model.envelope.position);
+    goals.push(...sightPoints.current);
+    for (const goal of goals) {
       const dir = goal.clone().sub(camera.position);
       ray.set(camera.position, dir.clone().normalize());
       ray.far = dir.length() - 0.3;
       for (const h of ray.intersectObjects(model.occluders, false)) {
-        if (self && h.object.userData.actor === self) continue;
-        hit.add((h.object as Mesh).material as Material);
+        if (!shown.has(h.object.userData.actor as string)) hit.add((h.object as Mesh).material as Material);
       }
     }
     const k = 1 - Math.exp(-dt * 6);

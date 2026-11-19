@@ -84,6 +84,7 @@
 | 필드 | 값 | 뜻 |
 | --- | --- | --- |
 | `kind` | `browser` `tab` `cookieJar` `server` `database` `network` `attacker` `person` | 모양. 없으면 `role`에서 정함(user→person, server→server, database→database, attacker→attacker) |
+| `look` | `bank` `web` `shop` `community` `cloud-metadata`(server) / `database`(server·database) / `wifi`(network) | 생김새. 없으면 `kind`의 기본 모양. kind에 맞지 않으면 빌드 실패. 건물형(`bank` `web` `shop` `community`)의 간판과 `cloud-metadata`의 주소판에는 `site`가 글자로 들어간다. 모양 설명은 `docs/06` 2절 "생김새" |
 | `zone` | `client`(앞, 사용자 쪽) `between`(사용자와 서버 사이 길목: 공용 와이파이·라우터) `server`(인터넷 너머 뒤) `internal`(서버 뒤 사내망) `outside`(옆, 공격자 쪽) | 자동 배치 구역. 없으면 `parent`를 따르고, 그것도 없으면 `role`에서 정함. `between`이 있으면 서버·사내망 줄이 그만큼 뒤로 물러난다. 서버·사내망·길목 줄에 하나뿐이면 겹치지 않게 좌우로 비켜 선다(서버 왼쪽, 사내망 오른쪽, 길목은 공격자 쪽). 인터넷 점선은 사용자 쪽 → 길목 → 서버, 사용자 쪽 → 공격자로 긋고, 사내망은 서버 구역에서만 이어진다(밖에서 바로 닿지 않음) |
 | `parent` | 행위자 id | 그 안에 들어감(예: 탭·쿠키 보관함 → 브라우저) |
 | `site` | 문자열 | 이름 옆에 작게 쓰는 주소(예: `bank.example`) |
