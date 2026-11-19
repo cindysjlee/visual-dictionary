@@ -169,7 +169,7 @@ export class SceneModel {
     if (actor.look) {
       labelY = this.buildLook(actor, node, tone);
       if (placed.gate) node.gate = this.buildGate(placed, group);
-      if (hasPanel(actor)) node.panel = this.buildStandPanel(group, tone);
+      if (hasPanel(actor) && !node.panel) node.panel = this.buildStandPanel(group, tone);
     } else switch (placed.kind) {
       case "browser": {
         const [w, h, d] = BROWSER_SIZE;
@@ -384,10 +384,20 @@ export class SceneModel {
         });
         return 2.4;
       }
-      case "laptop":
+      case "laptop": {
+        // 키보드 받침(납작 상자 + 터치패드) + 뒤에 세운 화면. screen이 있으면 화면판 자체가 노트북 화면이 된다(옆 화면판 없음)
+        this.island(g);
+        box(2.5, 0.14, 1.6, [0, 0.42, 0.2]);
+        box(2.1, 0.02, 0.8, [0, 0.5, 0.05], this.std(dim));
+        box(0.6, 0.02, 0.36, [0, 0.5, 0.72], this.std(dim));
+        stripe(2.5, 1.6, 0.52);
+        if (hasPanel(actor)) node.panel = this.buildPanel(g, tone, [0, 1.35, -0.55]);
+        else box(2.3, 1.6, 0.08, [0, 1.35, -0.55]);
+        return 2.6;
+      }
       case "printer":
       case "scanner":
-        return 2.4; // shortcut: 모양은 4c(printer·scanner)·4d(laptop)에서 만든다. 아직 이 look을 쓰는 용어가 없다
+        return 2.4; // 점유형(LockScene)이 따로 그린다. 흐름형에서는 쓰지 않는다
     }
   }
 

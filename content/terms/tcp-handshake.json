@@ -1,0 +1,87 @@
+{
+  "id": "tcp-handshake",
+  "name": "TCP 3-way 핸드셰이크",
+  "englishName": "TCP Three-way Handshake",
+  "aliases": ["3방향 핸드셰이크", "3-way handshake", "TCP 연결 수립"],
+  "category": "network",
+  "summary": "TCP가 데이터를 보내기 전에 SYN, SYN-ACK, ACK 세 번의 신호로 양쪽의 순서 번호를 맞추고 연결을 여는 과정",
+  "description": "TCP는 데이터가 빠지거나 순서가 뒤바뀌지 않게 바이트마다 순서 번호를 붙인다. 그래서 보내기 전에 양쪽이 각자 어떤 번호부터 시작할지 알려 주고, 상대가 그 번호를 받았다고 확인해야 한다. 클라이언트가 SYN으로 자기 번호를 알리고, 서버가 SYN-ACK으로 확인과 함께 자기 번호를 알리고, 클라이언트가 ACK로 서버 번호를 확인하면 연결이 열린다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      {
+        "id": "client",
+        "name": "클라이언트",
+        "role": "user",
+        "kind": "server",
+        "look": "laptop",
+        "zone": "client",
+        "site": "내 컴퓨터",
+        "screen": { "title": "TCP 상태", "lines": ["CLOSED", "내 순서 번호: -"] }
+      },
+      {
+        "id": "server",
+        "name": "웹 서버",
+        "role": "server",
+        "kind": "server",
+        "look": "web",
+        "zone": "server",
+        "site": "example.com:443",
+        "screen": { "title": "TCP 상태", "lines": ["LISTEN", "연결 요청을 기다림"] }
+      }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "client",
+        "to": "server",
+        "title": "SYN: 연결 요청과 내 시작 번호",
+        "label": "SYN · seq=1000",
+        "caption": "클라이언트가 연결을 열자고 SYN을 보내며 자기 시작 순서 번호 1000을 알립니다. 실제 초기 순서 번호는 이렇게 보기 좋은 수가 아니라 무작위로 정해서, 남이 번호를 짐작해 가짜 신호를 끼워 넣기 어렵게 합니다. 보낸 뒤 클라이언트는 SYN-SENT, 받은 서버는 SYN-RECEIVED 상태가 됩니다.",
+        "effects": [
+          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["SYN-SENT", "내 순서 번호: 1000"] } },
+          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["SYN-RECEIVED", "상대 번호: 1000"] } }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "server",
+        "to": "client",
+        "title": "SYN-ACK: 확인과 서버의 시작 번호",
+        "label": "SYN-ACK · seq=5000 ack=1001",
+        "caption": "서버가 SYN-ACK으로 답합니다. ack=1001은 '1000번까지 받았으니 다음은 1001번을 보내라'는 뜻이고, seq=5000은 서버 자신의 시작 번호입니다. 이것도 실제로는 무작위로 정합니다. 이를 받은 클라이언트는 자기 번호가 전달된 것을 확인했고 서버 번호도 알았으므로, ACK를 보내며 ESTABLISHED가 됩니다.",
+        "effects": [
+          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "내 번호 1000 · 상대 번호 5000"] } }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "client",
+        "to": "server",
+        "title": "ACK: 서버 번호 확인",
+        "label": "ACK · seq=1001 ack=5001",
+        "caption": "클라이언트가 ack=5001로 서버의 시작 번호를 받았다고 확인합니다. 이 ACK를 받은 순간 서버도 ESTABLISHED가 됩니다. 이제 양쪽 모두 상대의 시작 번호를 알고 서로 확인받았으므로 연결이 열렸습니다.",
+        "effects": [
+          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "내 번호 5000 · 상대 번호 1000"] } }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "client",
+        "to": "server",
+        "roundTrip": true,
+        "returnLabel": "ACK · ack=1101",
+        "title": "연결 위로 데이터 전송",
+        "label": "데이터 100바이트 · seq=1001",
+        "caption": "이제 데이터를 보냅니다. 클라이언트가 1001번부터 100바이트를 보내면, 서버는 ack=1101로 '1100번까지 받았으니 다음은 1101번'이라고 답합니다. 핸드셰이크에서 맞춘 번호 덕분에 빠진 조각이나 순서가 뒤바뀐 조각을 알아챌 수 있습니다."
+      }
+    ]
+  },
+  "defenses": [],
+  "references": [
+    { "title": "RFC 9293 · Transmission Control Protocol (3.5 Establishing a Connection)", "url": "https://www.rfc-editor.org/rfc/rfc9293#section-3.5" },
+    { "title": "MDN · TCP handshake", "url": "https://developer.mozilla.org/en-US/docs/Glossary/TCP_handshake" }
+  ],
+  "related": []
+}
