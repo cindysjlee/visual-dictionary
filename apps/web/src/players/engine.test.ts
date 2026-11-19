@@ -3,7 +3,7 @@ import { SPEEDS, initialState, lastStep, reduce, type PlaybackAction, type Playb
 import { holdMs } from "./stage.ts";
 
 // CSRF와 같은 모양: 6단계, 방어 2개 모두 5단계에서 차단
-const config: PlaybackConfig = { stepCount: 6, blockedAtStep: [5, 5] };
+const config: PlaybackConfig = { stepCount: 6, modeSteps: [5, 5] };
 
 // 대부분의 테스트는 재생 버튼을 누른 뒤(재생 중)부터 시작한다
 const PLAYING: PlaybackState = { ...initialState(), playing: true, started: true };
@@ -102,6 +102,37 @@ describe("holdMs: 자막을 다 읽을 시간", () => {
     const view = { title: "세션 쿠키 발급", caption: "가".repeat(80) };
     expect(holdMs(view, true)).toBe(800 + 86 * 35);
     expect(holdMs(view, false)).toBe(1500 + 86 * 90);
+  });
+});
+
+describe("해결 방법(대체 흐름)", () => {
+  // 기본 흐름 5단계, 해결 방법은 3단계부터 갈라져 대체 흐름 5단계 → 모두 7단계
+  const alt: PlaybackConfig = { stepCount: 5, modeSteps: [7] };
+  it("모드의 단계 수만큼 진행하고 대체 흐름 끝에서 멈춘다", () => {
+    let state: PlaybackState = reduce(alt, PLAYING, { type: "setDefense", defense: 0 }).state;
+    expect(lastStep(alt, state)).toBe(6);
+    for (let i = 0; i < 10; i++) state = reduce(alt, state, { type: "stepDone" }).state;
+    expect(state).toMatchObject({ step: 6, playing: false });
+    expect(reduce(alt, state, { type: "goTo", step: 99 }).state.step).toBe(6);
+  });
+
+  it("'끝까지 봄'은 기본 흐름 끝에서만 내보낸다", () => {
+    const events: string[] = [];
+    let state: PlaybackState = reduce(alt, PLAYING, { type: "setDefense", defense: 0 }).state;
+    for (let i = 0; i < 10; i++) {
+      const r = reduce(alt, state, { type: "stepDone" });
+      state = r.state;
+      events.push(...r.events);
+    }
+    expect(events).toEqual([]);
+    state = reduce(alt, { ...state, playing: true }, { type: "setDefense", defense: null }).state;
+    for (let i = 0; i < 10; i++) {
+      const r = reduce(alt, state, { type: "stepDone" });
+      state = r.state;
+      events.push(...r.events);
+    }
+    expect(events).toEqual(["completed"]);
+    expect(state.step).toBe(4);
   });
 });
 

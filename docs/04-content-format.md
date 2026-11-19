@@ -51,9 +51,10 @@
 | `steps[].caption` | O | 자막. 애니메이션을 안 봐도 이해되게 쓴다 |
 | `steps[].danger` | | 위험 단계 강조. 기본값 `false` |
 | `defenses` | | 보안 용어는 1개 이상 권장. CS 용어는 `kind: "solution"` 또는 빈 배열 |
-| `defenses[].kind` | O | `defense`(보안 방어 기법) 또는 `solution`(CS 해결 방법) |
-| `defenses[].blockedAtStep` | | 1부터 시작하는 단계 번호. `steps` 길이 이하. 없으면 보조 방어: 방어 모드 선택에는 나오지 않고 방어 방법 카드에만 설명이 보이며, 목록 카드에서는 "방어 1 · 보조 1"처럼 따로 센다 |
+| `defenses[].kind` | O | `defense`(보안 방어 기법: 차단 단계에서 **멈춘다**) 또는 `solution`(CS 해결 방법: 갈림 단계부터 **대체 흐름으로 끝까지** 재생한다). 아래 "방어 모드 동작"·"해결 방법 동작" |
+| `defenses[].blockedAtStep` | | `defense`만. 1부터 시작하는 단계 번호. `steps` 길이 이하. 없으면 보조 방어: 모드 선택에는 나오지 않고 방어 방법 카드에만 설명이 보이며, 목록 카드에서는 "방어 1 · 보조 1"처럼 따로 센다 |
 | `defenses[].blockedLabel`, `blockedCaption` | | `blockedAtStep`이 있으면 필수 |
+| `defenses[].branchAtStep`, `steps` | | `solution`만, 둘은 함께 쓴다. `branchAtStep`(1부터, 기본 `steps` 길이 이하)부터 원래 단계 대신 이 `steps`(대체 흐름, `scenario.steps`와 같은 형식)를 끝까지 재생한다. 없으면 설명만 있는 보조 해결 방법 |
 | `references` | O | 1개 이상 |
 | `related` | | 다른 용어의 `id`. 존재하지 않는 id면 빌드 경고 |
 
@@ -62,10 +63,22 @@
 | playerType | 허용 action | from → to의 뜻 | 화면 표현 |
 | --- | --- | --- | --- |
 | `flow` | `send` | 보내는 쪽 → 받는 쪽 | 행위자 사이를 메시지가 화살표를 따라 이동 |
-| `stack` | `push`, `pop` | push: 호출한 함수 → 호출된 함수 / pop: 끝난 함수 → 돌아갈 함수 | 스택에 블록이 쌓이고 빠짐, `label`은 호출식·반환값 |
-| `lock` | `acquire`, `wait`, `release` | 프로세스 → 자원 | acquire: 자원에 소유 표시 / wait: 대기선 / release: 소유 해제 |
+| `stack` | `push`, `pop`, `run` | push: 호출한 함수 → 호출된 함수(첫 push는 `from` = `to`로 진입점) / pop: 끝난 함수 → 돌아갈 함수 / run: 맨 위 함수가 제자리에서 실행(`from` = `to`) | 스택에 프레임이 쌓이고 빠짐, `label`은 호출식·반환값 |
+| `lock` | `acquire`, `wait`, `release` | 스레드 → 자원 | acquire: 손에 듦·자물쇠 잠김 / wait: 대기선에 섬 / release: 내려놓음 |
 
-권장 `role` 값: `user`, `attacker`, `server`, `database`(flow) / `function`(stack) / `process`, `resource`(lock). 플레이어는 `role`로 아이콘과 색을 고른다.
+권장 `role` 값: `user`, `attacker`, `server`, `database`(flow) / `function`(stack) / `process`, `resource`(lock). `kind`가 없으면 `role`로 정한다(`process` → `thread`, `resource` → `resource`).
+
+## 스택형 필드와 효과 (`playerType: "stack"`)
+
+- `scenario.code: { title?, lines[] }`: 코드 판(C·Java 문법에 가까운 의사코드 하나로 통일). `steps[].line`: 이 단계 뒤 맨 위 프레임이 실행 중인 줄(1부터). push할 때 호출한 쪽의 줄이 새 프레임의 **반환 주소**(돌아갈 곳)가 된다.
+- 효과: `locals { target?, vars: [{ name, value }] }`(맨 위 프레임, 또는 `target` 함수의 맨 위 프레임 서랍의 지역 변수 칸을 정하거나 바꿈), `returnValue { value, into? }`(pop 단계에서 반환값이 호출한 프레임의 칸 `into`로 전달됨).
+- 검증: push는 맨 위 함수가 부르고, pop은 맨 위 함수가 바로 아래 함수로 돌아가며, run은 맨 위 함수만. `returnValue`는 pop 단계에만. `line`은 코드 판 줄 수 이하.
+
+## 점유형 필드와 효과 (`playerType: "lock"`)
+
+- 행위자: 스레드(`kind: "thread"`), 자원(`kind: "resource"`, look `printer`·`scanner`).
+- 효과: `condition { name }`(데드락 네 조건 `mutual-exclusion`·`hold-and-wait`·`no-preemption`·`circular-wait` 중 하나를 "교착 조건" 패널에 켬), `take { from, refused?, reason? }`(다른 스레드가 쥔 자원을 빼앗으려 함. 비선점이면 `refused`), `cycle`(대기 관계가 고리를 이룸: 바닥 고리, 위에서 보는 샷), `timeout`(기다리다 포기: 모래시계가 다 됨. 보통 `release`와 함께), `stamp { label, tone }`(도장. 예: 교착).
+- 검증: acquire는 아무도 안 쥔 자원, wait는 다른 스레드가 쥔 자원, release는 자기가 쥔 자원. 기본 흐름·해결 방법마다 단계를 따라가며 확인한다.
 
 ## 방어 모드 동작
 
@@ -74,6 +87,13 @@
 3. 그 뒤 단계는 재생하지 않는다. 공격이 거기서 끝났다는 뜻이다.
    - 차단 도장 위치(3D): 차단 단계에 `inspect`가 있으면 검문소에서 봉투를 열어 검사하고 실패하면 거기서 도장을 찍고 봉투가 튕겨 나간다. `inspect`가 없으면 단계를 끝까지 보여 준 뒤, 거부된 효과(`refused: true`)의 대상(`run` → 실행하려던 탭, `attach` → 꺼내려던 곳, `give` → 받으려던 쪽)에, 그것도 없으면 목적지에 도장을 찍는다. "도착은 했지만 실행·읽기·엿보기가 막혔다"를 이렇게 표현한다.
 4. 방어가 여러 개면 화면에서 하나를 골라 켠다. 기본값은 첫 번째.
+
+## 해결 방법 동작 (`kind: "solution"`, CS 용어)
+
+1. `branchAtStep` 이전 단계는 기본 흐름 그대로 재생한다(`overrides`로 제목·자막을 바꿀 수 있고, 갈림 단계 앞까지만).
+2. `branchAtStep` 단계부터는 원래 단계 대신 `steps`(대체 흐름)를 끝까지 재생한다. 멈추지 않는다. 예: 자원 획득 순서 고정이면 "B가 빈손으로 대기 → A가 작업 후 반납 → B 진행 → 둘 다 완료".
+3. 진행 막대·단계 수는 대체 흐름 길이를 따른다(갈림 단계 앞 단계 수 + `steps` 길이). "끝까지 봄"(읽음 처리)은 보안 용어와 같이 기본 흐름을 끝까지 봤을 때만 센다.
+4. 탭 이름: 모드가 모두 해결 방법이면 "기본 흐름 / 해결 방법", 아니면 "공격 흐름 / 방어 모드". 고를 모드(차단 단계나 대체 흐름이 있는 방어·해결 방법)가 없으면 탭을 숨긴다.
 
 ## 3D 장면 필드 (흐름형, 모두 선택)
 
@@ -111,7 +131,7 @@
 
 **방어 (`defenses[]`)**: `blockedTitle`(차단 단계 제목), `blockedLabel`(차단 도장과 2D 대체 화면의 차단 표시 글자, 예: `"403 · 토큰 없음"`), `overrides: [{ step, title?, caption?, effects? }]`(방어 모드에서 그 단계의 제목·자막·효과를 대신함).
 
-**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, 화면판이 없는 곳에 `rewrite`·`flip`, `inspect.at`이 목적지가 아니거나 목적지에 검문소가 없음, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 흐름형이 아닌데 `effects` 사용(스택형·점유형 어휘는 4단계에서 정함).
+**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, 화면판이 없는 곳에 `rewrite`·`flip`, `inspect.at`이 목적지가 아니거나 목적지에 검문소가 없음, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 플레이어 유형에 없는 효과(흐름형·스택형·점유형 어휘는 각 절).
 
 ## 카테고리
 
@@ -140,6 +160,8 @@
 - `actors`에 없는 `from`/`to`
 - `playerType`에 맞지 않는 `action` (예: flow인데 push)
 - `blockedAtStep`이 단계 수를 넘음, `blockedAtStep`이 있는데 `blockedLabel`/`blockedCaption` 없음
+- 방어(`defense`)에 `branchAtStep`·`steps`, 해결 방법(`solution`)에 `blockedAtStep`, `branchAtStep`과 `steps` 중 하나만 있음, 갈림 단계 이후의 `overrides`
+- 스택형 push·pop·run 순서, 점유형 acquire·wait·release 상태(위 각 절)
 
 오류가 있으면 파일명과 위치(예: `csrf.json: scenario.steps[4].to`)를 출력하고 빌드를 실패시킨다.
 

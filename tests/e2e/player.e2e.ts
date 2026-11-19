@@ -3,7 +3,7 @@
 // 3D 연출은 테스트 빌드의 장면 기록(window.__sceneTrace)으로 단계마다 출발·도착·효과·차단이 실제로 일어났는지 본다(픽셀 비교 없음)
 import { expect, test, type Page } from "@playwright/test";
 import type { Term } from "../../packages/content-schema/src/index.ts";
-import { blockTarget, blockingDefenses, lastStepIndex, passesGate, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
+import { blockTarget, modeDefenses, lastStepIndex, passesGate, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
 import { terms } from "./terms.ts";
 
 const csrf = terms.find((t) => t.id === "csrf")!;
@@ -131,7 +131,7 @@ test("?no3d 2D 대체 화면: 단계 목록과 방어 모드 차단 표시", asy
 async function selectMode(page: Page, term: Term, mode: Mode) {
   if (mode === null) return; // 진입 시 공격 흐름
   await player(page).getByRole("button", { name: /방어 모드/ }).click();
-  if (blockingDefenses(term).length > 1) {
+  if (modeDefenses(term).length > 1) {
     await player(page).getByRole("group", { name: "방어 기법" }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
   }
 }
@@ -143,7 +143,9 @@ type Rect = { l: number; t: number; r: number; b: number };
 type Probe = { settled: boolean; width: number; height: number; rects: Record<string, Rect | undefined> };
 const RINGS = new Set(["ringsStart", "ringsEnd"]);
 
-const effectActor = (e: Effect) => ("target" in e ? e.target : "into" in e ? e.into : e.type === "attach" ? e.from : e.type === "inspect" ? e.at : e.to);
+/** 효과가 가리키는 행위자(흐름형 어휘). 스택·점유형 효과는 대상이 없으면 undefined */
+const effectActor = (e: Effect): string | undefined =>
+  "target" in e ? e.target : "into" in e ? e.into : e.type === "attach" || e.type === "take" ? e.from : e.type === "inspect" ? e.at : "to" in e ? e.to : undefined;
 const effectKey = (e: Effect, refused = "refused" in e && e.refused) => `effect:${e.type}:${effectActor(e)}${refused ? "!" : ""}`;
 const eventKey = (e: TraceEvent) => (e.kind === "effect" ? `effect:${e.effect}:${e.actor}${e.refused ? "!" : ""}` : e.actor ? `${e.kind}:${e.actor}` : e.kind);
 
@@ -179,7 +181,7 @@ function expectedEvents(term: Term, mode: Mode, i: number): string[] {
 }
 
 for (const term of terms) {
-  for (const mode of [null, ...blockingDefenses(term)] as Mode[]) {
+  for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
     const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
     test(`${term.id} · ${modeName}: 3D 장면이 단계마다 기대한 출발·도착·효과·차단을 실제로 연출한다`, async ({ page }) => {
       const errors: string[] = [];
@@ -217,7 +219,7 @@ for (const term of terms) {
         // 단계 끝: 카메라가 멈췄을 때 목적지와 효과 대상이 화면 안에 있다
         await expect.poll(() => page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe().settled), { timeout: 15_000 }).toBe(true);
         const probe = await page.evaluate(() => (globalThis as unknown as { __sceneProbe: () => Probe }).__sceneProbe());
-        const targets = [v.to, ...v.effects.flatMap((e) => ("target" in e ? [e.target] : "into" in e ? [e.into] : e.type === "inspect" ? [e.at] : e.type === "give" || e.type === "transfer" ? [e.to] : []))];
+        const targets = [v.to, ...v.effects.flatMap((e) => (e.type === "attach" ? [] : [effectActor(e)]))].filter((x): x is string => Boolean(x));
         for (const id of new Set(targets)) {
           const r = probe.rects[id];
           expect(r && r.l >= 0 && r.t >= 0 && r.r <= probe.width && r.b <= probe.height, `${i + 1}단계 끝 화면에 ${id}가 없음`).toBe(true);

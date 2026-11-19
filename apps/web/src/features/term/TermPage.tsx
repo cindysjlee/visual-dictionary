@@ -59,6 +59,7 @@ function TermDetail({ term }: { term: Term }) {
               <ShieldIcon size={18} />
               {d.name}
               {d.blockedAtStep && <small>· {d.blockedAtStep}단계에서 차단</small>}
+              {d.branchAtStep && <small>· {d.branchAtStep}단계부터 다른 흐름</small>}
             </h3>
             <p className="muted">{d.description}</p>
           </div>

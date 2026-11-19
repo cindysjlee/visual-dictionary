@@ -33,6 +33,14 @@
       {
         "action": "push",
         "from": "main",
+        "to": "main",
+        "title": "main 시작",
+        "label": "main()",
+        "caption": "프로그램이 main을 실행합니다. 스택 맨 아래에 main의 프레임이 생깁니다."
+      },
+      {
+        "action": "push",
+        "from": "main",
         "to": "total",
         "title": "calcTotal 호출",
         "label": "calcTotal(cart)",

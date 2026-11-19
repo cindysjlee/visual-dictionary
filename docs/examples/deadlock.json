@@ -77,9 +77,41 @@
       "name": "자원 요청 순서 정하기",
       "kind": "solution",
       "description": "모든 프로세스가 프린터 → 스캐너 순서로만 자원을 요청하게 하면, 서로 상대를 기다리는 순환이 생기지 않습니다.",
-      "blockedAtStep": 2,
-      "blockedLabel": "프린터부터 요청 → 대기",
-      "blockedCaption": "B도 프린터부터 요청해야 하므로 A가 끝날 때까지 기다립니다. A는 스캐너까지 얻어 작업을 마치고, 데드락이 생기지 않습니다."
+      "branchAtStep": 2,
+      "steps": [
+        {
+          "action": "wait",
+          "from": "p2",
+          "to": "r1",
+          "title": "B도 프린터부터 요청",
+          "label": "프린터 대기(빈손)",
+          "caption": "B도 정해진 순서대로 프린터부터 요청합니다. 프린터는 A가 쓰고 있어 B는 아무것도 쥐지 않은 채 기다립니다."
+        },
+        {
+          "action": "acquire",
+          "from": "p1",
+          "to": "r2",
+          "title": "A가 스캐너 차지",
+          "label": "스캐너 잡음",
+          "caption": "스캐너는 아무도 쥐고 있지 않아 A가 바로 잡습니다."
+        },
+        {
+          "action": "release",
+          "from": "p1",
+          "to": "r1",
+          "title": "A가 작업을 마치고 반납",
+          "label": "프린터 반납",
+          "caption": "A가 작업을 마치고 프린터를 내려놓습니다."
+        },
+        {
+          "action": "acquire",
+          "from": "p2",
+          "to": "r1",
+          "title": "B 진행",
+          "label": "프린터 잡음",
+          "caption": "기다리던 B가 프린터를 잡고 작업을 이어 갑니다."
+        }
+      ]
     }
   ],
   "references": [

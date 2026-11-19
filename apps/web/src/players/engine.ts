@@ -2,8 +2,8 @@
 
 export type PlaybackConfig = {
   stepCount: number;
-  /** defenses[i].blockedAtStep (1부터, 없으면 undefined) */
-  blockedAtStep: (number | undefined)[];
+  /** defenses[i] 모드의 단계 수: 방어는 차단 단계까지, 해결 방법은 대체 흐름 끝까지. 모드가 없으면 undefined(기본 흐름 길이) */
+  modeSteps: (number | undefined)[];
 };
 
 /** 재생 속도 배수. 장면 연출 시간과 단계 사이 대기 시간에 같이 곱한다(동작 줄이기는 대기에만) */
@@ -41,7 +41,7 @@ export const initialState = (speed: Speed = 1): PlaybackState => ({ step: 0, pla
 
 /** 이 모드의 마지막 단계(0부터). 방어 모드면 차단 단계에서 끝난다 */
 export const lastStep = (config: PlaybackConfig, state: Pick<PlaybackState, "defense">) =>
-  ((state.defense === null ? undefined : config.blockedAtStep[state.defense]) ?? config.stepCount) - 1;
+  ((state.defense === null ? undefined : config.modeSteps[state.defense]) ?? config.stepCount) - 1;
 
 export function reduce(
   config: PlaybackConfig,

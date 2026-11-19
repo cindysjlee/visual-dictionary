@@ -2,7 +2,7 @@
 import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Term } from "@app/content-schema";
-import { blockingDefenses, type StepView, type Tone } from "@app/content-schema/scene";
+import { modeDefenses, type StepView, type Tone } from "@app/content-schema/scene";
 import { NextIcon, OrbitIcon, PauseIcon, PlayIcon, PrevIcon, ShieldIcon } from "../icons.tsx";
 import { SPEEDS, type Speed } from "./engine.ts";
 import type { Playback } from "./usePlayback.ts";
@@ -22,8 +22,12 @@ type Props = {
 
 export default function PlayerShell({ term, playback, view, freeView, onFreeViewChange, stageRef, stageClassName, children }: Props) {
   const { state, dispatch, last } = playback;
-  const defenses = blockingDefenses(term);
+  const defenses = modeDefenses(term);
   const setDefense = (defense: number | null) => dispatch({ type: "setDefense", defense });
+  // CS 용어(해결 방법만 있음)는 "기본 흐름 / 해결 방법", 보안 용어는 "공격 흐름 / 방어 모드". 고를 모드가 없으면 탭을 숨긴다
+  const solutions = defenses.length > 0 && defenses.every((i) => term.defenses[i]!.kind === "solution");
+  const baseName = solutions ? "기본 흐름" : "공격 흐름";
+  const modeName = solutions ? "해결 방법" : "방어 모드";
 
   // 단축키는 플레이어 안에 포커스가 있을 때만. 스페이스는 버튼의 기본 동작과 겹치지 않게 무대에서만 쓴다
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
@@ -42,11 +46,11 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
   return (
     <section aria-label="애니메이션 플레이어" className={`glass card player ${TONE_CLASS[view.tone]}`} onKeyDown={onKeyDown}>
       <div className="player-head">
-        <div className="mode-tabs" role="group" aria-label="재생 모드">
-          <button type="button" className="mode-tab mode-tab-attack" aria-pressed={state.defense === null} onClick={() => setDefense(null)}>
-            공격 흐름
-          </button>
-          {defenses.length > 0 && (
+        {defenses.length > 0 ? (
+          <div className="mode-tabs" role="group" aria-label="재생 모드">
+            <button type="button" className="mode-tab mode-tab-attack" aria-pressed={state.defense === null} onClick={() => setDefense(null)}>
+              {baseName}
+            </button>
             <button
               type="button"
               className="mode-tab mode-tab-defense"
@@ -54,10 +58,13 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
               onClick={() => state.defense === null && setDefense(defenses[0]!)}
             >
               <ShieldIcon />
-              방어 모드{defenses.length === 1 && ` · ${term.defenses[defenses[0]!]!.name}`}
+              {modeName}
+              {defenses.length === 1 && ` · ${term.defenses[defenses[0]!]!.name}`}
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <span />
+        )}
         <div className="player-meta">
           <span className="step-pos">
             {state.step + 1} / {last + 1} 단계
@@ -72,8 +79,8 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
       </div>
 
       {state.defense !== null && defenses.length > 1 && (
-        <div className="chips defense-chips" role="group" aria-label="방어 기법">
-          <span className="muted">방어 기법</span>
+        <div className="chips defense-chips" role="group" aria-label={solutions ? "해결 방법" : "방어 기법"}>
+          <span className="muted">{solutions ? "해결 방법" : "방어 기법"}</span>
           {defenses.map((i) => (
             <button key={i} type="button" className="chip" aria-pressed={state.defense === i} onClick={() => setDefense(i)}>
               {term.defenses[i]!.name}

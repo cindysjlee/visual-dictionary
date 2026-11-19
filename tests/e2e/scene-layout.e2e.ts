@@ -3,7 +3,7 @@
 // 데스크톱 1440×900 (playwright.config.ts). 용어를 추가하면 대상이 자동으로 늘어난다
 import { expect, test, type Page } from "@playwright/test";
 import type { Term } from "../../packages/content-schema/src/index.ts";
-import { blockingDefenses, lastStepIndex, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
+import { modeDefenses, lastStepIndex, stepView, type Mode } from "../../packages/content-schema/src/scene.ts";
 import { terms } from "./terms.ts";
 
 const MAX_OVERLAP = Number(process.env.MAX_OVERLAP ?? 0.2);
@@ -53,7 +53,7 @@ const related = (p: Probe, a: string, b: string) => {
 async function selectMode(page: Page, term: Term, mode: Mode) {
   if (mode === null) return;
   await page.getByRole("button", { name: /방어 모드/ }).click();
-  if (blockingDefenses(term).length > 1) {
+  if (modeDefenses(term).length > 1) {
     await page.getByRole("group", { name: "방어 기법" }).getByRole("button", { name: term.defenses[mode]!.name, exact: true }).click();
   }
 }
@@ -63,7 +63,7 @@ const stepEnded = (page: Page, step: number) =>
   page.evaluate(([s]) => ((globalThis as unknown as { __sceneTrace?: { step: number; kind: string }[] }).__sceneTrace ?? []).some((e) => e.step === s && e.kind === "stepEnd"), [step] as const);
 
 for (const term of terms) {
-  for (const mode of [null, ...blockingDefenses(term)] as Mode[]) {
+  for (const mode of [null, ...modeDefenses(term)] as Mode[]) {
     const modeName = mode === null ? "공격 흐름" : term.defenses[mode]!.name;
     test(`${term.id} · ${modeName}: 단계마다 등장 행위자가 모두 화면 안에 있고 ${MAX_OVERLAP * 100}% 넘게 겹치지 않는다`, async ({ page }) => {
       await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 6 }));

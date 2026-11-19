@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema, type Term } from "./index.ts";
-import { blockTarget, blockingDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
+import { blockTarget, defenseCounts, modeDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
 
 const raw = () => JSON.parse(readFileSync(new URL("../../../content/terms/csrf.json", import.meta.url), "utf8"));
 const csrf: Term = termSchema.parse(raw());
@@ -43,7 +43,7 @@ describe("stepView", () => {
   it("마지막 단계와 고를 수 있는 방어", () => {
     expect(lastStepIndex(csrf, null)).toBe(5);
     expect(lastStepIndex(csrf, TOKEN)).toBe(4);
-    expect(blockingDefenses(csrf)).toEqual([TOKEN, SAMESITE]);
+    expect(modeDefenses(csrf)).toEqual([TOKEN, SAMESITE]);
   });
 });
 
@@ -155,5 +155,55 @@ describe("look", () => {
       `scenario.actors.${bankIndex()}.look: look wifi은(는) network에만 쓸 수 있습니다(지금 kind: server)`,
     ]);
     expect(issuePaths((t) => (t.scenario.actors[bankIndex()].look = "castle")).length).toBe(1);
+  });
+});
+
+describe("해결 방법(대체 흐름)과 스택·점유형 규칙", () => {
+  const example = (name: string) => JSON.parse(readFileSync(new URL(`../../../docs/examples/${name}.json`, import.meta.url), "utf8"));
+  const issuesOf = (name: string, mutate: (t: any) => void) => {
+    const t = example(name);
+    mutate(t);
+    const r = termSchema.safeParse(t);
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  };
+
+  it("해결 방법은 갈림 단계부터 대체 흐름 끝까지, 막히지 않는다", () => {
+    const t = termSchema.parse(example("deadlock"));
+    expect(modeDefenses(t)).toEqual([0]);
+    expect(lastStepIndex(t, 0)).toBe(1 + 4 - 1);
+    expect(stepView(t, 0, 1).title).toBe("B도 프린터부터 요청");
+    expect(stepView(t, 0, 0).title).toBe(stepView(t, null, 0).title);
+    expect(stepView(t, 0, 4).blocked).toBe(false);
+    expect(defenseCounts(t)).toEqual({ defenseCount: 1, supportCount: 0 });
+  });
+
+  it("방어·해결 방법의 필드를 섞으면 거부한다", () => {
+    expect(issuesOf("deadlock", (t) => (t.defenses[0].blockedAtStep = 2))).toContain(
+      "defenses.0.blockedAtStep: 해결 방법은 멈추지 않습니다. blockedAtStep 대신 branchAtStep과 steps(대체 흐름)를 씁니다",
+    );
+    expect(issuesOf("deadlock", (t) => delete t.defenses[0].steps)).toContain("defenses.0.steps: branchAtStep과 steps는 함께 씁니다");
+    expect(issuesOf("deadlock", (t) => (t.defenses[0].kind = "defense"))).toContain(
+      "defenses.0.steps: branchAtStep·steps(대체 흐름)는 해결 방법(kind: solution)에만 씁니다",
+    );
+  });
+
+  it("스택: 첫 push는 진입점, push·pop은 맨 위 함수 기준", () => {
+    expect(issuesOf("call-stack", () => {})).toEqual([]);
+    expect(issuesOf("call-stack", (t) => t.scenario.steps.shift())).toContain("scenario.steps.0.from: 첫 push는 진입점이라 from과 to가 같아야 합니다");
+    expect(issuesOf("call-stack", (t) => (t.scenario.steps[3].from = "total"))).toContain("scenario.steps.3.from: pop은 맨 위 함수(price)가 돌아갑니다");
+  });
+
+  it("점유: 남이 잡은 자원은 acquire 대신 wait, 안 잡은 자원은 release할 수 없다", () => {
+    expect(issuesOf("deadlock", (t) => (t.scenario.steps[2].action = "acquire"))).toContain(
+      "scenario.steps.2.to: r2는 p2가 잡고 있어 acquire할 수 없습니다(wait를 쓰세요)",
+    );
+    expect(issuesOf("deadlock", (t) => (t.defenses[0].steps[2].from = "p2"))).toContain("defenses.0.steps.2.to: p2는 r1를 잡고 있지 않습니다");
+  });
+
+  it("플레이어에 없는 효과는 거부한다", () => {
+    expect(issuesOf("deadlock", (t) => (t.scenario.steps[0].effects = [{ type: "store", item: "cookie", into: "r1" }]))[0]).toMatch(
+      /^scenario\.steps\.0\.effects\.0\.type: lock 플레이어에서 쓸 수 없는 효과: store/,
+    );
+    expect(issuesOf("deadlock", (t) => (t.scenario.steps[3].effects = [{ type: "condition", name: "circular-wait" }, { type: "cycle" }]))).toEqual([]);
   });
 });

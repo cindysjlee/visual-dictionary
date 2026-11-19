@@ -1,12 +1,19 @@
 // 장면 해석 규칙(zod 없음). 검증기·2D 대체 화면·3D 장면이 같은 규칙을 쓰도록 한 곳에 둔다. 규칙: docs/04, docs/06
-import type { Actor, ActorKind, Effect, Item, Look, Term, Zone } from "./index.ts";
+import type { Actor, ActorKind, Effect, Item, Look, PlayerType, Step, Term, Zone } from "./index.ts";
 
 /** null = 공격 흐름, 숫자 = 켜진 방어의 defenses 인덱스 */
 export type Mode = number | null;
 export type Tone = "neutral" | "attack" | "defense";
 export type Issue = { path: (string | number)[]; message: string };
 
-const KIND_BY_ROLE: Record<string, ActorKind> = { user: "person", attacker: "attacker", server: "server", database: "database" };
+const KIND_BY_ROLE: Record<string, ActorKind> = { user: "person", attacker: "attacker", server: "server", database: "database", process: "thread", resource: "resource" };
+
+/** 플레이어마다 쓸 수 있는 효과 어휘 (docs/04) */
+export const EFFECTS_BY_PLAYER: Record<PlayerType, readonly Effect["type"][]> = {
+  flow: ["appear", "flip", "rewrite", "store", "attach", "give", "run", "inspect", "transfer"],
+  stack: ["locals", "returnValue"],
+  lock: ["condition", "take", "cycle", "timeout", "stamp"],
+};
 const ZONE_BY_ROLE: Record<string, Zone> = { attacker: "outside", server: "server", database: "server" };
 
 export const kindOf = (actor: Actor): ActorKind => actor.kind ?? KIND_BY_ROLE[actor.role] ?? "person";
@@ -36,6 +43,9 @@ export const LOOK_KINDS: Record<Look, readonly ActorKind[]> = {
   "cloud-metadata": ["server"],
   database: ["server", "database"],
   wifi: ["network"],
+  laptop: ["server"],
+  printer: ["resource"],
+  scanner: ["resource"],
 };
 
 /** 화면판이 있는 행위자: 탭은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
@@ -44,19 +54,30 @@ export const hasPanel = (actor: Actor) => {
   return kind === "tab" || ((kind === "server" || kind === "database") && actor.screen !== undefined);
 };
 
-/** 방어 모드에서 고를 수 있는 방어 = 차단 단계가 있는 방어 */
-export const blockingDefenses = (term: Term) =>
-  term.defenses.flatMap((d, i) => (d.blockedAtStep === undefined ? [] : [i]));
+/** 모드로 고를 수 있는지: 방어는 차단 단계가 있을 때(그 단계에서 멈춤), 해결 방법은 대체 흐름이 있을 때(갈림 단계부터 끝까지) */
+const hasMode = (d: Term["defenses"][number]) => d.blockedAtStep !== undefined || d.branchAtStep !== undefined;
 
-/** 목록·상세 카드의 개수: 차단 단계가 있는 방어와, 설명만 있는 보조 방어(차단 단계 없음)를 따로 센다 */
+/** 모드 탭에서 고를 수 있는 방어·해결 방법(defenses 인덱스) */
+export const modeDefenses = (term: Pick<Term, "defenses">) => term.defenses.flatMap((d, i) => (hasMode(d) ? [i] : []));
+
+/** 목록·상세 카드의 개수: 모드가 있는 방어·해결 방법과, 설명만 있는 보조(모드 없음)를 따로 센다 */
 export const defenseCounts = (term: Pick<Term, "defenses">) => {
-  const defenseCount = term.defenses.filter((d) => d.blockedAtStep !== undefined).length;
+  const defenseCount = term.defenses.filter(hasMode).length;
   return { defenseCount, supportCount: term.defenses.length - defenseCount };
 };
 
+/** 이 모드의 마지막 단계(0부터): 기본 흐름은 끝, 방어는 차단 단계, 해결 방법은 갈림 단계 앞 + 대체 흐름 길이 */
 export function lastStepIndex(term: Term, mode: Mode): number {
-  const blockedAt = mode === null ? undefined : term.defenses[mode]?.blockedAtStep;
-  return (blockedAt ?? term.scenario.steps.length) - 1;
+  const d = mode === null ? undefined : term.defenses[mode];
+  if (d?.branchAtStep !== undefined && d.steps) return d.branchAtStep - 1 + d.steps.length - 1;
+  return (d?.blockedAtStep ?? term.scenario.steps.length) - 1;
+}
+
+/** 이 모드의 index번째 단계 원본(해결 방법이면 갈림 단계부터 대체 흐름) */
+export function stepAt(term: Term, mode: Mode, index: number): Step {
+  const d = mode === null ? undefined : term.defenses[mode];
+  if (d?.branchAtStep !== undefined && d.steps && index >= d.branchAtStep - 1) return d.steps[index - (d.branchAtStep - 1)]!;
+  return term.scenario.steps[index]!;
 }
 
 export type StepView = {
@@ -77,12 +98,15 @@ export type StepView = {
   returnLabel?: string;
   via?: string;
   camera?: { focus: string; distance?: "near" | "mid" | "far" };
+  action: Step["action"];
+  line?: number;
 };
 
 export function stepView(term: Term, mode: Mode, index: number): StepView {
-  const step = term.scenario.steps[index]!;
+  const step = stepAt(term, mode, index);
   const defense = mode === null ? undefined : term.defenses[mode];
-  const override = defense?.overrides.find((o) => o.step === index + 1);
+  const branched = defense?.branchAtStep !== undefined && index >= defense.branchAtStep - 1;
+  const override = branched ? undefined : defense?.overrides.find((o) => o.step === index + 1);
   const blocked = defense?.blockedAtStep === index + 1;
   const effects = override?.effects ?? step.effects;
   const attached = effects.flatMap((e) => (e.type === "attach" && !e.refused && e.label ? [e.label] : []));
@@ -102,6 +126,8 @@ export function stepView(term: Term, mode: Mode, index: number): StepView {
     returnLabel: step.returnLabel,
     via: step.via,
     camera: step.camera,
+    action: step.action,
+    line: step.line,
   };
 }
 
@@ -141,6 +167,16 @@ function refsOf(e: Effect): [string, string][] {
       return [["at", e.at]];
     case "transfer":
       return [["from", e.from], ["to", e.to]];
+    case "locals":
+      return e.target ? [["target", e.target]] : [];
+    case "take":
+      return [["from", e.from]];
+    case "returnValue":
+    case "condition":
+    case "cycle":
+    case "timeout":
+    case "stamp":
+      return [];
   }
 }
 
@@ -170,20 +206,19 @@ export function checkScene(term: Term): Issue[] {
     }
   });
 
-  const checkEffects = (effects: Effect[], base: (string | number)[], stepIndex: number) =>
+  const checkEffects = (effects: Effect[], base: (string | number)[], step: Step | undefined) =>
     effects.forEach((e, j) => {
       const path = [...base, j];
-      if (playerType !== "flow") {
-        issues.push({ path: [...path, "type"], message: `${playerType} 플레이어의 효과 어휘는 4단계에서 정합니다` });
+      if (!EFFECTS_BY_PLAYER[playerType].includes(e.type)) {
+        issues.push({ path: [...path, "type"], message: `${playerType} 플레이어에서 쓸 수 없는 효과: ${e.type} (허용: ${EFFECTS_BY_PLAYER[playerType].join(", ")})` });
       }
       for (const [key, ref] of refsOf(e)) {
         if (!byId.has(ref)) issues.push({ path: [...path, key], message: `actors에 없는 행위자: ${ref}` });
       }
-      const target = "target" in e ? byId.get(e.target) : undefined;
+      const target = "target" in e && e.target ? byId.get(e.target) : undefined;
       if ((e.type === "flip" || e.type === "rewrite") && target && !hasPanel(target)) {
         issues.push({ path: [...path, "target"], message: `${e.target}에는 화면판이 없습니다(탭, 또는 screen이 있는 server·database만)` });
       }
-      const step = steps[stepIndex];
       if (e.type === "inspect" && step && byId.has(step.to)) {
         if (e.at !== step.to) issues.push({ path: [...path, "at"], message: `inspect.at은 이 단계의 목적지(${step.to})여야 합니다` });
         else if (!byId.get(step.to)!.gate) issues.push({ path: [...path, "at"], message: `inspect는 검문소(gate)가 있는 목적지에서만 그려집니다: ${step.to}` });
@@ -205,7 +240,7 @@ export function checkScene(term: Term): Issue[] {
     if (s.camera && s.camera.focus !== "all" && !byId.has(s.camera.focus)) {
       issues.push({ path: ["scenario", "steps", i, "camera", "focus"], message: `actors에 없는 행위자: ${s.camera.focus}` });
     }
-    checkEffects(s.effects, ["scenario", "steps", i, "effects"], i);
+    checkEffects(s.effects, ["scenario", "steps", i, "effects"], s);
   });
 
   term.defenses.forEach((d, di) => {
@@ -216,12 +251,18 @@ export function checkScene(term: Term): Issue[] {
       if (o.step > limit) issues.push({ path: [...path, "step"], message: `override 단계 ${o.step}가 범위(1~${limit})를 벗어납니다` });
       if (seenSteps.has(o.step)) issues.push({ path: [...path, "step"], message: `같은 단계의 override가 두 번 있습니다: ${o.step}` });
       seenSteps.add(o.step);
-      if (o.effects) checkEffects(o.effects, [...path, "effects"], o.step - 1);
+      if (o.effects) checkEffects(o.effects, [...path, "effects"], steps[o.step - 1]);
+    });
+    d.steps?.forEach((s, si) => {
+      if (s.via && !byId.has(s.via)) issues.push({ path: ["defenses", di, "steps", si, "via"], message: `actors에 없는 행위자: ${s.via}` });
+      checkEffects(s.effects, ["defenses", di, "steps", si, "effects"], s);
     });
   });
 
   // 물건 흐름: 꺼내려는 곳에 그 물건이 그 시점에 실제로 있는지, 모드(공격 흐름·방어별)마다 단계를 따라가며 확인한다
   const effectPath = (mode: Mode, i: number, j: number): (string | number)[] => {
+    const d = mode === null ? undefined : term.defenses[mode]!;
+    if (d?.branchAtStep !== undefined && d.steps && i >= d.branchAtStep - 1) return ["defenses", mode!, "steps", i - (d.branchAtStep - 1), "effects", j];
     const oi = mode === null ? -1 : term.defenses[mode]!.overrides.findIndex((o) => o.step === i + 1 && o.effects);
     return oi >= 0 ? ["defenses", mode!, "overrides", oi, "effects", j] : ["scenario", "steps", i, "effects", j];
   };
@@ -258,6 +299,66 @@ export function checkScene(term: Term): Issue[] {
         }
       });
       for (const it of packet) add(deliveryTarget(view), it);
+    }
+  }
+  issues.push(...checkMachine(term));
+  return issues;
+}
+
+/** 단계 위치(모드마다 기본 흐름·override·대체 흐름 중 어디에 적혔는지) */
+function stepPath(term: Term, mode: Mode, i: number): (string | number)[] {
+  const d = mode === null ? undefined : term.defenses[mode]!;
+  if (d?.branchAtStep !== undefined && d.steps && i >= d.branchAtStep - 1) return ["defenses", mode!, "steps", i - (d.branchAtStep - 1)];
+  return ["scenario", "steps", i];
+}
+
+/**
+ * 스택형·점유형 상태 검사(모드마다 단계를 따라간다).
+ * 스택: push는 맨 위 함수가 부른다(첫 push는 from === to로 진입점), pop은 맨 위 함수가 바로 아래 함수로 돌아간다, run은 맨 위 함수가 제자리에서 실행.
+ * 점유: acquire는 아무도 안 잡은 자원, wait는 다른 스레드가 잡은 자원, release는 자기가 잡은 자원
+ */
+function checkMachine(term: Term): Issue[] {
+  const { playerType, code } = term.scenario;
+  if (playerType === "flow") return [];
+  const issues: Issue[] = [];
+  const reported = new Set<string>();
+  const report = (path: (string | number)[], message: string) => {
+    const key = path.join(".");
+    if (!reported.has(key)) issues.push({ path, message });
+    reported.add(key);
+  };
+  for (const mode of [null, ...term.defenses.map((_, i) => i)] as Mode[]) {
+    const stack: string[] = [];
+    const owner = new Map<string, string>(); // 자원 → 잡은 스레드
+    for (let i = 0; i <= lastStepIndex(term, mode); i++) {
+      const s = stepAt(term, mode, i);
+      const path = stepPath(term, mode, i);
+      if (playerType === "stack") {
+        const top = stack.at(-1);
+        if (s.line !== undefined && code && s.line > code.lines.length) report([...path, "line"], `코드 판에 ${s.line}행이 없습니다(${code.lines.length}행)`);
+        if (s.action === "push") {
+          if (top === undefined ? s.from !== s.to : s.from !== top) report([...path, "from"], top === undefined ? "첫 push는 진입점이라 from과 to가 같아야 합니다" : `push는 맨 위 함수(${top})가 부릅니다`);
+          stack.push(s.to);
+        } else if (s.action === "pop") {
+          if (s.from !== top) report([...path, "from"], `pop은 맨 위 함수(${top ?? "없음"})가 돌아갑니다`);
+          else if (stack.length > 1 && s.to !== stack.at(-2)) report([...path, "to"], `돌아갈 곳은 바로 아래 함수(${stack.at(-2)})입니다`);
+          stack.pop();
+        } else if (s.action === "run" && (s.from !== top || s.to !== top)) report([...path, "from"], `run은 맨 위 함수(${top ?? "없음"})가 제자리에서 실행합니다`);
+        s.effects.forEach((e, j) => {
+          if (e.type === "returnValue" && s.action !== "pop") report([...path, "effects", j, "type"], "returnValue는 pop 단계에만 씁니다");
+        });
+      } else {
+        const held = owner.get(s.to);
+        if (s.action === "acquire" && held !== undefined && held !== s.from) report([...path, "to"], `${s.to}는 ${held}가 잡고 있어 acquire할 수 없습니다(wait를 쓰세요)`);
+        if (s.action === "wait" && (held === undefined || held === s.from)) report([...path, "to"], `${s.to}를 다른 스레드가 잡고 있지 않아 기다릴 필요가 없습니다`);
+        if (s.action === "release" && held !== s.from) report([...path, "to"], `${s.from}는 ${s.to}를 잡고 있지 않습니다`);
+        if (s.action === "acquire") owner.set(s.to, s.from);
+        if (s.action === "release") owner.delete(s.to);
+        s.effects.forEach((e, j) => {
+          if (e.type === "take" && owner.get(s.to) !== e.from) report([...path, "effects", j, "from"], `${e.from}는 ${s.to}를 잡고 있지 않습니다`);
+          if (e.type === "take" && !e.refused) owner.set(s.to, s.from);
+        });
+      }
     }
   }
   return issues;

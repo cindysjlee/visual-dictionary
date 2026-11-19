@@ -14,6 +14,6 @@ export const PLAYER_LABELS = {
 
 export const ACTIONS_BY_PLAYER = {
   flow: ["send"],
-  stack: ["push", "pop"],
+  stack: ["push", "pop", "run"],
   lock: ["acquire", "wait", "release"],
 } as const;

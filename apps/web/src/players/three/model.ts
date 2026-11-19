@@ -384,6 +384,10 @@ export class SceneModel {
         });
         return 2.4;
       }
+      case "laptop":
+      case "printer":
+      case "scanner":
+        return 2.4; // shortcut: 모양은 4c(printer·scanner)·4d(laptop)에서 만든다. 아직 이 look을 쓰는 용어가 없다
     }
   }
 

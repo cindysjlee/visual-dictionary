@@ -14,7 +14,7 @@ const terms: Term[] = readdirSync(dir)
   .filter((t) => t.status !== "retired");
 
 describe.each(terms.map((t) => [t.id, t] as const))("용어 %s", (_, term) => {
-  const config: PlaybackConfig = { stepCount: term.scenario.steps.length, blockedAtStep: term.defenses.map((d) => d.blockedAtStep) };
+  const config: PlaybackConfig = { stepCount: term.scenario.steps.length, modeSteps: term.defenses.map((_, i) => lastStepIndex(term, i) + 1) };
   const modes: Mode[] = [null, ...term.defenses.map((_, i) => i)];
   const actorIds = new Set(term.scenario.actors.map((a) => a.id));
 
@@ -36,10 +36,15 @@ describe.each(terms.map((t) => [t.id, t] as const))("용어 %s", (_, term) => {
     }
     expect(state.playing).toBe(false);
     expect(state.step).toBe(lastStepIndex(term, mode));
-    const blockedAt = mode === null ? undefined : term.defenses[mode]!.blockedAtStep;
-    if (blockedAt) {
-      expect(state.step).toBe(blockedAt - 1);
+    const d = mode === null ? undefined : term.defenses[mode]!;
+    if (d?.blockedAtStep) {
+      expect(state.step).toBe(d.blockedAtStep - 1);
       expect(stepView(term, mode, state.step).blocked).toBe(true);
+    }
+    // 해결 방법(대체 흐름)은 멈추지 않고 대체 흐름 끝까지 간다
+    if (d?.branchAtStep && d.steps) {
+      expect(state.step).toBe(d.branchAtStep - 1 + d.steps.length - 1);
+      expect(stepView(term, mode, state.step).blocked).toBe(false);
     }
   });
 });
