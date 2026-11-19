@@ -1,21 +1,26 @@
 // 흐름형 3D 무대. 상세 페이지에서만 동적 import된다(Player.tsx). 장면은 JSON을 읽어 만들고, 엔진 상태(step·defense)를 그리기만 한다
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { Raycaster, Spherical, Vector3, type Camera, type Material, type Mesh, type PerspectiveCamera, type PlaneGeometry } from "three";
+import { Vector3, type PerspectiveCamera } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
-import { CameraRig, FOV, buildStep, involvedActors, sideStamp } from "./director.ts";
+import { billboardRect, faceCamera } from "./billboard.ts";
+import { CameraRig } from "./camera.ts";
+import { buildStep, involvedActors, sideStamp } from "./director.ts";
+import { useFreeView } from "./freeView.ts";
 import { LabelLayer } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
+import { Occlusion } from "./occlusion.ts";
+import { SceneCanvas, SceneLights, type SceneFrame } from "./SceneCanvas.tsx";
 import { sceneStateAt, type SceneState } from "./sceneState.ts";
 import { Timeline } from "./timeline.ts";
-import { TRACE, traceSpeed, tracerFor, type Tracer } from "./trace.ts";
+import { exposeProbe, traceSpeed, tracerFor, type Tracer } from "./trace.ts";
 import { usePalette } from "./tokens.ts";
 
-type RootProps = StageProps & { labelRoot: RefObject<HTMLDivElement | null>; shadowSize: number; visible: boolean };
+type RootProps = StageProps & SceneFrame;
 
 function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, stageRef, labelRoot, shadowSize, visible }: RootProps) {
   const { scene, camera, size, setFrameloop, invalidate } = useThree();
@@ -37,7 +42,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   const jump = useRef(true);
   const idle = useRef(0);
   const controls = useRef<OrbitControlsImpl>(null);
-  const ray = useMemo(() => new Raycaster(), []);
+  const occlusion = useMemo(() => new Occlusion(), []);
   const involved = useRef<string[]>([]);
   /** 가림 검사 시선의 목표: 등장 행위자마다 보이는 상자의 가운데와 윗면 가운데(앵커만 보면 높은 카메라에서 윗부분 가림을 놓친다) */
   const sightPoints = useRef<Vector3[]>([]);
@@ -190,51 +195,32 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
   }, [palette]);
 
   // 자유 시점: 지금 보던 곳을 중심으로 돌린다. 무대에 포커스가 있으면 화살표로도 돌릴 수 있다
-  useEffect(() => {
-    wake();
-    if (!freeView) {
-      jump.current = false;
-      return;
-    }
-    const c = controls.current;
-    if (c) {
-      c.target.copy(rig.target);
-      c.update();
-    }
-    const el = stageRef.current;
-    const onKey = (e: KeyboardEvent) => {
-      const ctl = controls.current;
-      if (!ctl || e.target !== el || !e.key.startsWith("Arrow")) return;
-      const offset = camera.position.clone().sub(ctl.target);
-      const s = new Spherical().setFromVector3(offset);
-      if (e.key === "ArrowLeft") s.theta -= 0.2;
-      if (e.key === "ArrowRight") s.theta += 0.2;
-      if (e.key === "ArrowUp") s.phi = Math.max(0.25, s.phi - 0.12);
-      if (e.key === "ArrowDown") s.phi = Math.min(1.35, s.phi + 0.12);
-      camera.position.copy(ctl.target).add(new Vector3().setFromSpherical(s));
-      ctl.update();
-      invalidate();
-      e.preventDefault();
-    };
-    el?.addEventListener("keydown", onKey);
-    return () => el?.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freeView]);
+  useFreeView({
+    freeView,
+    stageRef,
+    controls,
+    camera,
+    target: rig.target,
+    invalidate,
+    onToggle: (on) => {
+      wake();
+      if (!on) jump.current = false;
+    },
+  });
 
   // 테스트 빌드 전용: 등장 행위자들이 화면에서 차지하는 사각형(겹침 검사, tests/e2e). 배포 빌드에서는 빠진다
-  useEffect(() => {
-    if (!TRACE) return;
-    const w = window as unknown as { __sceneProbe?: () => unknown };
-    w.__sceneProbe = () => ({
-      settled: rig.settled(camera as PerspectiveCamera),
-      width: size.width,
-      height: size.height,
-      rects: Object.fromEntries([...model.nodes.keys()].map((id) => [id, model.screenRect(id, camera, size.width, size.height)])),
-      stamp: model.stamp.visible ? billboardRect(model.stamp, camera, size.width, size.height) : undefined,
-      parents: Object.fromEntries(term.scenario.actors.map((a) => [a.id, a.parent])),
-    });
-    return () => void delete w.__sceneProbe;
-  }, [model, rig, camera, size, term]);
+  useEffect(
+    () =>
+      exposeProbe(() => ({
+        settled: rig.settled(camera as PerspectiveCamera),
+        width: size.width,
+        height: size.height,
+        rects: Object.fromEntries([...model.nodes.keys()].map((id) => [id, model.screenRect(id, camera, size.width, size.height)])),
+        stamp: model.stamp.visible ? billboardRect(model.stamp, camera, size.width, size.height) : undefined,
+        parents: Object.fromEntries(term.scenario.actors.map((a) => [a.id, a.parent])),
+      })),
+    [model, rig, camera, size, term],
+  );
 
   useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 0.1);
@@ -260,41 +246,11 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       }
     }
 
-    for (const b of model.billboards) {
-      if (!b.visible) continue;
-      b.quaternion.copy(camera.quaternion);
-      if (b.userData.roll) b.rotateZ(b.userData.roll as number);
-    }
+    faceCamera(model.billboards, camera);
 
-    // 가림 자동 투명: 카메라 → (초점, 봉투, 이 단계의 등장 행위자)를 막는 물체만 서서히 흐리게, 안 막으면 원래대로.
-    // 모든 행위자가 대상이지만, 이 단계의 등장 행위자 자신은 흐리지 않는다(보여 줘야 할 것). 등장 행위자끼리 겹치는 것은 배치·카메라가 막는다
-    const hit = new Set<Material>();
-    const shown = new Set(involved.current);
-    const goals = [rig.target];
-    if (model.envelope.visible) goals.push(model.envelope.position);
-    goals.push(...sightPoints.current);
-    for (const goal of goals) {
-      const dir = goal.clone().sub(camera.position);
-      ray.set(camera.position, dir.clone().normalize());
-      ray.far = dir.length() - 0.3;
-      for (const h of ray.intersectObjects(model.occluders, false)) {
-        if (!shown.has(h.object.userData.actor as string)) hit.add((h.object as Mesh).material as Material);
-      }
-    }
-    const k = 1 - Math.exp(-dt * 6);
-    const seen = new Set<Material>(); // 재질을 같이 쓰는 메시(검문소 차단봉·링)는 재질 하나로 한 번만
-    let fading = false;
-    for (const m of model.occluders as Mesh[]) {
-      const mat = m.material as Material & { opacity: number };
-      if (seen.has(mat)) continue;
-      seen.add(mat);
-      const base = (mat.userData.baseOpacity ??= mat.opacity) as number;
-      const goal = hit.has(mat) ? Math.min(base, 0.1) : base;
-      mat.opacity += (goal - mat.opacity) * k;
-      if (Math.abs(goal - mat.opacity) > 0.01) fading = true;
-      mat.transparent = true;
-      mat.depthWrite = mat.opacity > 0.9;
-    }
+    // 가림 자동 투명: 카메라 → (초점, 봉투, 이 단계의 등장 행위자)를 막는 물체만 흐리게. 등장 행위자 자신은 흐리지 않는다
+    const goals = [rig.target, ...(model.envelope.visible ? [model.envelope.position] : []), ...sightPoints.current];
+    const fading = occlusion.update(camera, model.occluders, goals, new Set(involved.current), dt);
 
     // 차단 도장·내용 카드는 늘 맨 위에 보여야 하므로 라벨이 그 자리를 피한다
     labels.current?.update(camera, size.width, size.height, [model.stamp, model.card].flatMap((m) => (m.visible ? [billboardRect(m, camera, size.width, size.height)] : [])));
@@ -308,75 +264,12 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
 
   return (
     <>
-      <hemisphereLight intensity={1.1} />
-      <ambientLight intensity={0.35} />
-      <directionalLight
-        castShadow
-        position={[6, 12, 8]}
-        intensity={1.8}
-        shadow-mapSize-width={shadowSize}
-        shadow-mapSize-height={shadowSize}
-        shadow-bias={-0.0005}
-        shadow-normalBias={0.04}
-        shadow-camera-left={-14}
-        shadow-camera-right={14}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-        shadow-camera-far={40}
-      />
+      <SceneLights shadowSize={shadowSize} />
       {freeView && <OrbitControls ref={controls} makeDefault enableDamping maxPolarAngle={1.35} minDistance={4} maxDistance={30} />}
     </>
   );
 }
 
-/** 카메라를 향한 판(도장·카드)이 화면에서 차지하는 사각형(px) */
-function billboardRect(m: Mesh, camera: Camera, width: number, height: number) {
-  const geo = m.geometry as PlaneGeometry;
-  const { width: w, height: h } = geo.parameters;
-  const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar((w / 2) * m.scale.x);
-  const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar((h / 2) * m.scale.y);
-  const pts = [right.clone().add(up), right.clone().sub(up), right.clone().negate().add(up), right.clone().negate().sub(up)].map((d) => {
-    const p = m.position.clone().add(d).project(camera);
-    return [((p.x + 1) / 2) * width, ((1 - p.y) / 2) * height] as const;
-  });
-  return { l: Math.min(...pts.map((p) => p[0])), r: Math.max(...pts.map((p) => p[0])), t: Math.min(...pts.map((p) => p[1])), b: Math.max(...pts.map((p) => p[1])) };
-}
-
 export default function FlowScene(props: StageProps) {
-  const labelRoot = useRef<HTMLDivElement>(null);
-  const [onScreen, setOnScreen] = useState(true);
-  const [pageVisible, setPageVisible] = useState(() => !document.hidden);
-  const [mobile] = useState(() => matchMedia("(max-width: 639px)").matches);
-
-  // 화면 밖이거나 탭이 숨겨지면 그리기를 멈춘다
-  useEffect(() => {
-    const el = props.stageRef.current;
-    const io = el ? new IntersectionObserver(([entry]) => setOnScreen(Boolean(entry?.isIntersecting))) : undefined;
-    if (el) io?.observe(el);
-    const onVis = () => setPageVisible(!document.hidden);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      io?.disconnect();
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [props.stageRef]);
-  const visible = onScreen && pageVisible;
-
-  return (
-    <div className="scene3d">
-      <div className="scene-canvas" aria-hidden="true">
-        <Canvas
-          dpr={[1, 2]}
-          shadows="percentage"
-          frameloop={visible ? "always" : "never"}
-          camera={{ fov: FOV, position: [0, 12.5, 14], near: 0.1, far: 160 }}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <SceneRoot {...props} labelRoot={labelRoot} shadowSize={mobile ? 1024 : 1536} visible={visible} />
-        </Canvas>
-      </div>
-      <div ref={labelRoot} className="scene-labels" aria-hidden="true" />
-      {props.freeView && <p className="scene-hint">드래그해서 돌리고, 휠로 확대해 보세요. 무대에 포커스가 있으면 화살표로도 돌릴 수 있어요.</p>}
-    </div>
-  );
+  return <SceneCanvas stageRef={props.stageRef} freeView={props.freeView}>{(frame) => <SceneRoot {...props} {...frame} />}</SceneCanvas>;
 }

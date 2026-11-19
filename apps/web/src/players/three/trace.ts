@@ -21,5 +21,24 @@ export function tracerFor(step: number, mode: Mode): Tracer {
   return (kind, extra) => ((window as TraceWindow).__sceneTrace ??= []).push({ step, mode, kind, ...extra, t: performance.now() });
 }
 
+/** 겹침 검사 도구(테스트 빌드 전용, tests/e2e/scene-layout.e2e.ts): 행위자·도장의 화면 사각형과 카메라가 멈췄는지 */
+export type Rect = { l: number; t: number; r: number; b: number };
+export type SceneProbe = {
+  settled: boolean;
+  width: number;
+  height: number;
+  rects: Record<string, Rect | undefined>;
+  stamp?: Rect;
+  parents: Record<string, string | undefined>;
+};
+
+/** window.__sceneProbe로 노출하고, 치우는 함수를 돌려준다. 배포 빌드에서는 아무것도 하지 않는다 */
+export function exposeProbe(read: () => SceneProbe): () => void {
+  if (!TRACE) return () => {};
+  const w = window as unknown as { __sceneProbe?: () => SceneProbe };
+  w.__sceneProbe = read;
+  return () => void delete w.__sceneProbe;
+}
+
 /** E2E가 연출을 빨리 돌리게 하는 배속(테스트·개발 빌드 전용). 배포 빌드에서는 항상 1 */
 export const traceSpeed = () => (TRACE ? ((window as TraceWindow).__sceneSpeed ?? 1) : 1);
