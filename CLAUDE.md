@@ -69,11 +69,11 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, ~~재생 속도~~(완료, 0.75~2×), 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 4단계 완료(초기 용어 8개 모두 published, 비회원 기능 완성), 5단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
-4단계 결과: 3D StackScene(콜 스택)·LockScene(데드락), TCP 핸드셰이크(흐름형, laptop look), 해결 방법=대체 흐름(`branchAtStep`+`steps`, 끝까지 재생), 화면판 라벨(`mirrorScreen`), E2E 시간 단축(장면 배속 10×·결과 상태 겹침 검사·workers 4·진단 리포터).
+**현재 단계: 5단계 완료(Cognito 회원가입·이메일 인증·로그인·비밀번호 재설정, 새로고침 후 로그인 유지), 6단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
+5단계 결과: 스택 `VisualDictionaryAuth`(사용자 풀 Lite, 삭제 보호·RETAIN), `/config.json`, CSP `connect-src`에 서울 사용자 풀 엔드포인트, `features/auth/`(Amplify 동적 import, 테스트·개발 빌드는 가짜 인증), `/auth/*` 화면, E2E `@auth`, `npm run smoke:auth`. 설계·보안 메모는 docs/03 2.4.
 남은 일:
-- 5단계: Cognito, 회원가입·이메일 인증·로그인·비밀번호 재설정(docs/03 구현 단계). R3F는 유지로 결정(휴대폰 실기기 재생 문제없음).
-- 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
+- 6단계: Progress API·읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제), 상단바 사용자 메뉴에 진행 현황·계정 설정(/me). 상세의 끝까지 봄(onComplete)에 읽음 저장 연결.
+- 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow). 4단계 결과는 git 기록(3D StackScene·LockScene, 해결 방법=대체 흐름, mirrorScreen) 참고.
 - 5~6단계에서 API 경로를 CloudFront에 붙일 때: 403·404→index.html 대체 응답을 CloudFront Functions(확장자 없는 경로만 index.html로)로 바꿔 `/assets/`·`/content/` 없는 파일이 진짜 404가 되게 할지 경로별 처리와 함께 다시 정할 것.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 2단계 주의: 403/404→index.html 때문에 없는 `/content/terms/<id>.json`도 HTML 200이 오므로 상세 페이지는 JSON 파싱 실패를 "없는 용어"로 처리할 것. CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
@@ -102,7 +102,7 @@ docs/                     설계 문서
   - push·배포 직전에만: 전체 E2E 한 번. draft가 있으면 `npm run test:e2e:drafts`만 돌린다(published를 포함하므로 `test:e2e`와 중복). draft가 없으면 `npm run test:e2e`.
   - 장면 기록·겹침 검사는 테스트 빌드 전용 장면 배속(`__sceneSpeed` 10×, 타임라인·카메라)으로 돌고, 겹침 검사는 연출 없이 단계 결과 상태(동작 줄이기 경로)에서 잰다. 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐이다.
 - 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
-- 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지)를 돌린다.
+- 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지·`/config.json`)와 `npm run smoke:auth`(실제 Cognito: 메일 없는 테스트 사용자로 로그인·새로고침 유지·로그아웃, 끝나면 사용자 삭제)를 돌린다.
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.
 - 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고, 커밋한 뒤 push한다.
 - 여러 파일에 걸친 변경, 영향 범위 확인, "이건 어디서 쓰이나" 같은 구조 질문은 `graphify-out/GRAPH_REPORT.md`를 먼저 읽고, 필요하면 `graphify query`/`path`/`explain`(영향 범위는 `affected`)을 터미널에서 실행해서 답한다.
