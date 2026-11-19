@@ -69,11 +69,12 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, ~~재생 속도~~(완료, 0.75~2×), 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 5단계 완료(Cognito 회원가입·이메일 인증·로그인·비밀번호 재설정, 새로고침 후 로그인 유지), 6단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
-5단계 결과: 스택 `VisualDictionaryAuth`(사용자 풀 Lite, 삭제 보호·RETAIN), `/config.json`, CSP `connect-src`에 서울 사용자 풀 엔드포인트, `features/auth/`(Amplify 동적 import, 테스트·개발 빌드는 가짜 인증), `/auth/*` 화면, E2E `@auth`, `npm run smoke:auth`. 설계·보안 메모는 docs/03 2.4.
+**현재 단계: 6단계 완료(학습 기록·진행률·읽음 필터·내 학습, 회원 탈퇴), 7단계 시작 전.** 단계를 끝내면 이 줄을 갱신할 것.
+6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 남은 일:
-- 6단계: Progress API·읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제), 상단바 사용자 메뉴에 진행 현황·계정 설정(/me). 상세의 끝까지 봄(onComplete)에 읽음 저장 연결.
-- 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow). 4단계 결과는 git 기록(3D StackScene·LockScene, 해결 방법=대체 흐름, mirrorScreen) 참고.
+- 7단계(선택): 최근 본 용어(Activity API, 탈퇴 정리 큐를 같이 구독), 관련 용어, 자동 배포(GitHub Actions). 비회원 기록 이전(FR-PRG-07)도 선택.
+- 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
+- 배포에 IAM 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 변경 내용을 확인하고(권한 범위가 인프라 테스트와 같은지) `npm exec -w infra -- cdk deploy --all --require-approval never --profile vd`로 그때만 배포한다.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)

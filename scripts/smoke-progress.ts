@@ -101,7 +101,8 @@ try {
   const section = a.page.locator(".withdraw");
   await section.getByLabel("비밀번호", { exact: true }).fill(password);
   await section.getByRole("button", { name: "비밀번호 확인" }).click();
-  await a.page.locator(".withdraw .btn-danger:not([disabled])").waitFor({ timeout: 15_000 });
+  // 대화상자 안의 "탈퇴" 버튼도 .btn-danger라서 "탈퇴하기" 글자로 좁힌다
+  await section.locator("button.btn-danger:not([disabled])", { hasText: "탈퇴하기" }).waitFor({ timeout: 15_000 });
   check(true, "비밀번호 재확인(실제 Cognito) → 탈퇴 버튼 켜짐");
   await section.getByRole("button", { name: "탈퇴하기" }).click();
   await a.page.getByRole("dialog", { name: "정말 탈퇴할까요?" }).getByRole("button", { name: "탈퇴", exact: true }).click();
