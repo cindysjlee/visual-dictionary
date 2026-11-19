@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { loginPath } from "./features/auth/safeNext.ts";
 import { auth, startAuth, useAuth } from "./features/auth/store.ts";
+import { startProgress } from "./features/progress/store.ts";
 import { LogoMark, MoonIcon, SunIcon } from "./icons.tsx";
 import { applyTheme, readStoredTheme, storeTheme, systemDarkQuery, type Theme } from "./theme.ts";
 
@@ -72,7 +73,10 @@ function AccountBar() {
 
 export default function Layout() {
   // 첫 화면을 그린 뒤 저장된 로그인 상태를 읽는다(인증 구현은 이때 따로 받는다)
-  useEffect(startAuth, []);
+  useEffect(() => {
+    startAuth();
+    startProgress(); // 로그인 상태를 따라 학습 기록을 불러오고 비운다
+  }, []);
   return (
     <>
       <div className="backdrop" aria-hidden="true">

@@ -17,8 +17,8 @@ if (/WebGLRenderer|WebGLShadowMap/.test(code.toString())) failures.push("홈 묶
 // 장면 기록(players/three/trace.ts)은 테스트·개발 빌드 전용. 배포 묶음 어디에도 없어야 한다
 const traced = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("__sceneTrace"));
 if (traced.length) failures.push(`배포 묶음에 장면 기록 코드가 있습니다: ${traced.join(", ")}`);
-// 가짜 인증(features/auth/fake.ts)도 테스트·개발 빌드 전용. 인증 구현(Amplify)은 홈 묶음이 아니라 따로 받는다
-const faked = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && /fake-auth-users|개발용 가짜 인증/.test(readFileSync(`${dist}assets/${f}`, "utf8")));
+// 가짜 인증·가짜 기록 API(features/auth/fake.ts, features/progress/fake.ts)도 테스트·개발 빌드 전용. 인증 구현(Amplify)은 홈 묶음이 아니라 따로 받는다
+const faked = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && /fake-auth-users|fake-progress|개발용 가짜 인증/.test(readFileSync(`${dist}assets/${f}`, "utf8")));
 if (faked.length) failures.push(`배포 묶음에 가짜 인증이 있습니다: ${faked.join(", ")}`);
 if (code.toString().includes("cognito-idp")) failures.push("홈 묶음에 Amplify(Cognito)가 들어 있습니다");
 const cognito = readdirSync(`${dist}assets`).filter((f) => f.endsWith(".js") && readFileSync(`${dist}assets/${f}`, "utf8").includes("cognito-idp"));

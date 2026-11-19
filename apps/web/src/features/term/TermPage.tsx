@@ -6,9 +6,11 @@ import NotFoundPage from "../../NotFoundPage.tsx";
 import { ShieldIcon } from "../../icons.tsx";
 import { useJson } from "../../useJson.ts";
 import { termMeta } from "../explore/HomePage.tsx";
-import { Suspense, lazy, useCallback, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { loginPath } from "../auth/safeNext.ts";
 import { useAuth } from "../auth/store.ts";
+import { SAVE_FAILED, StudyCard } from "../progress/StudyCard.tsx";
+import { progress } from "../progress/store.ts";
 
 // 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
 const Player = lazy(() => import("../../players/Player.tsx"));
@@ -20,9 +22,17 @@ function TermDetail({ term }: { term: Term }) {
   const isSecurity = term.category === "web-security";
   const auth = useAuth();
   const { pathname } = useLocation();
-  // 끝까지 봄: 로그아웃 상태면 로그인 안내를 띄운다. 읽음 저장은 6단계(Progress API)에서 연결한다
+  // 끝까지 봄(FR-PRG-01): 로그인 상태면 읽음으로 저장, 아니면 로그인 안내. 저장이 실패해도 재생은 그대로(NFR-02)
   const [completed, setCompleted] = useState(false);
-  const onComplete = useCallback(() => setCompleted(true), []);
+  const [saveError, setSaveError] = useState<string>();
+  const signedIn = useRef(false);
+  useEffect(() => {
+    signedIn.current = auth.status === "user";
+  }, [auth.status]);
+  const onComplete = useCallback(() => {
+    setCompleted(true);
+    if (signedIn.current) progress.setRead(term.id, true, "completed").catch(() => setSaveError(SAVE_FAILED));
+  }, [term.id]);
 
   return (
     <>
@@ -45,19 +55,7 @@ function TermDetail({ term }: { term: Term }) {
           )}
           <p className="term-desc">{term.description}</p>
         </div>
-        <div className="glass card card-lg">
-          <h2 className="card-title">학습 상태</h2>
-          {auth.status === "user" ? (
-            <p className="muted">로그인했어요. 끝까지 본 용어를 읽음으로 저장하는 기능은 곧 연결돼요.</p>
-          ) : (
-            <>
-              <p className="muted">로그인하면 끝까지 재생한 용어가 자동으로 읽음 처리돼요.</p>
-              <Link to={loginPath(pathname)} className="btn btn-sm study-login">
-                로그인
-              </Link>
-            </>
-          )}
-        </div>
+        <StudyCard termId={term.id} saveError={saveError} />
       </section>
 
       <Suspense fallback={<PlayerSkeleton />}>

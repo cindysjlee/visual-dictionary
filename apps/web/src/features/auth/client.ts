@@ -13,6 +13,10 @@ export interface AuthClient {
   signOut(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   confirmResetPassword(email: string, code: string, newPassword: string): Promise<void>;
+  /** API(/api/*)에 붙일 액세스 토큰. 로그인하지 않았으면 null */
+  accessToken(): Promise<string | null>;
+  /** 로그인한 사용자의 비밀번호 재확인(탈퇴 전). 틀리면 NotAuthorizedException */
+  verifyPassword(password: string): Promise<void>;
 }
 
 export const FAKE_AUTH = import.meta.env.MODE !== "production";

@@ -9,6 +9,7 @@ import {
   signIn,
   signOut,
   signUp,
+  updatePassword,
 } from "aws-amplify/auth";
 import type { AuthClient } from "./client.ts";
 import { authError, isAuthError } from "./errors.ts";
@@ -70,6 +71,18 @@ export async function cognitoAuthClient(): Promise<AuthClient> {
     },
     async confirmResetPassword(email, code, newPassword) {
       await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+    },
+    async accessToken() {
+      try {
+        return (await fetchAuthSession()).tokens?.accessToken?.toString() ?? null; // 만료됐으면 Amplify가 리프레시 토큰으로 갱신한다
+      } catch {
+        return null;
+      }
+    },
+    async verifyPassword(password) {
+      // 로그인한 채로 비밀번호만 확인하는 API가 없어, 같은 비밀번호로 바꾸기(ChangePassword)로 Cognito가 확인하게 한다.
+      // 비밀번호를 우리 API로 보내지 않는다. Lite 풀은 비밀번호 재사용 금지가 없어 같은 값으로 바뀐다(docs/03)
+      await updatePassword({ oldPassword: password, newPassword: password });
     },
   };
 }

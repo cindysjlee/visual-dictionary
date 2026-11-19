@@ -50,5 +50,13 @@ export function fakeAuthClient(): AuthClient {
       if (!serverAccepts(newPassword)) throw authError("InvalidPasswordException");
       write({ ...users, [email]: { ...users[email], password: newPassword } });
     },
+    async accessToken() {
+      const email = localStorage.getItem(SESSION);
+      return email ? `fake-token:${email}` : null; // 가짜 기록 API(features/progress/fake.ts)가 이 값으로 사용자를 구분한다
+    },
+    async verifyPassword(password) {
+      const email = localStorage.getItem(SESSION);
+      if (!email || read()[email]?.password !== password) throw authError("NotAuthorizedException");
+    },
   };
 }

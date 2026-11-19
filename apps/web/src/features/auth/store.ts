@@ -82,4 +82,28 @@ export const auth = {
   async confirmResetPassword(email: string, code: string, newPassword: string) {
     await (await getClient()).confirmResetPassword(email, code, newPassword);
   },
+  /** /api/* 요청에 붙일 액세스 토큰(없으면 null) */
+  async accessToken() {
+    return (await getClient()).accessToken();
+  },
+  async verifyPassword(password: string) {
+    await (await getClient()).verifyPassword(password);
+  },
+  /** 탈퇴 뒤: 사용자가 이미 없어 토큰 취소가 실패할 수 있다. 실패해도 이 브라우저의 로그인 상태는 지운다 */
+  async signOutAfterWithdraw() {
+    try {
+      await (await getClient()).signOut();
+    } catch {
+      // 저장된 토큰 삭제는 Amplify가 취소 실패와 상관없이 한다
+    }
+    set({ status: "anon" });
+  },
+};
+
+/** 다른 모듈(기록 store)이 로그인 상태 변화를 따라가게 한다 */
+export const subscribeAuth = (l: (s: AuthState) => void) => {
+  const fn = () => l(state);
+  listeners.add(fn);
+  fn();
+  return () => listeners.delete(fn);
 };

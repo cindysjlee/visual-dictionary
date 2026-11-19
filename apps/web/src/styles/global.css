@@ -1258,3 +1258,15 @@ button:disabled {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ---------- 학습 기록(6단계) ---------- */
+.study-status {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.study-status.is-read {
+  color: var(--defense-text);
+}
