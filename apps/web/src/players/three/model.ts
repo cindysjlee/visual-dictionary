@@ -167,7 +167,9 @@ export class SceneModel {
     let labelAt: Vector3 | undefined;
 
     if (actor.look) {
-      labelY = this.buildLook(actor, node, tone);
+      const at = this.buildLook(actor, node, tone);
+      if (typeof at === "number") labelY = at;
+      else labelAt = at;
       if (placed.gate) node.gate = this.buildGate(placed, group);
       if (hasPanel(actor) && !node.panel) node.panel = this.buildStandPanel(group, tone);
     } else switch (placed.kind) {
@@ -278,7 +280,8 @@ export class SceneModel {
    * 생김새(look, docs/06 2절). 모두 기본 도형 조합이고 외부 모델 파일은 쓰지 않는다. 공격 쪽(tone: attack)은 어두운 재질에 공격색 띠.
    * 돌려주는 값은 이름 라벨 높이
    */
-  private buildLook(actor: Actor, node: ActorNode, tone: Tone): number {
+  /** 이름표 높이(가운데 위) 또는 이름표 자리를 돌려준다 */
+  private buildLook(actor: Actor, node: ActorNode, tone: Tone): number | Vector3 {
     const g = node.group;
     const attack = tone === "attack";
     const body: ColorKey = attack ? "objectAttack" : "object";
@@ -393,7 +396,8 @@ export class SceneModel {
         stripe(2.5, 1.6, 0.52);
         if (hasPanel(actor)) node.panel = this.buildPanel(g, tone, [0, 1.35, -0.55]);
         else box(2.3, 1.6, 0.08, [0, 1.35, -0.55]);
-        return 2.6;
+        // 이름표는 왼쪽 바깥: 위에 두면 시작 화면의 가운데 재생 버튼과 겹쳐 다른 행위자 쪽으로 밀려난다(오른쪽은 화면판 라벨 자리)
+        return new Vector3(-3.0, 0.6, 0.4);
       }
       case "printer":
       case "scanner":
@@ -651,6 +655,11 @@ export class SceneModel {
     this.stamp.visible = false;
     this.card.visible = false;
     this.repaintScreens(state);
+  }
+
+  /** 화면판 라벨 자리: 판 오른쪽 가장자리(판 가운데면 시작 화면의 재생 버튼을 피해 밀려나 다른 행위자 것처럼 보인다) */
+  screenLabelPoint(id: string) {
+    return this.nodes.get(id)!.panel!.pivot.localToWorld(new Vector3(1.15, 0.2, 0.1));
   }
 
   /** rewrite 효과: 한쪽 화면만 다시 그린다 */

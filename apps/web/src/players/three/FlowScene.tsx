@@ -10,7 +10,7 @@ import { billboardRect, faceCamera } from "./billboard.ts";
 import { CameraRig } from "./camera.ts";
 import { buildStep, involvedActors, sideStamp } from "./director.ts";
 import { useFreeView } from "./freeView.ts";
-import { LabelLayer } from "./labels.ts";
+import { LabelLayer, screenLabel } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
 import { SceneModel } from "./model.ts";
 import { Occlusion } from "./occlusion.ts";
@@ -73,10 +73,17 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
 
   /** 이름·잔액 라벨. 숨은 행위자의 라벨은 감춘다 */
   /** overview: 시작 전 전체 샷. 맨 위 행위자 이름만 보이고, 안에 든 것(탭·보관함)과 잔액은 재생하면 나타난다(라벨 겹침 방지) */
-  const refreshLabels = (s: SceneState, overview = false) => {
+  /** rewritten: 이 단계에서 바뀐 화면판(동작 줄이기에서 결과를 바로 보일 때). mirrorScreen이 아니면 그 판 라벨만 이 단계 동안 보인다. null이면 화면 라벨을 그대로 둔다(단계 중간 잔액 갱신) */
+  const refreshLabels = (s: SceneState, overview = false, rewritten: string[] | null = []) => {
     const l = labels.current!;
     for (const [id, node] of model.nodes) {
       const a = node.actor;
+      if (node.panel && rewritten) {
+        const screens = s.screens.get(id);
+        const screen = s.flipped.has(id) ? screens?.back : screens?.front;
+        const on = (a.mirrorScreen || rewritten.includes(id)) && !s.hidden.has(id);
+        l.set(`screen-${id}`, model.screenLabelPoint(id), screenLabel(screen, a.tone === "attack"), on);
+      }
       l.set(`actor-${id}`, node.labelPoint, { title: a.name, sub: a.site, tone: a.tone === "attack" ? "attack" : "plain" }, !s.hidden.has(id) && !(overview && node.placed.parent));
       const balance = s.balances.get(id);
       if (balance !== undefined && overview) l.show(`bal-${id}`, false);
@@ -133,7 +140,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       const after = sceneStateAt(term, state.defense, state.step + 1);
       model.applyState(after);
       aimAt(involved.current);
-      refreshLabels(after);
+      refreshLabels(after, false, view.effects.flatMap((e) => (e.type === "rewrite" ? [e.target] : [])));
       const inspect = view.effects.find((e) => e.type === "inspect");
       // 카메라는 결과가 보이는 곳: 검사한 곳 → 마지막 효과의 대상 → 목적지
       const lastTarget = [...view.effects].reverse().map((e) => ("target" in e ? e.target : "into" in e ? e.into : undefined)).find(Boolean);
@@ -171,7 +178,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         rig,
         hold: holdMs(view, true),
         onDone: done,
-        onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1)),
+        onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1), false, null),
         trace,
       });
     }

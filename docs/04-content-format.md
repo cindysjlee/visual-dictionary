@@ -112,6 +112,7 @@
 | `gate` | `true` | 서버 앞(사용자 쪽) 검문소. 더 깊은 구역(사내망 등)에서 오는 봉투는 검문소를 지나지 않는다 |
 | `balance` | 정수 | 잔액 라벨. `transfer`(coin)로 바뀜 |
 | `screen` / `back` | `{ title?, lines[] }` | 화면판의 앞면 / 뒤집으면 보이는 뒷면 글자. 탭은 항상 화면판이 있고, `server`·`database`는 `screen`이 있을 때 옆에 화면판이 선다(만들어진 쿼리, 미리보기 결과처럼 서버 안에서 일어나는 일) |
+| `mirrorScreen` | boolean, 기본 false | 켜면 화면판 내용을 늘 HTML 라벨로도 보여 준다(첫 줄이 제목, 나머지 줄은 부제). 판 글씨는 멀리서 작아 읽기 어려우므로, 상태가 개념의 핵심인 판(예: TCP 상태)에 켠다. 화면판이 있는 행위자에만 쓸 수 있다 |
 
 **단계 (`scenario.steps[]`)**: `effects[]`(아래 어휘), `roundTrip`(왕복), `returnLabel`(돌아올 때 라벨), `via`(거쳐 가는 행위자. 봉투가 먼저 들렀다 가고, `give`(from `"packet"`)은 그 자리에서 빠져나간다), `camera: { focus: 행위자 id | "all", distance?: near|mid|far }`(자동 카메라를 덮어쓸 때만). `from`과 `to`가 같으면 제자리 단계다(예: 탭 안에서 스크립트 실행): 봉투가 날지 않고 그 자리에서 효과만 보여 준다.
 
@@ -121,7 +122,7 @@
 | --- | --- | --- |
 | `appear` | target | 이 단계에 나타남. 그 전에는 숨김 |
 | `flip` | target | 패널을 뒤집어 `back`을 보여 줌 |
-| `rewrite` | target, side?(front·back), screen | 화면 글자를 바꿈. 카메라가 그 화면판으로 다가간다 |
+| `rewrite` | target, side?(front·back), screen | 화면 글자를 바꿈. 카메라가 그 화면판으로 다가가고, 바뀐 내용이 라벨로도 떠서 그 판이 다시 바뀌거나 단계가 끝날 때까지(일시정지 중에도) 보인다 |
 | `store` | item, into, label? | 봉투에 실려 온 물건을 보관함·서버 등에 넣음 |
 | `attach` | item, from, label?, note?, refused?, reason? | 보관된 물건을 지금 봉투에 붙임. 붙으면 봉투 라벨이 `label + " + " + 붙인 label`이 됨. `note`는 붙일 때 보여 줄 설명(없으면 "목적지 … 자동 첨부", 브라우저가 쿠키를 자동으로 붙이는 경우). `refused`면 붙지 않고 라벨도 그대로 |
 | `give` | item, from(행위자 또는 `"packet"`), to, label?, refused?, reason? | 봉투와 따로 물건이 날아감(토큰 발급, 가로채기) |
@@ -131,7 +132,7 @@
 
 **방어 (`defenses[]`)**: `blockedTitle`(차단 단계 제목), `blockedLabel`(차단 도장과 2D 대체 화면의 차단 표시 글자, 예: `"403 · 토큰 없음"`), `overrides: [{ step, title?, caption?, effects? }]`(방어 모드에서 그 단계의 제목·자막·효과를 대신함).
 
-**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, 화면판이 없는 곳에 `rewrite`·`flip`, `inspect.at`이 목적지가 아니거나 목적지에 검문소가 없음, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 플레이어 유형에 없는 효과(흐름형·스택형·점유형 어휘는 각 절).
+**검증기가 추가로 잡는 오류**: 없는 행위자를 가리키는 `parent`·`via`·`camera.focus`·효과 대상, `parent` 순환, `back`이 없는데 `flip`, 화면판이 없는 곳에 `rewrite`·`flip`·`mirrorScreen`, `inspect.at`이 목적지가 아니거나 목적지에 검문소가 없음, `run` 대상이 tab이 아님, `override.step`이 범위 밖이거나 중복, 그 시점에 없는 물건을 `attach`하거나 봉투에 없는 물건을 `give`(공격 흐름과 방어별로 각각 단계를 따라가며 확인), 플레이어 유형에 없는 효과(흐름형·스택형·점유형 어휘는 각 절).
 
 ## 카테고리
 

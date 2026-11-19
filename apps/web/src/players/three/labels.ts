@@ -8,9 +8,16 @@ export type LabelContent = { title: string; sub?: string; tone?: LabelTone; rows
 type Entry = { el: HTMLDivElement; point: Vector3; visible: boolean; pinned?: boolean };
 
 /** 행위자에 붙은 고정 라벨(이름·잔액·받은 돈). 재생 중에도 서로 겹치면 비킨다. 봉투·안내·검사 라벨은 움직이므로 비키지 않고 위에 그린다 */
-const STATIC_LABEL = /^(actor|bal|gain)-/;
+const STATIC_LABEL = /^(actor|bal|gain|screen)-/;
 /** 검사 목록은 움직이지 않는 패널이라 도장을 피해 비킨다 */
-const AVOIDS_KEEP_OUT = /^(actor|bal|gain)-|^checks$/;
+const AVOIDS_KEEP_OUT = /^(actor|bal|gain|screen)-|^checks$/;
+
+/** 화면판 내용 라벨(screen-<id>): 첫 줄이 제목, 나머지 줄은 " · "로 이어 부제. 판 글씨가 작아도 읽히게 한다 */
+export const screenLabel = (screen: { title?: string; lines: string[] } | undefined, attack: boolean): LabelContent => ({
+  title: screen?.lines[0] ?? screen?.title ?? "",
+  sub: screen && screen.lines.length > 1 ? screen.lines.slice(1).join(" · ") : undefined,
+  tone: attack ? "attack" : "neutral",
+});
 type Rect = { l: number; t: number; r: number; b: number };
 
 export class LabelLayer {

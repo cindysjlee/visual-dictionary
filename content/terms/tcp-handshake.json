@@ -18,7 +18,8 @@
         "look": "laptop",
         "zone": "client",
         "site": "내 컴퓨터",
-        "screen": { "title": "TCP 상태", "lines": ["CLOSED", "내 순서 번호: -"] }
+        "screen": { "title": "TCP 상태", "lines": ["CLOSED", "아직 연결 없음"] },
+        "mirrorScreen": true
       },
       {
         "id": "server",
@@ -28,7 +29,8 @@
         "look": "web",
         "zone": "server",
         "site": "example.com:443",
-        "screen": { "title": "TCP 상태", "lines": ["LISTEN", "연결 요청을 기다림"] }
+        "screen": { "title": "TCP 상태", "lines": ["LISTEN", "연결 요청을 기다림"] },
+        "mirrorScreen": true
       }
     ],
     "steps": [
@@ -40,8 +42,8 @@
         "label": "SYN · seq=1000",
         "caption": "클라이언트가 연결을 열자고 SYN을 보내며 자기 시작 순서 번호 1000을 알립니다. 실제 초기 순서 번호는 이렇게 보기 좋은 수가 아니라 무작위로 정해서, 남이 번호를 짐작해 가짜 신호를 끼워 넣기 어렵게 합니다. 보낸 뒤 클라이언트는 SYN-SENT, 받은 서버는 SYN-RECEIVED 상태가 됩니다.",
         "effects": [
-          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["SYN-SENT", "내 순서 번호: 1000"] } },
-          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["SYN-RECEIVED", "상대 번호: 1000"] } }
+          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["SYN-SENT", "보낸 SYN · seq=1000"] } },
+          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["SYN-RECEIVED", "받은 SYN · seq=1000"] } }
         ]
       },
       {
@@ -52,7 +54,7 @@
         "label": "SYN-ACK · seq=5000 ack=1001",
         "caption": "서버가 SYN-ACK으로 답합니다. ack=1001은 '1000번까지 받았으니 다음은 1001번을 보내라'는 뜻이고, seq=5000은 서버 자신의 시작 번호입니다. 이것도 실제로는 무작위로 정합니다. 이를 받은 클라이언트는 자기 번호가 전달된 것을 확인했고 서버 번호도 알았으므로, ACK를 보내며 ESTABLISHED가 됩니다.",
         "effects": [
-          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "내 번호 1000 · 상대 번호 5000"] } }
+          { "type": "rewrite", "target": "client", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "받은 SYN-ACK · seq=5000 ack=1001"] } }
         ]
       },
       {
@@ -63,7 +65,7 @@
         "label": "ACK · seq=1001 ack=5001",
         "caption": "클라이언트가 ack=5001로 서버의 시작 번호를 받았다고 확인합니다. 이 ACK를 받은 순간 서버도 ESTABLISHED가 됩니다. 이제 양쪽 모두 상대의 시작 번호를 알고 서로 확인받았으므로 연결이 열렸습니다.",
         "effects": [
-          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "내 번호 5000 · 상대 번호 1000"] } }
+          { "type": "rewrite", "target": "server", "screen": { "title": "TCP 상태", "lines": ["ESTABLISHED", "받은 ACK · seq=1001 ack=5001"] } }
         ]
       },
       {

@@ -79,6 +79,8 @@ const actorSchema = z.strictObject({
   balance: z.int().nonnegative().optional(),
   screen: screenSchema.optional(),
   back: screenSchema.optional(),
+  /** 화면판 내용을 늘 HTML 라벨로도 보여 준다(판 글씨가 작아도 상태가 읽히게). 화면판이 있는 행위자만 */
+  mirrorScreen: z.boolean().default(false),
 });
 
 const stepSchema = z.strictObject({

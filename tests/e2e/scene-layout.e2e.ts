@@ -12,19 +12,41 @@ type Probe = { settled: boolean; width: number; height: number; rects: Record<st
 /** 라벨끼리·라벨과 도장은 거의 겹치지 않아야 한다(경계에 닿는 정도만 허용) */
 const MAX_LABEL_OVERLAP = 0.02;
 
-/** 지금 보이는 HTML 라벨의 사각형(무대 기준 px). data-label: actor-<id>, bal-<id>, gain-<id>, checks, packet, note */
+/** 지금 보이는 HTML 라벨의 사각형(무대 기준 px). data-label: actor-<id>, bal-<id>, gain-<id>, screen-<id>(화면판 내용), checks, packet, note */
 const visibleLabels = (page: Page) =>
   page.evaluate(() => {
-    type El = { style: { opacity: string }; dataset: { label: string }; getBoundingClientRect(): { left: number; top: number; right: number; bottom: number } };
+    type El = { style: { opacity: string }; dataset: { label: string }; textContent: string | null; getBoundingClientRect(): { left: number; top: number; right: number; bottom: number } };
     const doc = (globalThis as unknown as { document: { querySelector(s: string): El; querySelectorAll(s: string): Iterable<El> } }).document;
     const root = doc.querySelector(".scene-labels").getBoundingClientRect();
     return [...doc.querySelectorAll(".scene-labels [data-label]")]
       .filter((el) => el.style.opacity === "1")
       .map((el) => {
         const r = el.getBoundingClientRect();
-        return { id: el.dataset.label, l: r.left - root.left, t: r.top - root.top, r: r.right - root.left, b: r.bottom - root.top };
+        return { id: el.dataset.label, text: el.textContent ?? "", l: r.left - root.left, t: r.top - root.top, r: r.right - root.left, b: r.bottom - root.top };
       });
   });
+
+/** i단계가 끝난 뒤 보여야 할 화면판 라벨 → 첫 줄. mirrorScreen 행위자는 보이는 면의 현재 내용, 이 단계에서 rewrite된 판은 마지막으로 쓴 내용 (docs/04 mirrorScreen) */
+function expectedScreenLabels(term: Term, mode: Mode, i: number): Map<string, string> {
+  const actors = term.scenario.actors;
+  type Screen = Term["scenario"]["actors"][number]["screen"];
+  const screens = new Map<string, { front?: Screen; back?: Screen }>(actors.map((a) => [a.id, { front: a.screen, back: a.back }]));
+  const flipped = new Set<string>();
+  const out = new Map<string, string>();
+  for (let k = 0; k <= i; k++) {
+    for (const e of stepView(term, mode, k).effects) {
+      if (e.type === "flip") flipped.add(e.target);
+      if (e.type !== "rewrite") continue;
+      screens.set(e.target, { ...screens.get(e.target), [e.side]: e.screen });
+      if (k === i) out.set(e.target, e.screen.lines[0] ?? e.screen.title ?? "");
+    }
+  }
+  for (const a of actors.filter((x) => x.mirrorScreen && !out.has(x.id))) {
+    const s = flipped.has(a.id) ? screens.get(a.id)?.back : screens.get(a.id)?.front;
+    out.set(a.id, s?.lines[0] ?? s?.title ?? "");
+  }
+  return out;
+}
 
 /** 등장 행위자: 출발·목적지·경유지와 효과가 가리키는 행위자 (docs/04 효과 어휘) */
 function involved(term: Term, mode: Mode, i: number): string[] {
@@ -96,7 +118,13 @@ for (const term of terms) {
         for (const lb of labels) {
           if (p.stamp && overlap(p.stamp, lb) > MAX_LABEL_OVERLAP) problems.push(`${i + 1}단계 도장↔${lb.id}: ${Math.round(overlap(p.stamp, lb) * 100)}% 겹침`);
         }
-        const fixed = labels.filter((lb) => /^(actor|bal|gain)-|^checks$/.test(lb.id));
+        // 화면판 라벨: mirrorScreen 행위자는 늘, 이 단계에서 rewrite된 판은 단계가 끝날 때까지 보이고 첫 줄(상태)이 맞아야 한다
+        for (const [id, first] of expectedScreenLabels(term, mode, i)) {
+          const lb = labels.find((x) => x.id === `screen-${id}`);
+          if (!lb) problems.push(`${i + 1}단계 screen-${id}: 화면판 라벨이 안 보임`);
+          else if (!lb.text.startsWith(first)) problems.push(`${i + 1}단계 screen-${id}: "${first}" 대신 "${lb.text}"`);
+        }
+        const fixed = labels.filter((lb) => /^(actor|bal|gain|screen)-|^checks$/.test(lb.id));
         for (const [k, a] of fixed.entries()) {
           for (const b of fixed.slice(k + 1)) {
             if (overlap(a, b) > MAX_LABEL_OVERLAP) problems.push(`${i + 1}단계 라벨 ${a.id}↔${b.id}: ${Math.round(overlap(a, b) * 100)}% 겹침`);

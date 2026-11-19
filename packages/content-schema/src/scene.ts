@@ -191,6 +191,9 @@ export function checkScene(term: Term): Issue[] {
     if (a.look && !LOOK_KINDS[a.look].includes(kindOf(a))) {
       issues.push({ path: ["scenario", "actors", i, "look"], message: `look ${a.look}은(는) ${LOOK_KINDS[a.look].join("·")}에만 쓸 수 있습니다(지금 kind: ${kindOf(a)})` });
     }
+    if (a.mirrorScreen && !hasPanel(a)) {
+      issues.push({ path: ["scenario", "actors", i, "mirrorScreen"], message: `${a.id}에는 화면판이 없어 mirrorScreen을 쓸 수 없습니다(탭, 또는 screen이 있는 server·database만)` });
+    }
     if (!a.parent) return;
     if (!byId.has(a.parent)) {
       issues.push({ path: ["scenario", "actors", i, "parent"], message: `actors에 없는 행위자: ${a.parent}` });

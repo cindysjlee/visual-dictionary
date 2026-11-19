@@ -107,6 +107,9 @@ describe("checkScene (검증기)", () => {
       t.scenario.steps[0].effects = [{ type: "rewrite", target: "evil", screen: { lines: ["x"] } }];
     });
     expect(withScreen).toEqual([]);
+    expect(issuePaths((t) => (t.scenario.actors.find((a: any) => a.id === "bank").mirrorScreen = true)).join("\n")).toContain(
+      "bank에는 화면판이 없어 mirrorScreen을 쓸 수 없습니다",
+    );
     expect(hasPanel(csrf.scenario.actors.find((a) => a.id === "bankTab")!)).toBe(true);
     expect(hasPanel(csrf.scenario.actors.find((a) => a.id === "bank")!)).toBe(false);
   });

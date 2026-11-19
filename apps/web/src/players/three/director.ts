@@ -3,7 +3,7 @@ import { QuadraticBezierCurve3, Vector3, type Object3D } from "three";
 import type { Effect, Term } from "@app/content-schema";
 import { blockTarget, passesGate, type StepView } from "@app/content-schema/scene";
 import type { CameraRig } from "./camera.ts";
-import type { LabelLayer, LabelTone } from "./labels.ts";
+import { screenLabel, type LabelLayer, type LabelTone } from "./labels.ts";
 import type { Placed } from "./layout.ts";
 import type { SceneModel, Tone } from "./model.ts";
 import { Timeline, easeOut, linear } from "./timeline.ts";
@@ -310,6 +310,8 @@ export function buildStep(ctx: DirectorContext): Timeline {
           tl.call(() => {
             rig.shot(panelPoint(e.target), "near");
             model.repaintScreen(e.target, e.side, e.screen);
+            // 바뀐 내용을 라벨로도: 이 판이 다시 바뀌거나 다음 단계로 넘어갈 때까지 떠 있다(시간으로 내리지 않음, FlowScene refreshLabels)
+            labels.set(`screen-${e.target}`, model.screenLabelPoint(e.target), screenLabel(e.screen, node(e.target)!.actor.tone === "attack"));
           });
           tl.wait(500);
           break;

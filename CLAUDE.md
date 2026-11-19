@@ -97,6 +97,7 @@ docs/                     설계 문서
 - 의미 있는 작업 단위가 끝나면 커밋한다.
 - 커밋 전에는 `ecc:verification-loop`(또는 `ecc:quality-gate`) 수준의 검증을 돌린다. 최소 `npm run verify`(콘텐츠 검증·단위 테스트·빌드·홈 묶음 검사)가 통과해야 한다.
 - 용어를 추가하거나 플레이어를 바꾸면 `npm run test:e2e`(Playwright, 자막·단계·차단 표시와 axe 접근성)를 돌린다. 테스트 대상 용어는 content/terms에서 자동으로 늘어난다.
+- 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
 - 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지)를 돌린다.
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.
 - 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고, 커밋한 뒤 push한다.
