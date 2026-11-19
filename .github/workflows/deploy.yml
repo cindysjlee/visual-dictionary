@@ -1,0 +1,76 @@
+# 자동 배포(FR-DEP-05, docs/03 2.6). AWS 키는 저장하지 않고 OIDC로 역할을 맡는다(신뢰: 이 저장소 main 브랜치만).
+# 순서: verify → E2E → 보안 관문(권한 확장이면 멈춤) → 변경 관문(삭제·교체면 멈춤) → 같은 변경 세트 실행 → smoke:prod → check:aws
+# 공개 저장소라 pull_request_target은 쓰지 않는다. 외부 액션은 커밋 해시로 고정한다
+name: deploy
+
+on:
+  workflow_dispatch:
+  # 첫 수동 실행이 성공한 뒤 켠다(사용자 확인)
+  # push:
+  #   branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      AWS_REGION: ap-northeast-2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 설치
+        run: npm ci
+
+      - name: verify(콘텐츠 검증·단위 테스트·빌드·묶음 검사)
+        run: npm run verify
+
+      - name: Chrome 설치(E2E는 설치된 Chrome 채널을 쓴다)
+        run: npx playwright install --with-deps chrome
+
+      - name: E2E(workers 2)
+        run: npm run test:e2e
+        env:
+          E2E_WORKERS: "2"
+
+      - name: AWS 역할 맡기(OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+          role-session-name: visual-dictionary-deploy
+
+      - name: 보안 관문(권한·보안 그룹을 넓히는 변경이 있으면 멈춤)
+        run: node scripts/ci-gate.ts security
+
+      - name: 변경 관문(리소스 삭제·교체가 있으면 멈춤)
+        id: gate
+        run: node scripts/ci-gate.ts changes
+
+      - name: 배포(관문에서 검사한 같은 변경 세트 실행)
+        if: steps.gate.outputs.stacks != ''
+        working-directory: infra
+        env:
+          STACKS: ${{ steps.gate.outputs.stacks }}
+        run: npx cdk deploy $STACKS --exclusively --method=execute-change-set --change-set-name ci-gate
+
+      - name: smoke:prod
+        run: npm run smoke:prod
+
+      - name: check:aws(배포된 리소스 설정, 읽기 전용)
+        run: npm run check:aws

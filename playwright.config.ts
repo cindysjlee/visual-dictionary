@@ -12,7 +12,8 @@ export default defineConfig({
   testDir: "tests/e2e",
   testMatch: "**/*.e2e.ts",
   timeout: 120_000,
-  workers: 4, // 16코어 데스크톱에서 잰 값: 6이면 3D 페이지가 몰려 테스트마다 2~5배 느려진다
+  // 16코어 데스크톱에서 잰 값: 6이면 3D 페이지가 몰려 테스트마다 2~5배 느려진다. CI(4코어 러너)는 E2E_WORKERS=2
+  workers: Number(process.env.E2E_WORKERS ?? 4),
   globalTimeout: 20 * 60_000, // 브라우저가 닫히지 않고 멈춰도 전체 실행은 20분에서 끊는다
   fullyParallel: true, // 같은 파일의 테스트도 나눠 돈다(테스트마다 새 페이지라 서로 독립)
   reporter: [["list"], ["./tests/e2e/progress-reporter.ts"]], // 진단 리포터: 끊기면 돌던 테스트·마지막 단계를 남긴다

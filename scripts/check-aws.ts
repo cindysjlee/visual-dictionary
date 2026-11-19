@@ -5,12 +5,13 @@ import { execFileSync } from "node:child_process";
 import { CSP } from "../infra/lib/csp.ts";
 
 const REGION = "ap-northeast-2";
-const profile = process.env.AWS_PROFILE ?? "vd";
+// CI(GitHub Actions)는 OIDC로 받은 환경 자격 증명을 쓴다. 로컬은 프로필 vd
+const profileArgs = process.env.CI ? [] : ["--profile", process.env.AWS_PROFILE ?? "vd"];
 
 /** 읽기 전용 AWS CLI 호출. 명령 이름이 describe·get·list로 시작하지 않으면 거부한다 */
 function aws<T = Record<string, unknown>>(service: string, command: string, ...args: string[]): T {
   if (!/^(describe|get|list)-/.test(command)) throw new Error(`읽기 전용이 아닌 명령: ${service} ${command}`);
-  const out = execFileSync("aws", [service, command, ...args, "--region", REGION, "--profile", profile, "--output", "json"], {
+  const out = execFileSync("aws", [service, command, ...args, "--region", REGION, ...profileArgs, "--output", "json"], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -43,8 +44,8 @@ const webRes = resources("VisualDictionaryWeb");
 const apiId = apiOut.ApiDomain!.split(".")[0]!;
 const routes = aws<{ Items: { RouteKey: string; AuthorizationType: string }[] }>("apigatewayv2", "get-routes", "--api-id", apiId).Items;
 check(
-  same(sorted(routes.map((r) => r.RouteKey)), ["DELETE /api/account", "GET /api/progress", "PUT /api/progress/{termId}"]),
-  `API 라우트 3개: ${sorted(routes.map((r) => r.RouteKey)).join(", ")}`,
+  same(sorted(routes.map((r) => r.RouteKey)), ["DELETE /api/account", "GET /api/activity", "GET /api/progress", "PUT /api/activity/{termId}", "PUT /api/progress/{termId}"]),
+  `API 라우트 5개: ${sorted(routes.map((r) => r.RouteKey)).join(", ")}`,
 );
 check(routes.every((r) => r.AuthorizationType === "JWT"), `모든 라우트 JWT 인가: ${routes.map((r) => r.AuthorizationType).join(", ")}`);
 const authorizers = aws<{ Items: { AuthorizerType: string; JwtConfiguration?: { Issuer: string; Audience: string[] } }[] }>("apigatewayv2", "get-authorizers", "--api-id", apiId).Items;
@@ -62,24 +63,26 @@ check(
   `요청 제한: 초당 ${stage.DefaultRouteSettings?.ThrottlingRateLimit}, 버스트 ${stage.DefaultRouteSettings?.ThrottlingBurstLimit} (기대 10/20)`,
 );
 
-// ---------- DynamoDB ----------
+// ---------- DynamoDB(학습 기록·최근 본 용어) ----------
+for (const [label, name] of [["학습 기록", apiOut.TableName!], ["최근 본 용어", apiOut.ActivityTableName!]] as const) {
 const table = aws<{ Table: { KeySchema: { AttributeName: string; KeyType: string }[]; BillingModeSummary?: { BillingMode: string }; DeletionProtectionEnabled?: boolean } }>(
   "dynamodb",
   "describe-table",
   "--table-name",
-  apiOut.TableName!,
+  name,
 ).Table;
 check(
   same(table.KeySchema, [
     { AttributeName: "userId", KeyType: "HASH" },
     { AttributeName: "termId", KeyType: "RANGE" },
   ]),
-  `테이블 키: ${table.KeySchema.map((k) => `${k.AttributeName}(${k.KeyType})`).join(", ")}`,
+  `${label} 테이블 키: ${table.KeySchema.map((k) => `${k.AttributeName}(${k.KeyType})`).join(", ")}`,
 );
-check(table.BillingModeSummary?.BillingMode === "PAY_PER_REQUEST", `테이블 과금: ${table.BillingModeSummary?.BillingMode} (기대 온디맨드)`);
-check(table.DeletionProtectionEnabled === true, `테이블 삭제 보호: ${table.DeletionProtectionEnabled}`);
-const ttl = aws<{ TimeToLiveDescription: { TimeToLiveStatus: string; AttributeName?: string } }>("dynamodb", "describe-time-to-live", "--table-name", apiOut.TableName!).TimeToLiveDescription;
-check(ttl.TimeToLiveStatus === "ENABLED" && ttl.AttributeName === "ttl", `테이블 TTL: ${ttl.TimeToLiveStatus} (${ttl.AttributeName ?? "-"})`);
+check(table.BillingModeSummary?.BillingMode === "PAY_PER_REQUEST", `${label} 테이블 과금: ${table.BillingModeSummary?.BillingMode} (기대 온디맨드)`);
+check(table.DeletionProtectionEnabled === true, `${label} 테이블 삭제 보호: ${table.DeletionProtectionEnabled}`);
+const ttl = aws<{ TimeToLiveDescription: { TimeToLiveStatus: string; AttributeName?: string } }>("dynamodb", "describe-time-to-live", "--table-name", name).TimeToLiveDescription;
+check(ttl.TimeToLiveStatus === "ENABLED" && ttl.AttributeName === "ttl", `${label} 테이블 TTL: ${ttl.TimeToLiveStatus} (${ttl.AttributeName ?? "-"})`);
+}
 
 // ---------- SQS ----------
 const queueUrls = find(apiRes, "AWS::SQS::Queue").map((r) => r.PhysicalResourceId);
@@ -104,6 +107,7 @@ check(alarm?.StateValue === "OK" || alarm?.StateValue === "INSUFFICIENT_DATA", `
 /** 함수별 허용 권한(인프라 테스트와 같은 범위). required는 반드시 있어야 하는 것 */
 const EXPECTED: Record<string, { required: string[]; allowed: string[] }> = {
   ProgressFn: { required: ["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"], allowed: [] },
+  ActivityFn: { required: ["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"], allowed: [] },
   AccountFn: {
     required: ["cognito-idp:AdminDeleteUser", "dynamodb:DeleteItem", "dynamodb:PutItem", "sqs:SendMessage"],
     allowed: ["sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
