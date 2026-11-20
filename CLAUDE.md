@@ -73,8 +73,9 @@ docs/                     설계 문서
 6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
 남은 일:
-- 사용자가 GitHub Secret `AWS_DEPLOY_ROLE_ARN`을 넣은 뒤 워크플로 첫 수동 실행 → 걸린 시간 보고(E2E workers 2) → push 실행 켜기는 사용자 확인 후.
-- smoke:progress에 최근 본 용어 API 검사(A·B 격리, 탈퇴 후 PUT 403, RecentView 0건)를 아직 넣지 않음. 비회원 기록 이전(FR-PRG-07)은 선택.
+- 워크플로 수동 실행 성공 확인 → 단계별 시간 보고 → push 실행 켜기는 사용자 확인 후. 첫 실행(E2E 전체)은 GPU 없는 러너에서 실제 속도 테스트 2개가 실패해, CI E2E는 `--project=main`만 돌린다(실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
+- aws-cdk-lib 새 버전이 나오면 올리기(Dependabot: 안에 든 minimatch 10.2.6 서비스 거부 취약점, 11.0.1에서 수정. 배포 도구 쪽이라 화면·Lambda에는 없음).
+- 비회원 기록 이전(FR-PRG-07)은 선택.
 - 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
 - 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
@@ -108,6 +109,7 @@ docs/                     설계 문서
   - 장면 기록·겹침 검사는 테스트 빌드 전용 장면 배속(`__sceneSpeed` 10×, 타임라인·카메라)으로 돌고, 겹침 검사는 연출 없이 단계 결과 상태(동작 줄이기 경로)에서 잰다. 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐이다.
 - 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
 - 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지·`/config.json`)와 `npm run smoke:auth`(실제 Cognito: 메일 없는 테스트 사용자로 로그인·새로고침 유지·로그아웃, 끝나면 사용자 삭제), `npm run smoke:progress`(사용자 A·B로 API 권한·다른 브라우저 진행률·화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건, 끝나면 사용자 삭제)를 돌린다.
+- **새 API는 운영 smoke에서 실제 호출을 확인하기 전에는 완료로 보지 않는다.** 단위 테스트(가짜 저장소)와 E2E(개발 서버 가짜 API)는 IAM 권한 누락을 잡지 못한다(7단계 `GET /api/activity` 500). 라우트를 추가하면 `scripts/smoke-progress.ts`의 `ROUTE_CALLS`에 실제 호출을 넣는다. smoke는 배포된 API Gateway 라우트를 조회해 목록에 없는 경로가 있거나 5xx가 나오면 실패한다.
 - 배포 후에는 smoke와 함께 `npm run check:aws`(읽기 전용 명령만으로 배포된 리소스 설정을 기대값과 비교: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 권한·로그 보존, CloudFront 동작·함수·오류 페이지·CSP, Cognito 설정)도 돌린다. 콘솔 확인 대신 이것을 쓴다.
 - 인증 관련 코드(`apps/web/src/features/auth/`, `infra/lib/auth-stack.ts`, CSP)를 바꿔 배포했을 때만 `npm run smoke:auth:signup`(운영 화면에서 실제 가입 → 관리자 API로 UNCONFIRMED 확인 → 삭제)을 돌린다. 인증 메일을 1통 쓰므로(계정 전체 하루 50통) 배포마다 돌리지 않는다. 개발 서버(localhost)는 가짜 인증이라 거기서 가입하면 Cognito에 아무것도 생기지 않는다(화면에 "개발용 가짜 인증" 안내가 뜬다).
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.

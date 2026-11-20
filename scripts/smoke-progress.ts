@@ -49,6 +49,15 @@ const recentOf = async (token: string) => {
   if (!res.ok || !body.recent) throw new Error(`GET /api/activity → ${res.status} ${JSON.stringify(body)}`);
   return body.recent;
 };
+/** 배포된 모든 API 경로의 실제 호출(새 경로를 만들면 여기에 넣어야 smoke가 통과한다, CLAUDE.md) */
+const ROUTE_CALLS: Record<string, (token: string) => Promise<Response>> = {
+  "GET /api/progress": (token) => api("/api/progress", { token }),
+  "PUT /api/progress/{termId}": (token) => api("/api/progress/csrf", { method: "PUT", token, body: { read: true, source: "manual" } }),
+  "GET /api/activity": (token) => api("/api/activity", { token }),
+  "PUT /api/activity/{termId}": (token) => api("/api/activity/csrf", { method: "PUT", token }),
+};
+/** 부르면 탈퇴가 되므로 화면 탈퇴 단계에서 응답을 확인한다 */
+const WITHDRAW_ROUTE = "DELETE /api/account";
 const payloadOf = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1]!, "base64url").toString("utf8")) as { sub: string; exp: number };
 
 /** 화면에서 로그인하고 액세스 토큰을 꺼낸다(Amplify 기본 저장소) */
@@ -114,6 +123,18 @@ try {
   const aRecent = await recentOf(a.token);
   check(aRecent.length === 1 && aRecent[0]!.termId === "csrf", `A의 최근 본 용어 GET에는 A의 csrf만: ${aRecent.map((r) => r.termId).join(", ")}`);
 
+  // 모든 API 경로를 실제 토큰으로 한 번씩(5xx면 실패). 경로 목록은 배포된 API Gateway 라우트에서 가져오고, smoke에 없는 경로가 있으면 실패한다.
+  // A로 부른다(탈퇴 정리로 기록이 지워짐). DELETE /api/account는 아래 화면 탈퇴 단계에서 응답을 잡아 확인한다
+  const deployed = (JSON.parse(cli(["apigatewayv2", "get-routes", "--api-id", apiOutputs.ApiDomain!.split(".")[0]!])) as { Items: { RouteKey: string }[] }).Items.map((r) => r.RouteKey).sort();
+  const covered = [...Object.keys(ROUTE_CALLS), WITHDRAW_ROUTE].sort();
+  const uncovered = deployed.filter((k) => !covered.includes(k));
+  const stale = covered.filter((k) => !deployed.includes(k));
+  check(!uncovered.length && !stale.length, `API 경로 ${deployed.length}개가 모두 smoke 목록에 있음${uncovered.length ? ` / smoke에 없는 경로: ${uncovered.join(", ")}` : ""}${stale.length ? ` / 배포에 없는 경로: ${stale.join(", ")}` : ""}`);
+  for (const [route, call] of Object.entries(ROUTE_CALLS)) {
+    const status = (await call(a.token)).status;
+    check(status < 500, `실제 토큰으로 ${route} → ${status}(5xx 아님)`);
+  }
+
   // 다른 브라우저(새 컨텍스트)에서 같은 진행률(완료 기준)
   const a2 = await login(browser, users.A);
   await a2.page.goto(`${base}/`);
@@ -130,7 +151,10 @@ try {
   await section.locator("button.btn-danger:not([disabled])", { hasText: "탈퇴하기" }).waitFor({ timeout: 15_000 });
   check(true, "비밀번호 재확인(실제 Cognito) → 탈퇴 버튼 켜짐");
   await section.getByRole("button", { name: "탈퇴하기" }).click();
+  const withdrawRes = a.page.waitForResponse((r) => r.request().method() === "DELETE" && new URL(r.url()).pathname === "/api/account", { timeout: 30_000 });
   await a.page.getByRole("dialog", { name: "정말 탈퇴할까요?" }).getByRole("button", { name: "탈퇴", exact: true }).click();
+  const withdrawStatus = (await withdrawRes).status();
+  check(withdrawStatus < 300, `실제 토큰으로 ${WITHDRAW_ROUTE} → ${withdrawStatus}(화면 탈퇴)`);
   await a.page.getByRole("status").filter({ hasText: "탈퇴했어요" }).waitFor({ timeout: 30_000 });
   check(true, "화면에서 탈퇴 → 홈 안내");
 

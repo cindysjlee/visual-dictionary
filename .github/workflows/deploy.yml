@@ -43,8 +43,10 @@ jobs:
       - name: Chrome 설치(E2E는 설치된 Chrome 채널을 쓴다)
         run: npx playwright install --with-deps chrome
 
-      - name: E2E(workers 2)
-        run: npm run test:e2e
+      # 실제 속도 테스트(realtime 프로젝트 2개)는 뺀다: GPU 없는 러너는 WebGL을 CPU로 그려 10fps가 안 되고, 장면 시간이 프레임당 0.1초로 묶여 실제 시간보다 느리다.
+      # 그 2개는 로컬의 배포 전 전체 E2E에서 돌린다(CLAUDE.md)
+      - name: E2E(workers 2, 실제 속도 테스트 제외)
+        run: npm run test:e2e -- --project=main
         env:
           E2E_WORKERS: "2"
 
