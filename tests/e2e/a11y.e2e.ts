@@ -8,6 +8,8 @@ const pages = [
   { path: "/", ready: ".term-card", tag: [] as string[] },
   ...terms.map((t) => ({ path: `/terms/${t.id}`, ready: ".play-btn", tag: [`@${t.id}`] })),
   ...["login", "signup", "confirm", "reset"].map((p) => ({ path: `/auth/${p}`, ready: ".auth-form", tag: ["@auth"] })),
+  { path: "/auth/callback", ready: ".auth-card", tag: ["@google"] },
+  { path: "/privacy", ready: ".privacy", tag: ["@google"] },
 ];
 
 for (const colorScheme of ["light", "dark"] as const) {

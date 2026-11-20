@@ -74,7 +74,7 @@ describe("가짜 인증(E2E용): Cognito와 같은 규칙", () => {
     await c.confirmSignUp("a@example.com", FAKE_CODE);
     await expect(c.signIn("a@example.com", "wrong1234")).rejects.toMatchObject({ name: "NotAuthorizedException" });
     expect(await c.signIn("a@example.com", "abc12345")).toBe("done");
-    expect(await c.currentUser()).toEqual({ email: "a@example.com" });
+    expect(await c.currentUser()).toEqual({ email: "a@example.com", provider: "email" });
     await c.signOut();
     expect(await c.currentUser()).toBeNull();
   });

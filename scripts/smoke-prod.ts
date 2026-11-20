@@ -1,6 +1,6 @@
 // 배포 후 확인: node scripts/smoke-prod.ts [주소]. 보안 헤더 값, SPA 대체 응답, robots.txt, published 용어 전부의 상세 페이지·콘텐츠, 브라우저 설정(/config.json), 캐시 정책
 import { readdirSync, readFileSync } from "node:fs";
-import { CSP } from "../infra/lib/csp.ts";
+import { CSP, LOGIN_ORIGIN } from "../infra/lib/csp.ts";
 const TERMS_DIR = new URL("../content/terms/", import.meta.url);
 const base = (process.argv[2] ?? process.env.SITE_URL ?? "https://d1y3rvak3nd08u.cloudfront.net").replace(/\/$/, "");
 
@@ -60,12 +60,13 @@ check(robots.status === 200 && (robots.headers.get("content-type") ?? "").starts
 
 const json = await fetch(`${base}/content/terms/csrf.json`);
 
-// 브라우저 설정(/config.json, 배포 때 생성): JSON이고 서울 리전·풀·클라이언트 ID 세 값만, no-cache
+// 브라우저 설정(/config.json, 배포 때 생성): JSON이고 서울 리전·풀·클라이언트 ID·로그인 도메인 네 값만, no-cache
 const config = await fetch(`${base}/config.json`);
 const configBody = (config.headers.get("content-type") ?? "").includes("json") ? ((await config.json()) as Record<string, unknown>) : undefined;
 check(
   config.status === 200 &&
-    Object.keys(configBody ?? {}).sort().join() === "region,userPoolClientId,userPoolId" &&
+    Object.keys(configBody ?? {}).sort().join() === "oauthDomain,region,userPoolClientId,userPoolId" &&
+    configBody?.oauthDomain === new URL(LOGIN_ORIGIN).host &&
     configBody?.region === "ap-northeast-2" &&
     String(configBody?.userPoolId).startsWith("ap-northeast-2_"),
   `/config.json → ${config.status} 키: ${Object.keys(configBody ?? {}).sort().join(", ") || "(JSON 아님)"}`,

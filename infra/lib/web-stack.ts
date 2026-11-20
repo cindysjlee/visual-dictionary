@@ -28,7 +28,8 @@ export const INVALIDATION_PATHS = ["/", "/index.html", "/config.json", "/content
 export { COGNITO_ORIGIN, CSP } from "./csp.ts";
 
 /** 브라우저 설정(/config.json): 배포 때 값이 채워진다. 풀·클라이언트 ID는 공개돼도 되는 값이고 저장소 파일에는 적지 않는다 */
-export type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string };
+/** oauthDomain: 구글 로그인용 Cognito 로그인 도메인의 호스트 이름(https:// 없이, Amplify oauth.domain 형식) */
+export type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string; oauthDomain: string };
 /** apiDomain: /api/*를 보낼 API Gateway 도메인(ApiStack). 같은 출처라 CSP connect-src와 CORS를 바꾸지 않는다 */
 export type WebStackProps = StackProps & { distPath: string; auth: WebAuthConfig; apiDomain: string };
 

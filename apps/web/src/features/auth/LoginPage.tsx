@@ -1,7 +1,7 @@
 // 로그인(FR-AUTH-03). 성공하면 next(사이트 안 경로)로, 이메일 인증이 아직이면 코드 입력 화면으로
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
-import { AuthCard, Field, Message, useNavState, useNext, useSubmit } from "./AuthForm.tsx";
+import { AuthCard, Field, GoogleSignIn, Message, PrivacyNote, useNavState, useNext, useSubmit } from "./AuthForm.tsx";
 import { auth, useAuth } from "./store.ts";
 
 export default function LoginPage() {
@@ -21,6 +21,7 @@ export default function LoginPage() {
 
   return (
     <AuthCard title="로그인" lead="로그인하면 다 본 용어가 기록되어 다른 기기에서도 이어서 볼 수 있어요.">
+      <GoogleSignIn next={next} />
       <form className="auth-form" onSubmit={onSubmit} noValidate>
         <Field label="이메일" name="email" type="email" autoComplete="email" value={email} onChange={setEmail} />
         <Field label="비밀번호" name="password" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
@@ -35,6 +36,7 @@ export default function LoginPage() {
         </Link>
         <Link to={`/auth/signup${query}`}>회원가입</Link>
       </div>
+      <PrivacyNote />
     </AuthCard>
   );
 }

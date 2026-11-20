@@ -1188,6 +1188,40 @@ button:disabled {
   font-weight: 600;
 }
 
+/* 구글 로그인 영역(8단계): 버튼은 기본 버튼 모양(테마 토큰), 로고 색만 Google 고정색 */
+.google-signin {
+  display: grid;
+  gap: 10px;
+}
+
+.btn-google {
+  width: 100%;
+  gap: 10px;
+}
+
+.google-note,
+.privacy-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
 .auth-links {
   display: flex;
   flex-wrap: wrap;
@@ -1441,4 +1475,48 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+/* ---------- 푸터·개인정보처리방침(8단계) ---------- */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.site-footer a {
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  color: var(--defense-text);
+  font-weight: 600;
+}
+
+.privacy {
+  max-width: 760px;
+  line-height: 1.7;
+}
+
+.privacy h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.privacy h2 {
+  margin: 20px 0 6px;
+  font-size: 17px;
+}
+
+.privacy ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.privacy a {
+  color: var(--defense-text);
+  font-weight: 600;
 }

@@ -4,6 +4,7 @@ import { App } from "aws-cdk-lib";
 import { ApiStack } from "../lib/api-stack.ts";
 import { AuthStack } from "../lib/auth-stack.ts";
 import { CiStack } from "../lib/ci-stack.ts";
+import { LOGIN_ORIGIN } from "../lib/csp.ts";
 import { WebStack } from "../lib/web-stack.ts";
 
 const app = new App();
@@ -24,7 +25,7 @@ const githubRepo = app.node.tryGetContext("githubRepo") as string | undefined;
 if (githubRepo) new CiStack(app, "VisualDictionaryCi", { env, githubRepo, apiId: api.api.apiId });
 new WebStack(app, "VisualDictionaryWeb", {
   env,
-  auth: { region: env.region, userPoolId: auth.userPool.userPoolId, userPoolClientId: auth.client.userPoolClientId },
+  auth: { region: env.region, userPoolId: auth.userPool.userPoolId, userPoolClientId: auth.client.userPoolClientId, oauthDomain: new URL(LOGIN_ORIGIN).host },
   apiDomain: api.apiDomain,
   // npm run deploy가 npm run build를 먼저 실행하므로 published 용어만 들어간다
   distPath: fileURLToPath(new URL("../../apps/web/dist", import.meta.url)),

@@ -123,12 +123,27 @@ function FeaturedCard({ entry, label }: { entry: IndexEntry; label: string }) {
   );
 }
 
+/** 다른 화면이 새로고침을 거치며 넘긴 안내를 한 번만 꺼낸다(저장소를 못 쓰면 없음). 넣는 곳: features/progress/MePage.tsx */
+const HANDED_NOTICE = "vd-notice";
+function takeHandedNotice(): string | undefined {
+  try {
+    const notice = sessionStorage.getItem(HANDED_NOTICE) ?? undefined;
+    sessionStorage.removeItem(HANDED_NOTICE);
+    return notice;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function HomePage() {
   const load = useJson<IndexEntry[]>("/content/index.json");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | "all">("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
-  const notice = (useLocation().state as { notice?: string } | null)?.notice; // 예: 탈퇴 완료
+  // 예: 탈퇴 완료. 구글 사용자는 로그아웃 때 로그인 도메인을 거쳐 새로 불러와지므로 sessionStorage로 한 번 넘겨받는다(features/progress/MePage)
+  const routeNotice = (useLocation().state as { notice?: string } | null)?.notice;
+  const [handedNotice] = useState(takeHandedNotice);
+  const notice = routeNotice ?? handedNotice;
   const user = useAuth();
   const recent = useRecent();
   const state = useProgress();

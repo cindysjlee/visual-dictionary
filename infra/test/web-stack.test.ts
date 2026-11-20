@@ -9,7 +9,7 @@ import { CSP, INVALIDATION_PATHS, SPA_ROUTER_CODE, WebStack } from "../lib/web-s
 
 const distPath = mkdtempSync(join(tmpdir(), "dist-"));
 writeFileSync(join(distPath, "index.html"), "<!doctype html>");
-const auth = { region: "ap-northeast-2", userPoolId: "ap-northeast-2_test", userPoolClientId: "testclient" };
+const auth = { region: "ap-northeast-2", userPoolId: "ap-northeast-2_test", userPoolClientId: "testclient", oauthDomain: "test.auth.ap-northeast-2.amazoncognito.com" };
 const template = Template.fromStack(new WebStack(new App(), "Test", { distPath, auth, apiDomain: "abc123.execute-api.ap-northeast-2.amazonaws.com" }));
 
 describe("WebStack", () => {

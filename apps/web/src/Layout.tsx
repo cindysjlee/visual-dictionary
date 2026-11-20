@@ -105,6 +105,10 @@ export default function Layout() {
         <main className="stack">
           <Outlet />
         </main>
+        <footer className="site-footer">
+          <Link to="/privacy">개인정보처리방침</Link>
+          <span>문의 visualdict.help@gmail.com</span>
+        </footer>
       </div>
     </>
   );

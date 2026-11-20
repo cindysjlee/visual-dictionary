@@ -1,4 +1,6 @@
 // Cognito 구현(배포 빌드). 설정은 배포 때 만들어지는 /config.json에서 읽는다(infra WebStack). 토큰은 Amplify 기본값(localStorage, docs/03 토큰 저장)
+// 구글 로그인(8단계): 로그인 도메인의 인가 코드 + PKCE(signInWithRedirect가 code_challenge를 붙인다). 돌아오면 OAuth 리스너가 코드를 토큰으로 바꾼다
+import "aws-amplify/auth/enable-oauth-listener";
 import { Amplify } from "aws-amplify";
 import {
   confirmResetPassword,
@@ -7,36 +9,79 @@ import {
   resendSignUpCode,
   resetPassword,
   signIn,
+  signInWithRedirect,
   signOut,
   signUp,
   updatePassword,
 } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 import type { AuthClient } from "./client.ts";
 import { authError, isAuthError } from "./errors.ts";
 
-type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string };
+type WebAuthConfig = { region: string; userPoolId: string; userPoolClientId: string; oauthDomain: string };
 
 async function readConfig(): Promise<WebAuthConfig> {
   try {
     const res = await fetch("/config.json", { cache: "no-cache" });
     // 403/404→index.html 대체 응답 때문에 없어도 200 HTML이 올 수 있다: JSON이 아니면 실패로 본다
     const config = res.ok ? ((await res.json()) as Partial<WebAuthConfig>) : null;
-    if (config?.userPoolId && config.userPoolClientId && config.region) return config as WebAuthConfig;
+    if (config?.userPoolId && config.userPoolClientId && config.region && config.oauthDomain) return config as WebAuthConfig;
   } catch {
     // 아래에서 공통 오류로
   }
   throw authError("AuthUnavailable");
 }
 
+/** /auth/callback에 코드나 오류가 있을 때만 리디렉션 결과를 기다린다. Amplify.configure 전에 듣기 시작해야 이벤트를 놓치지 않는다 */
+function listenRedirect(): Promise<string | null> {
+  const params = new URLSearchParams(location.search);
+  if (location.pathname !== "/auth/callback" || (!params.has("code") && !params.has("error"))) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    let next: string | null = null;
+    const stop = Hub.listen("auth", ({ payload }) => {
+      if (payload.event === "customOAuthState") next = payload.data;
+      else if (payload.event === "signInWithRedirect") {
+        stop();
+        resolve(next ?? "/");
+      } else if (payload.event === "signInWithRedirect_failure") {
+        stop();
+        reject(authError("GoogleSignInFailed"));
+      }
+    });
+  });
+}
+
 export async function cognitoAuthClient(): Promise<AuthClient> {
-  const { userPoolId, userPoolClientId } = await readConfig();
-  Amplify.configure({ Auth: { Cognito: { userPoolId, userPoolClientId, loginWith: { email: true }, signUpVerificationMethod: "code" } } });
+  const { userPoolId, userPoolClientId, oauthDomain } = await readConfig();
+  const redirect = listenRedirect();
+  redirect.catch(() => {}); // 처리하지 않은 거부 경고 방지(콜백 화면이 completeRedirect로 받는다)
+  Amplify.configure({
+    Auth: {
+      Cognito: {
+        userPoolId,
+        userPoolClientId,
+        loginWith: {
+          email: true,
+          oauth: {
+            domain: oauthDomain,
+            scopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+            redirectSignIn: [`${location.origin}/auth/callback`],
+            redirectSignOut: [`${location.origin}/`],
+            responseType: "code",
+            providers: ["Google"],
+          },
+        },
+        signUpVerificationMethod: "code",
+      },
+    },
+  });
 
   return {
     async currentUser() {
       try {
-        const email = (await fetchAuthSession()).tokens?.idToken?.payload.email;
-        return typeof email === "string" ? { email } : null;
+        const payload = (await fetchAuthSession()).tokens?.idToken?.payload;
+        // 구글 사용자의 ID 토큰에는 identities(연결된 외부 IdP)가 있다
+        return typeof payload?.email === "string" ? { email: payload.email, provider: payload.identities ? "google" : "email" } : null;
       } catch {
         return null;
       }
@@ -63,7 +108,8 @@ export async function cognitoAuthClient(): Promise<AuthClient> {
       }
     },
     async signOut() {
-      // 토큰 취소가 켜져 있어 리프레시 토큰도 취소되고, 저장된 토큰을 지운다(FR-AUTH-03)
+      // 토큰 취소가 켜져 있어 리프레시 토큰도 취소되고, 저장된 토큰을 지운다(FR-AUTH-03).
+      // 구글 사용자는 Amplify가 로그인 도메인의 /logout을 거쳐 첫 화면으로 돌아온다(구글 계정 로그인은 그대로)
       await signOut();
     },
     async resetPassword(email) {
@@ -90,6 +136,16 @@ export async function cognitoAuthClient(): Promise<AuthClient> {
       await signOut();
       const { nextStep } = await signIn({ username: email, password });
       if (nextStep.signInStep !== "DONE") throw authError("UnsupportedSignInStep");
+    },
+    async signInWithGoogle(next) {
+      await signInWithRedirect({ provider: "Google", customState: next });
+    },
+    async reauthWithGoogle(next) {
+      // prompt가 있으면 Amplify가 로그인된 채로도 리디렉션을 허용한다. Cognito가 select_account를 구글로 넘겨 계정 선택을 반드시 거친다
+      await signInWithRedirect({ provider: "Google", customState: next, options: { prompt: "SELECT_ACCOUNT" } });
+    },
+    completeRedirect() {
+      return redirect;
     },
   };
 }

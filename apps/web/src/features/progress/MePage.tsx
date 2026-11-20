@@ -1,7 +1,7 @@
 // 내 학습(/me): 진행률, 읽은·안 읽은 용어, 계정 설정(로그아웃, 회원 탈퇴). docs/05 내 학습
 // 탈퇴(FR-AUTH-06): 비밀번호를 Cognito로 다시 확인해야 탈퇴 버튼이 켜지고, 확인 대화상자에서 한 번 더 묻는다
 import { useRef, useState, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import type { IndexEntry } from "@app/content-schema";
 import { useJson } from "../../useJson.ts";
 import { Field } from "../auth/AuthForm.tsx";
@@ -34,13 +34,30 @@ function TermList({ title, terms }: { title: string; terms: IndexEntry[] }) {
   );
 }
 
+const WITHDRAWN_NOTICE = "탈퇴했어요. 계정과 학습 기록이 모두 삭제됐어요.";
+
 function Withdraw({ leave }: { leave: () => void }) {
   const navigate = useNavigate();
   const dialog = useRef<HTMLDialogElement>(null);
+  const user = useAuth();
+  // 구글 사용자는 비밀번호가 없어 구글 계정 선택을 거친 재로그인으로 확인한다(돌아오면 /me?reauth=1). 화면 표시일 뿐, 실제 판단은 서버의 auth_time 5분 검사
+  const google = user.status === "user" && user.provider === "google";
+  const [params] = useSearchParams();
   const [password, setPassword] = useState("");
-  const [verified, setVerified] = useState(false);
+  const [verified, setVerified] = useState(() => google && params.get("reauth") === "1");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+
+  const reauthGoogle = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await auth.reauthWithGoogle("/me?reauth=1"); // 구글로 이동한다
+    } catch (err) {
+      setError(authMessage(err));
+      setBusy(false);
+    }
+  };
 
   const verify = async (e: FormEvent) => {
     e.preventDefault();
@@ -64,7 +81,13 @@ function Withdraw({ leave }: { leave: () => void }) {
       dialog.current?.close();
       // 떠나는 중 표시를 먼저: 로그아웃이 홈 이동보다 먼저 반영돼도 이 화면이 로그인 화면으로 보내지 않는다
       leave();
-      void navigate("/", { replace: true, state: { notice: "탈퇴했어요. 계정과 학습 기록이 모두 삭제됐어요." } });
+      // 구글 사용자는 로그아웃이 로그인 도메인(/logout)을 거쳐 첫 화면을 새로 불러온다: 안내를 sessionStorage로 넘긴다(HomePage가 한 번 꺼냄)
+      try {
+        if (google) sessionStorage.setItem("vd-notice", WITHDRAWN_NOTICE);
+      } catch {
+        // 저장소를 못 쓰면 안내만 빠진다
+      }
+      void navigate("/", { replace: true, state: { notice: WITHDRAWN_NOTICE } });
       await auth.signOutAfterWithdraw();
     } catch (err) {
       dialog.current?.close();
@@ -72,7 +95,7 @@ function Withdraw({ leave }: { leave: () => void }) {
         // 서버는 최근 5분 안에 인증한 토큰만 받는다: 재확인부터 다시
         setVerified(false);
         setPassword("");
-        setError("비밀번호를 확인한 지 5분이 지났어요. 다시 확인한 뒤 탈퇴해 주세요.");
+        setError(`${google ? "Google 계정을" : "비밀번호를"} 확인한 지 5분이 지났어요. 다시 확인한 뒤 탈퇴해 주세요.`);
         return;
       }
       setError("탈퇴하지 못했어요. 계정과 기록은 그대로예요. 잠시 후 다시 시도해 주세요.");
@@ -84,6 +107,28 @@ function Withdraw({ leave }: { leave: () => void }) {
   return (
     <div className="glass card span-2 withdraw">
       <h2 className="card-title">회원 탈퇴</h2>
+      {google ? (
+        <div className="auth-form">
+          <p className="muted">탈퇴하면 계정과 학습 기록이 모두 삭제되고 되돌릴 수 없어요. 본인 확인을 위해 Google 계정을 다시 선택해 주세요.</p>
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+          {verified && (
+            <p className="form-notice" role="status">
+              Google 계정을 다시 확인했어요. 5분 안에 탈퇴해 주세요.
+            </p>
+          )}
+          <div className="withdraw-actions">
+            <button type="button" className="btn btn-sm" onClick={reauthGoogle} disabled={busy || verified}>
+              Google로 다시 확인
+            </button>
+            <button type="button" className="btn btn-sm btn-danger" disabled={!verified || busy} onClick={() => dialog.current?.showModal()}>
+              탈퇴하기
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
       <p className="muted">탈퇴하면 계정과 학습 기록이 모두 삭제되고 되돌릴 수 없어요. 본인 확인을 위해 비밀번호를 다시 입력해 주세요.</p>
       <form className="auth-form" onSubmit={verify} noValidate>
         <Field
@@ -114,6 +159,8 @@ function Withdraw({ leave }: { leave: () => void }) {
           </button>
         </div>
       </form>
+      </>
+      )}
       <dialog ref={dialog} className="glass card card-lg confirm-dialog" aria-labelledby="withdraw-title">
         <h2 id="withdraw-title" className="card-title">
           정말 탈퇴할까요?

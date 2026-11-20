@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import { importAuthClient, type AuthClient, type SignInResult } from "./client.ts";
 import { authError } from "./errors.ts";
 
-export type AuthState = { status: "loading" } | { status: "anon" } | { status: "user"; email: string } | { status: "unavailable" };
+export type AuthState = { status: "loading" } | { status: "anon" } | { status: "user"; email: string; provider: "email" | "google" } | { status: "unavailable" };
 
 let state: AuthState = { status: "loading" };
 const listeners = new Set<() => void>();
@@ -24,7 +24,7 @@ function getClient(): Promise<AuthClient> {
 
 async function refresh() {
   const user = await (await getClient()).currentUser();
-  set(user ? { status: "user", email: user.email } : { status: "anon" });
+  set(user ? { status: "user", email: user.email, provider: user.provider } : { status: "anon" });
 }
 
 /** 앱 시작 때 한 번(Layout). 저장된 토큰으로 로그인 상태를 읽는다 */
@@ -88,6 +88,20 @@ export const auth = {
   },
   async verifyPassword(password: string) {
     await (await getClient()).verifyPassword(password);
+  },
+  /** 구글 로그인 화면으로 이동(돌아오면 /auth/callback → next) */
+  async signInWithGoogle(next: string) {
+    await (await getClient()).signInWithGoogle(next);
+  },
+  /** 구글 사용자의 탈퇴 전 재확인(계정 선택을 거친 재로그인 → next) */
+  async reauthWithGoogle(next: string) {
+    await (await getClient()).reauthWithGoogle(next);
+  },
+  /** /auth/callback: 리디렉션 로그인을 끝내고 로그인 상태를 읽은 뒤 돌아갈 경로를 준다(코드가 없으면 null) */
+  async completeRedirect(): Promise<string | null> {
+    const next = await (await getClient()).completeRedirect();
+    if (next !== null) await refresh();
+    return next;
   },
   /** 탈퇴 뒤: 사용자가 이미 없어 토큰 취소가 실패할 수 있다. 실패해도 이 브라우저의 로그인 상태는 지운다 */
   async signOutAfterWithdraw() {

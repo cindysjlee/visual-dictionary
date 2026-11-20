@@ -1,10 +1,54 @@
 // /auth/* 화면 공통 조각: 카드, 입력칸, 오류·안내 영역, 제출 처리. 이메일은 URL이 아니라 라우터 state로 넘긴다(주소창·기록에 개인정보를 남기지 않음)
 import { useState, type FormEvent, type ReactNode } from "react";
-import { useLocation, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { FAKE_AUTH, FAKE_CODE } from "./client.ts";
 import { authMessage } from "./errors.ts";
 import { PASSWORD_RULES } from "./password.ts";
+import { GoogleMark } from "../../icons.tsx";
 import { safeNext } from "./safeNext.ts";
+import { auth } from "./store.ts";
+
+/** 구글 로그인(FR-AUTH-07): 버튼 + 계정이 서로 다르다는 안내 + "또는 이메일로" 구분선. 로그인·가입 화면 위쪽에 둔다 */
+export function GoogleSignIn({ next }: { next: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const start = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await auth.signInWithGoogle(next); // 구글 화면으로 이동한다(돌아오면 /auth/callback)
+    } catch (e) {
+      setError(authMessage(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="google-signin">
+      <button type="button" className="btn btn-google" onClick={start} disabled={busy}>
+        <GoogleMark />
+        {busy ? "Google로 이동하는 중…" : "Google로 계속하기"}
+      </button>
+      <p className="google-note">
+        구글 로그인과 이메일 가입은 서로 다른 계정이에요. 같은 이메일이어도 학습 기록이 따로 저장돼요.
+      </p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="auth-divider">
+        <span>또는 이메일로</span>
+      </p>
+    </div>
+  );
+}
+
+/** 가입·구글 로그인 화면 아래 개인정보처리방침 안내 */
+export const PrivacyNote = () => (
+  <p className="muted privacy-note">
+    가입하거나 구글로 로그인하면 <Link to="/privacy">개인정보처리방침</Link>에 따라 정보가 처리돼요.
+  </p>
+);
 
 export type AuthNavState = { email?: string; notice?: string } | null;
 
