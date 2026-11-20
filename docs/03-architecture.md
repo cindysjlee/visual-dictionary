@@ -276,7 +276,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 6. 배포: 변경이 있는 스택만 `cdk deploy … --exclusively --method=execute-change-set --change-set-name ci-gate`로 **관문에서 검사한 같은 변경 세트**를 실행한다.
 7. `npm run smoke:prod` → `npm run check:aws`
 
-처음에는 수동 실행만 켜 두고, 첫 실행이 성공하면 사용자 확인 뒤 push 실행을 켠다.
+처음에는 수동 실행만 켜 두었고, 첫 실행 성공 뒤 사용자 확인으로 main push 실행을 켰다(7단계). CI 역할에는 Cognito 관리자 권한이 없어 smoke:auth·smoke:progress는 CI에서 돌지 않는다. CI가 스택을 실제로 배포한 경우에는 로컬에서 이 둘을 돌려 확인한다.
 
 **비용.** GitHub Actions: 공개 저장소의 표준 러너는 무료다. AWS: OIDC 공급자·IAM 역할은 무료, 배포마다 CloudFront 무효화 4경로(월 1,000경로 무료, 그 뒤 경로당 $0.005), S3 업로드·CloudFormation은 사실상 $0.
 

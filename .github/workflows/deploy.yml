@@ -5,9 +5,9 @@ name: deploy
 
 on:
   workflow_dispatch:
-  # 첫 수동 실행이 성공한 뒤 켠다(사용자 확인)
-  # push:
-  #   branches: [main]
+  # 첫 수동 실행 성공 뒤 사용자 확인으로 켬(7단계)
+  push:
+    branches: [main]
 
 permissions:
   id-token: write

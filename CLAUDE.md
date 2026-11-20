@@ -69,11 +69,11 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, ~~재생 속도~~(완료, 0.75~2×), 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 7단계 배포 완료(최근 본 용어, 관련 용어 두 쌍, 자동 배포 CI 스택·워크플로). 워크플로 첫 수동 실행과 push 실행 켜기는 사용자 확인 대기.** 단계를 끝내면 이 줄을 갱신할 것.
+**현재 단계: 7단계 완료(최근 본 용어, 관련 용어 두 쌍, 자동 배포: CI 수동 실행 성공 뒤 main push 실행 켬). 8단계(구글 로그인, 방안 A: Essentials) 진행 중.** 단계를 끝내면 이 줄을 갱신할 것.
 6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
 남은 일:
-- 워크플로 수동 실행 성공 확인 → 단계별 시간 보고 → push 실행 켜기는 사용자 확인 후. 첫 실행(E2E 전체)은 GPU 없는 러너에서 실제 속도 테스트 2개가 실패해, CI E2E는 `--project=main`만 돌린다(실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
+- 8단계 구글 로그인: 8a 로그인 도메인·Essentials → (사용자) Google 콘솔·Secrets Manager → 8a 구글 IdP·앱 클라이언트 OAuth·CSP → 8b 화면·/privacy → 8c AccountFn auth_time 5분(모든 사용자)·smoke → 8d 문서. CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
 - aws-cdk-lib 새 버전이 나오면 올리기(Dependabot: 안에 든 minimatch 10.2.6 서비스 거부 취약점, 11.0.1에서 수정. 배포 도구 쪽이라 화면·Lambda에는 없음).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
 - 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
@@ -99,7 +99,7 @@ docs/                     설계 문서
 - 한 단계를 끝내면 위 "현재 단계" 줄을 갱신하고, 다음 세션이 이어갈 수 있게 남은 일을 한두 줄로 적는다.
 - 의미 있는 작업 단위가 끝나면 커밋한다.
 - **배포 승인(`--require-approval never`)은 사용자 확인 없이 쓰지 않는다.** 배포가 IAM·보안 그룹 변경 승인 단계에서 멈추면, `cdk diff`의 보안 관련 변경(IAM 문장, 권한)을 사용자에게 보여 주고, 사용자가 "승인"이라고 답한 뒤에만 그 옵션으로 배포한다. "테스트가 통과하면 확인 없이 배포" 같은 지시도 이 승인을 대신하지 않는다.
-- **자동 배포(GitHub Actions, docs/03 2.6):** 워크플로의 push 실행은 사용자 확인 뒤에만 켠다. CI가 보안 관문(권한 확장)이나 변경 관문(리소스 삭제·교체)에서 멈추면, 로컬에서 `cdk diff`의 해당 변경을 보여 주고 사용자 "승인"을 받은 뒤 로컬에서 배포한다. CI 역할(`VisualDictionaryCi`)은 `-c githubRepo=…`를 줄 때만 앱에 들어가며, 바꿀 때도 같은 승인 절차를 따른다. CI 역할 승인 체크리스트에는 "신뢰 정책 sub가 GitHub가 실제로 보내는 값과 같은지"를 넣는다(`gh api repos/<소유자>/<저장소>/actions/oidc/customization/sub`의 `sub_claim_prefix` + `:ref:refs/heads/main`과 합성 템플릿의 sub를 비교. 이 저장소는 변하지 않는 sub라 `소유자@ID/저장소@ID` 형태다). 워크플로의 외부 액션은 커밋 해시로 고정하고 `pull_request_target`은 쓰지 않는다.
+- **자동 배포(GitHub Actions, docs/03 2.6):** main push마다 워크플로가 돈다(7단계에 사용자 확인으로 켬). push 전에 그 커밋이 그대로 배포돼도 되는 상태인지 확인한다. **CI가 스택을 실제로 배포한 경우(배포 단계가 건너뜀이 아님), 로컬에서 `npm run smoke:auth`와 `npm run smoke:progress`를 돌려 확인한다**(CI 역할에는 Cognito 관리자 권한이 없어 CI에서 못 돈다). CI가 보안 관문(권한 확장)이나 변경 관문(리소스 삭제·교체)에서 멈추면, 로컬에서 `cdk diff`의 해당 변경을 보여 주고 사용자 "승인"을 받은 뒤 로컬에서 배포한다. CI 역할(`VisualDictionaryCi`)은 `-c githubRepo=…`를 줄 때만 앱에 들어가며, 바꿀 때도 같은 승인 절차를 따른다. CI 역할 승인 체크리스트에는 "신뢰 정책 sub가 GitHub가 실제로 보내는 값과 같은지"를 넣는다(`gh api repos/<소유자>/<저장소>/actions/oidc/customization/sub`의 `sub_claim_prefix` + `:ref:refs/heads/main`과 합성 템플릿의 sub를 비교. 이 저장소는 변하지 않는 sub라 `소유자@ID/저장소@ID` 형태다). 워크플로의 외부 액션은 커밋 해시로 고정하고 `pull_request_target`은 쓰지 않는다.
 - **운영 리소스의 데이터를 지우거나 바꾸는 명령은 매번 먼저 묻는다.** DynamoDB 항목 삭제·수정, Cognito 사용자 삭제·수정, S3 객체 삭제, SQS 메시지 삭제·다시 보내기 등이 해당한다. 예외는 smoke 스크립트가 자기가 만든 테스트 데이터(예약 도메인 테스트 사용자와 그 기록)를 지우는 경우뿐이다. 스크립트 밖에서 남은 테스트 데이터를 지우는 것도 먼저 묻는다. 확인용 조회(describe·get·list·query·scan)는 묻지 않아도 된다.
 - 커밋 전에는 `ecc:verification-loop`(또는 `ecc:quality-gate`) 수준의 검증을 돌린다. 최소 `npm run verify`(콘텐츠 검증·단위 테스트·빌드·홈 묶음 검사)가 통과해야 한다.
 - 테스트 실행 규칙(E2E는 Playwright: 자막·단계·차단 표시, 장면 기록, 겹침, axe 접근성. 대상 용어는 content/terms에서 자동으로 늘어난다):
