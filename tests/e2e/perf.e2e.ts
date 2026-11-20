@@ -1,4 +1,3 @@
-/// <reference lib="dom" />
 // 성능(NFR-02, @perf): 홈·상세 첫 화면의 LCP·CLS를 잰다. 기준과 근거는 docs/10 "성능 기준".
 // 네트워크는 Lighthouse 데스크톱 조건(왕복 40ms, 10Mbps)으로 늦춘다. 대상은 로컬 테스트 빌드(dist-e2e)라 CDN 거리는 들어가지 않는다
 import { expect, test, type Page } from "@playwright/test";

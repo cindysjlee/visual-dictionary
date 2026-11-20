@@ -1,6 +1,6 @@
 # 요구사항 추적 매트릭스
 
-`01-requirements.md`의 요구사항(FR 41개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-21(중간 점검 2차, 빠진 테스트 보강 뒤)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
+`01-requirements.md`의 요구사항(FR 41개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-21(중간 점검 3차)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
 
 **상태**
 - **완료**: 구현됐고, 요구사항의 핵심 동작을 자동 테스트(단위·E2E·smoke 중 하나 이상)가 확인한다.
@@ -95,8 +95,8 @@
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | NFR-01 보안 | docs/03 2.4~2.6 | API(토큰 sub로만 대상), Cognito, CSP, OIDC 역할 | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | |
-| NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(홈·상세 LCP ≤ 2.5초, CLS ≤ 0.1, Lighthouse 데스크톱 네트워크 조건), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 부분 테스트 | "기록 조회·저장 1초"를 재는 자동 테스트 없음. LCP는 로컬 빌드 기준(CDN 거리 제외) |
-| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드 | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `narrow.e2e.ts` @narrow(360px: 홈·상세 8개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 1920px은 자동 검사 없음(기본 1440px) |
+| NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(홈·상세 LCP ≤ 2.5초, CLS ≤ 0.1), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), S smoke:progress(기록 GET·PUT 각 10회 최대 ≤ 1초), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 완료 | LCP는 로컬 빌드 기준(CDN 거리 제외), API 시간은 콜드 스타트 제외(docs/10) |
+| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드 | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 홈·상세 8개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | |
 | DC-01 프론트엔드 기술 | docs/06, CLAUDE.md 원칙 8 | R3F 장면, PlaybackEngine | S/검사 `check:bundle`(홈 묶음에 three 없음) | 완료 | |
 | DC-02 인프라·백엔드 | docs/03 2.2~2.3 | `infra/lib/*.ts` | 인 테스트 4개, C check:aws | 완료 | |
 | DC-03 콘텐츠 제작 방식 | docs/04, CLAUDE.md 원칙 1 | 용어 JSON + 플레이어 3종 | 단 `simulate.test.ts`(모든 용어×모드가 데이터만으로 끝까지) | 완료 | |
@@ -113,8 +113,8 @@
 - 없음(11-21 보강: FR-EXP-04, FR-DTL-04에 E2E 추가)
 
 **부분 테스트**(자동 테스트가 일부만 확인)
-- NFR-02: "기록 조회·저장 1초"는 자동으로 재지 않는다(LCP·CLS·홈 묶음 크기는 자동 검사)
-- 11-21 보강으로 완료가 된 것: FR-EXP-01·02·03, FR-DTL-01·03, FR-AUTH-05(실제 메일은 계속 사람 확인), FR-CNT-05, NFR-03
+- 없음
+- 11-21 보강으로 완료가 된 것: FR-EXP-01·02·03, FR-DTL-01·03, FR-AUTH-05(실제 메일은 계속 사람 확인), FR-CNT-05, NFR-02(기록 API 1초는 3차), NFR-03(1920px는 3차)
 
 **문서와 다름**
 - 없음(11-21 docs/01을 구현에 맞춤: FR-ANI-08, FR-DEP-02, FR-DEP-05, CH-46)

@@ -155,6 +155,23 @@ try {
   const aRecent = await recentOf(a.token);
   check(aRecent.length === 1 && aRecent[0]!.termId === "csrf", `A의 최근 본 용어 GET에는 A의 csrf만: ${aRecent.map((r) => r.termId).join(", ")}`);
 
+  // 응답 시간(NFR-02 "학습 기록 조회·저장 1초 이내"): 이 컴퓨터 → CloudFront → API Gateway → Lambda → DynamoDB 왕복, 위에서 이미 불러 데워진 상태
+  for (const [label, call] of [
+    ["GET /api/progress", () => api("/api/progress", { token: a.token })],
+    ["PUT /api/progress/csrf", () => api("/api/progress/csrf", { method: "PUT", token: a.token, body: { read: true, source: "manual" } })],
+  ] as const) {
+    const ms: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      const t = performance.now();
+      const res = await call();
+      await res.arrayBuffer();
+      ms.push(performance.now() - t);
+      if (res.status !== 200) throw new Error(`${label} 응답 시간 측정 중 ${res.status}`);
+    }
+    ms.sort((x, y) => x - y);
+    check(ms.at(-1)! <= 1000, `${label} 10회 응답 시간: 중앙값 ${Math.round(ms[4]!)}ms, 최대 ${Math.round(ms.at(-1)!)}ms (기준 1000ms 이하)`);
+  }
+
   // 모든 API 경로를 실제 토큰으로 한 번씩(5xx면 실패). 경로 목록은 배포된 API Gateway 라우트에서 가져오고, smoke에 없는 경로가 있으면 실패한다.
   // A로 부른다(탈퇴 정리로 기록이 지워짐). DELETE /api/account는 아래 화면 탈퇴 단계에서 응답을 잡아 확인한다
   const deployed = (JSON.parse(cli(["apigatewayv2", "get-routes", "--api-id", apiOutputs.ApiDomain!.split(".")[0]!])) as { Items: { RouteKey: string }[] }).Items.map((r) => r.RouteKey).sort();

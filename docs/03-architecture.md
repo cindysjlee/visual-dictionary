@@ -194,7 +194,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 
 | 위치 | 예전 제출본 | 현재 | 변경 ID(docs/07) |
 | --- | --- | --- | --- |
-| S1 Backend | 토큰 확인 미들웨어·입력 검증·공통 오류 응답 형식 | 토큰 확인은 API Gateway JWT 인가가 하고, 입력 검증은 각 핸들러(`progress.ts`·`activity.ts`·`account.ts`)가 한다. 공통 미들웨어 모듈은 없다 | 6단계 구현(`f153763`), 변경 이력 미기재 |
+| S1 Backend | 토큰 확인 미들웨어·입력 검증·공통 오류 응답 형식 | 공통 미들웨어 모듈 없이 나눠 맡는다. 토큰 확인: API Gateway JWT 인가(`api-stack.ts` `HttpJwtAuthorizer`)가 Lambda 앞에서 서명·만료를 검사하고, 핸들러는 인가된 토큰의 `sub`만 쓴다(`handlers.ts`). 입력 검증: 각 핸들러(`progress.ts` 용어 ID·본문, `activity.ts` 본문 거부, `account.ts` 재인증 시각). 공통 오류 형식: `ApiResult`(`{ status, body: { error } }`)와 `handlers.ts`의 `respond()` | CH-47 |
 | S1 Frontend | apiClient | 기능별 호출(`progress/http.ts`)과 같은 출처 `/api/*` | CH-26 |
 | S4 Frontend | FlowPlayer·StackPlayer·LockPlayer(SVG), DefenseToggle | 3D 장면 `FlowScene`·`StackScene`·`LockScene`(R3F), 방어·해결 모드 탭, 재생 속도, 2D 대체 화면 | CH-08, CH-18, CH-21 |
 | S5 Frontend | AuthProvider(토큰 관리) | 인증 저장소(`auth/store.ts`, Amplify는 동적 import), Google 콜백, 개인정보처리방침 | CH-35, CH-38 |

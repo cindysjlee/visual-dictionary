@@ -1,4 +1,3 @@
-/// <reference lib="dom" />
 // 탐색·상세 E2E(@explore): 홈 카드 구성(FR-EXP-01), 비회원 카테고리 필터(FR-EXP-02), 검색(FR-EXP-03), 결과 없음(FR-EXP-04),
 // 상세 구성 순서(FR-DTL-01), 참고 자료(FR-DTL-03), 없는 용어(FR-DTL-04). 대상 용어는 content/terms에서 자동으로 늘어난다
 import { expect, test, type Page } from "@playwright/test";

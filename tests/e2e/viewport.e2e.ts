@@ -1,17 +1,13 @@
-/// <reference lib="dom" />
-// 360px 반응형(NFR-03, @narrow): 홈·상세(모든 용어)·계정 화면에서 가로 스크롤이 없고, 보이는 글자·버튼·입력이 화면 밖으로 잘리지 않는다.
-// 주 대상은 데스크톱이라 이 파일만 360×800으로 돈다. 가로 스크롤 영역(overflow-x: auto) 안의 요소는 밀어서 볼 수 있으므로 제외한다
+// 화면 폭 양 끝(NFR-03 "360px부터 1920px까지"): 홈·상세(모든 용어)·계정 화면에서 가로 스크롤이 없고, 보이는 글자·버튼·입력이 화면 밖으로 잘리지 않는다.
+// 360×800은 @narrow, 1920×1080은 @wide. 기본 E2E는 1440×900이다. 가로 스크롤 영역(overflow-x: auto) 안의 요소는 밀어서 볼 수 있으므로 제외한다
 import { expect, test, type Page } from "@playwright/test";
 import { terms } from "./terms.ts";
-
-test.use({ viewport: { width: 360, height: 800 } });
-const tag = { tag: "@narrow" };
 
 async function signIn(page: Page) {
   await page.goto("/");
   await page.evaluate(() => {
-    localStorage.setItem("fake-auth-users", JSON.stringify({ "narrow@example.com": { password: "abc12345", confirmed: true } }));
-    localStorage.setItem("fake-auth-session", "narrow@example.com");
+    localStorage.setItem("fake-auth-users", JSON.stringify({ "viewport@example.com": { password: "abc12345", confirmed: true } }));
+    localStorage.setItem("fake-auth-session", "viewport@example.com");
   });
 }
 
@@ -50,14 +46,22 @@ const PAGES: { name: string; path: string; ready: (page: Page) => Promise<void>;
   { name: "개인정보처리방침", path: "/privacy", ready: async (p) => void (await expect(p.getByRole("heading", { level: 1, name: "개인정보처리방침" })).toBeVisible()) },
 ];
 
-for (const { name, path, ready, signedIn } of PAGES) {
-  test(`360px · ${name}: 가로 스크롤·잘림 없음`, tag, async ({ page }) => {
-    if (signedIn) await signIn(page);
-    await page.goto(path);
-    await ready(page);
-    await page.waitForLoadState("networkidle");
-    const { pageScroll, out } = await overflow(page);
-    expect(pageScroll, "문서 가로 스크롤(px)").toBeLessThanOrEqual(0);
-    expect(out, "화면 밖으로 나간 요소").toEqual([]);
+for (const { width, height, tag } of [
+  { width: 360, height: 800, tag: "@narrow" },
+  { width: 1920, height: 1080, tag: "@wide" },
+]) {
+  test.describe(`${width}px`, () => {
+    test.use({ viewport: { width, height } });
+    for (const { name, path, ready, signedIn } of PAGES) {
+      test(`${width}px · ${name}: 가로 스크롤·잘림 없음`, { tag }, async ({ page }) => {
+        if (signedIn) await signIn(page);
+        await page.goto(path);
+        await ready(page);
+        await page.waitForLoadState("networkidle");
+        const { pageScroll, out } = await overflow(page);
+        expect(pageScroll, "문서 가로 스크롤(px)").toBeLessThanOrEqual(0);
+        expect(out, "화면 밖으로 나간 요소").toEqual([]);
+      });
+    }
   });
 }
