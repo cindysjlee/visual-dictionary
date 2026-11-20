@@ -1,6 +1,7 @@
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
+import { nonAscii } from "./non-ascii.ts";
 import { API_THROTTLE, ApiStack } from "../lib/api-stack.ts";
 import { AuthStack } from "../lib/auth-stack.ts";
 
@@ -86,5 +87,11 @@ describe("ApiStack", () => {
     expect(actionsOf("CleanupFn")).not.toContain("cognito-idp:AdminDeleteUser");
     expect(actionsOf("ProgressFn")).not.toContain("dynamodb:DeleteItem");
     expect(actionsOf("ActivityFn")).toEqual(["dynamodb:ConditionCheckItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"]);
+  });
+});
+
+describe("AWS 리소스 설명은 영어(CLAUDE.md)", () => {
+  it("템플릿에 비ASCII 문자열이 없다(cdk diff 비ASCII 생략 방지)", () => {
+    expect(nonAscii(t)).toEqual({});
   });
 });

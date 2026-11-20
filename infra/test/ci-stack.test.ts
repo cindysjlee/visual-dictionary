@@ -1,6 +1,7 @@
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
+import { nonAscii } from "./non-ascii.ts";
 import { CiStack } from "../lib/ci-stack.ts";
 
 const t = Template.fromStack(new CiStack(new App(), "Ci", { env: { region: "ap-northeast-2" }, githubRepo: "example-owner/visual-dictionary", apiId: "abc123" }));
@@ -62,5 +63,11 @@ describe("CiStack(GitHub OIDC 배포 역할)", () => {
 
   it("출력: 역할 ARN(저장소 파일에 적지 않고 GitHub Secret으로)", () => {
     t.hasOutput("DeployRoleArn", { Value: Match.anyValue() });
+  });
+});
+
+describe("AWS 리소스 설명은 영어(CLAUDE.md)", () => {
+  it("템플릿에 비ASCII 문자열이 없다(cdk diff 비ASCII 생략 방지)", () => {
+    expect(nonAscii(t)).toEqual({});
   });
 });

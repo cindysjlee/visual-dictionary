@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
+import { nonAscii } from "./non-ascii.ts";
 import { CSP, INVALIDATION_PATHS, SPA_ROUTER_CODE, WebStack } from "../lib/web-stack.ts";
 
 const distPath = mkdtempSync(join(tmpdir(), "dist-"));
@@ -141,5 +142,11 @@ describe("WebStack", () => {
         Origins: Match.arrayWith([Match.objectLike({ OriginAccessControlId: Match.anyValue(), S3OriginConfig: Match.objectLike({ OriginAccessIdentity: "" }) })]),
       }),
     });
+  });
+});
+
+describe("AWS 리소스 설명은 영어(CLAUDE.md)", () => {
+  it("템플릿에 비ASCII 문자열이 없다(cdk diff 비ASCII 생략 방지)", () => {
+    expect(nonAscii(template)).toEqual({});
   });
 });
