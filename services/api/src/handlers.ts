@@ -19,6 +19,8 @@ const TERM_IDS = new Set(env("TERM_IDS").split(",").filter(Boolean));
 const sqs = new SQSClient({});
 const cognito = new CognitoIdentityProviderClient({});
 
+/** 탈퇴 정리 작업의 전달 지연(초). Cognito 삭제가 먼저 끝나게 한다(늦어져도 재시도·DLQ가 받친다) */
+export const CLEANUP_DELAY_SECONDS = 10;
 const errorName = (e: unknown) => (e instanceof Error ? e.name : typeof e);
 const log = (fields: Record<string, string | number>) => console.log(JSON.stringify(fields));
 
@@ -76,7 +78,8 @@ export async function accountHandler(event: APIGatewayProxyEventV2WithJWTAuthori
     markWithdrawn: (u) => markWithdrawn(TABLE, u),
     unmarkWithdrawn: (u) => unmarkWithdrawn(TABLE, u),
     enqueueCleanup: async (job) => {
-      await sqs.send(new SendMessageCommand({ QueueUrl: env("QUEUE_URL"), MessageBody: JSON.stringify(job) }));
+      // 10초 늦게 전달: 큐에 넣은 다음 Cognito 사용자를 지우므로, 떠 있는 CleanupFn이 바로 받으면 사용자가 아직 있어 재시도(3분 뒤)로 밀린다
+      await sqs.send(new SendMessageCommand({ QueueUrl: env("QUEUE_URL"), MessageBody: JSON.stringify(job), DelaySeconds: CLEANUP_DELAY_SECONDS }));
     },
     deleteCognitoUser: async (name) => {
       await cognito.send(new AdminDeleteUserCommand({ UserPoolId: env("USER_POOL_ID"), Username: name }));
