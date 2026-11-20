@@ -49,8 +49,15 @@ describe("CiStack(GitHub OIDC 배포 역할)", () => {
     expect(res).not.toContain("/apis/*");
   });
 
+  it("변하지 않는 sub(소유자@ID/저장소@ID)도 정확히 일치로 넣는다", () => {
+    const im = Template.fromStack(new CiStack(new App(), "Im", { env: { region: "ap-northeast-2" }, githubRepo: "example-owner@123/visual-dictionary@456", apiId: "abc123" }));
+    const trust = Object.values(im.findResources("AWS::IAM::Role"))[0]!.Properties.AssumeRolePolicyDocument.Statement[0];
+    expect(trust.Condition.StringEquals["token.actions.githubusercontent.com:sub"]).toBe("repo:example-owner@123/visual-dictionary@456:ref:refs/heads/main");
+  });
+
   it("저장소 형식이 아니면 만들지 않는다", () => {
-    expect(() => new CiStack(new App(), "Bad", { githubRepo: "no-slash", apiId: "abc123" })).toThrow();
+    for (const bad of ["no-slash", "owner/repo*", "owner@x/repo", "owner/repo:ref:refs/heads/*"])
+      expect(() => new CiStack(new App(), "Bad", { githubRepo: bad, apiId: "abc123" }), bad).toThrow();
   });
 
   it("출력: 역할 ARN(저장소 파일에 적지 않고 GitHub Secret으로)", () => {

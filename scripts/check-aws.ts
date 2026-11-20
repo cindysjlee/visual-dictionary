@@ -249,11 +249,11 @@ if (ciRes) {
   check(
     same(Object.keys(t?.Condition ?? {}), ["StringEquals"]) &&
       // IAM이 돌려주는 조건 키 순서는 호출마다 다를 수 있어 정렬해서 비교한다
-      same(Object.entries(t!.Condition!.StringEquals!).sort(), [
-        ["token.actions.githubusercontent.com:aud", "sts.amazonaws.com"],
-        ["token.actions.githubusercontent.com:sub", `repo:${repo}:ref:refs/heads/main`],
-      ]),
-    `CI 역할 조건: StringEquals만, aud = sts.amazonaws.com, sub = repo:${repo}:ref:refs/heads/main (와일드카드 없음)`,
+      same(Object.keys(t!.Condition!.StringEquals!).sort(), ["token.actions.githubusercontent.com:aud", "token.actions.githubusercontent.com:sub"]) &&
+      t!.Condition!.StringEquals!["token.actions.githubusercontent.com:aud"] === "sts.amazonaws.com" &&
+      // 변하지 않는 sub면 소유자·저장소 뒤에 @숫자 ID가 붙는다. 이름은 git remote와 정확히 같아야 한다
+      new RegExp(`^repo:${repo.split("/")[0]}(@\\d+)?/${repo.split("/")[1]}(@\\d+)?:ref:refs/heads/main$`).test(t!.Condition!.StringEquals!["token.actions.githubusercontent.com:sub"]!),
+    `CI 역할 조건: StringEquals만, aud = sts.amazonaws.com, sub = ${t?.Condition?.StringEquals?.["token.actions.githubusercontent.com:sub"]} (${repo}의 main, 와일드카드 없음)`,
   );
   check(role.MaxSessionDuration <= 3600, `CI 역할 최대 세션: ${role.MaxSessionDuration}초 (기대 3600 이하)`);
   const managed = aws<{ AttachedPolicies: unknown[] }>("iam", "list-attached-role-policies", "--role-name", roleName).AttachedPolicies;

@@ -8,13 +8,17 @@ const GITHUB_OIDC = "token.actions.githubusercontent.com";
 /** CDK 부트스트랩 한정자(기본값). 부트스트랩 역할 이름에 들어간다 */
 const QUALIFIER = "hnb659fds";
 
-/** githubRepo: "소유자/저장소". 저장소 파일에 적지 않고 배포할 때 CDK context(-c githubRepo=…)로 넣는다. apiId: 배포 확인(check:aws)이 읽는 이 프로젝트 HTTP API */
+/**
+ * githubRepo: OIDC 토큰 sub의 "repo:" 뒤 부분. 저장소가 변하지 않는 sub(use_immutable_subject)를 쓰면 "소유자@ID/저장소@ID" 형태다
+ * (`gh api repos/<소유자>/<저장소>/actions/oidc/customization/sub`의 sub_claim_prefix에서 "repo:"를 뺀 값). 저장소 파일에 적지 않고 CDK context(-c githubRepo=…)로 넣는다.
+ * apiId: 배포 확인(check:aws)이 읽는 이 프로젝트 HTTP API
+ */
 export type CiStackProps = StackProps & { githubRepo: string; apiId: string };
 
 export class CiStack extends Stack {
   constructor(scope: Construct, id: string, props: CiStackProps) {
     super(scope, id, props);
-    if (!/^[\w.-]+\/[\w.-]+$/.test(props.githubRepo)) throw new Error("githubRepo는 '소유자/저장소' 형식이어야 합니다");
+    if (!/^[\w.-]+(@\d+)?\/[\w.-]+(@\d+)?$/.test(props.githubRepo)) throw new Error("githubRepo는 '소유자[@ID]/저장소[@ID]' 형식이어야 합니다");
 
     const provider = new OidcProviderNative(this, "GitHubOidc", { url: `https://${GITHUB_OIDC}`, clientIds: ["sts.amazonaws.com"] });
 
