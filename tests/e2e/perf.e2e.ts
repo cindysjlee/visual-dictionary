@@ -33,15 +33,15 @@ async function measure(page: Page, path: string, ready: (page: Page) => Promise<
 }
 
 /**
- * 로컬(배포 전 전체 E2E)에서는 기준을 넘으면 실패한다. CI(GitHub 러너)는 GPU가 없고 성능 편차가 커서
- * 측정값과 기준 이내 여부만 작업 요약(GITHUB_STEP_SUMMARY)에 남기고 실패로 보지 않는다(docs/10 "성능 기준")
+ * 로컬(배포 전 전체 E2E, 테스트 빌드)에서는 기준을 넘으면 실패한다. CI(GitHub 러너)는 GPU가 없고 성능 편차가 커서,
+ * draft 검사(E2E_INCLUDE_DRAFTS)는 번들하지 않는 개발 서버를 재서 배포 성능과 무관하므로 측정값만 남기고 실패로 보지 않는다(docs/10 "성능 기준")
  */
 function judge(name: string, { lcp, cls }: { lcp: number; cls: number }) {
   const within = lcp <= LCP_MS && cls <= CLS;
   const line = `${name}: LCP ${Math.round(lcp)}ms, CLS ${cls.toFixed(3)} (기준 LCP ≤ ${LCP_MS}ms, CLS ≤ ${CLS}: ${within ? "이내" : "초과"})`;
   console.log(line);
   expect(lcp, "LCP가 측정되어야 한다").toBeGreaterThan(0);
-  if (process.env.CI) {
+  if (process.env.CI || process.env.E2E_INCLUDE_DRAFTS === "1") {
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `- 성능 측정(@perf, 실패로 보지 않음) ${line}\n`);
     return;
   }

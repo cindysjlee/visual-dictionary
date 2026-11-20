@@ -192,5 +192,5 @@
     { "title": "Java Tutorials · Deadlock", "url": "https://docs.oracle.com/javase/tutorial/essential/concurrency/deadlock.html" },
     { "title": "Operating Systems: Three Easy Pieces · Common Concurrency Problems", "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/threads-bugs.pdf" }
   ],
-  "related": []
+  "related": ["race-condition"]
 }

@@ -129,5 +129,5 @@
     { "title": "MDN · Set-Cookie의 Secure 속성", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" },
     { "title": "MDN · Strict-Transport-Security (HSTS)", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" }
   ],
-  "related": ["xss", "csrf"]
+  "related": ["xss", "csrf", "ssl-stripping"]
 }

@@ -1,0 +1,312 @@
+{
+  "id": "idor",
+  "name": "IDOR",
+  "englishName": "Insecure Direct Object Reference",
+  "aliases": [
+    "안전하지 않은 직접 객체 참조",
+    "BOLA",
+    "Broken Object Level Authorization"
+  ],
+  "category": "web-security",
+  "summary": "요청에 든 주문·파일 번호만 바꿔, 서버가 주인을 확인하지 않는 남의 데이터에 접근하는 취약점",
+  "description": "많은 서비스는 주소나 요청에 주문 번호, 회원 번호 같은 식별자를 넣어 대상을 고른다. 서버가 \"로그인했는가\"만 보고 \"이 주문이 요청한 사람의 것인가\"를 확인하지 않으면, 로그인한 공격자는 번호만 바꿔 남의 주문·문서·계정 정보를 볼 수 있다. 막으려면 서버가 객체를 꺼낼 때마다 토큰(세션)의 사용자와 그 객체의 주인을 비교해야 한다. 번호를 추측하기 어렵게 만드는 것만으로는 부족하다. 이 서비스의 학습 기록 API도 경로나 본문에서 사용자 ID를 받지 않고, 토큰의 사용자로만 대상을 정한다.",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      {
+        "id": "browser",
+        "name": "공격자 브라우저 (가입한 회원)",
+        "role": "user",
+        "kind": "browser",
+        "zone": "client",
+        "site": "browser"
+      },
+      {
+        "id": "tab",
+        "name": "주문 조회 탭",
+        "role": "user",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "shop.example",
+        "screen": {
+          "title": "내 주문",
+          "lines": [
+            "/api/orders/1002"
+          ]
+        }
+      },
+      {
+        "id": "jar",
+        "name": "쿠키 보관함",
+        "role": "user",
+        "kind": "cookieJar",
+        "parent": "browser"
+      },
+      {
+        "id": "shop",
+        "name": "쇼핑몰 서버",
+        "role": "server",
+        "kind": "server",
+        "look": "shop",
+        "zone": "server",
+        "site": "shop.example",
+        "gate": true
+      },
+      {
+        "id": "db",
+        "name": "주문 DB",
+        "role": "database",
+        "kind": "database",
+        "look": "database",
+        "zone": "internal",
+        "screen": {
+          "title": "orders",
+          "lines": [
+            "1002 · 주인: user 7 (나)",
+            "1003 · 주인: user 9 (김OO)"
+          ]
+        }
+      }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "shop",
+        "to": "tab",
+        "title": "회원으로 로그인",
+        "label": "Set-Cookie: session",
+        "caption": "공격자도 이 쇼핑몰의 평범한 회원(user 7)입니다. 정상으로 로그인해 세션 쿠키를 받습니다.",
+        "effects": [
+          {
+            "type": "store",
+            "item": "cookie",
+            "into": "jar"
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "tab",
+        "to": "shop",
+        "roundTrip": true,
+        "returnLabel": "200 OK · 주문 1002 (내 것)",
+        "title": "내 주문 조회",
+        "label": "GET /api/orders/1002",
+        "caption": "자기 주문 1002를 조회합니다. 검문소는 로그인했는지만 확인하고, 주문 1002의 주인이 정말 이 사람인지는 확인하지 않습니다. 지금은 자기 주문이라 문제가 드러나지 않습니다.",
+        "effects": [
+          {
+            "type": "attach",
+            "item": "cookie",
+            "from": "jar",
+            "label": "Cookie"
+          },
+          {
+            "type": "inspect",
+            "at": "shop",
+            "contents": [
+              "GET /api/orders/1002",
+              "Cookie: session (user 7)"
+            ],
+            "checks": [
+              {
+                "name": "로그인",
+                "result": "user 7",
+                "status": "ok"
+              },
+              {
+                "name": "주문의 주인 확인",
+                "result": "검사 안 함",
+                "status": "skip"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "tab",
+        "to": "tab",
+        "title": "주소의 번호만 바꿈",
+        "label": "1002 → 1003",
+        "caption": "공격자가 요청 주소의 주문 번호를 1002에서 1003으로 바꿉니다. 번호가 차례로 매겨져 있어 다른 사람의 주문 번호를 짐작하기 쉽습니다.",
+        "danger": true,
+        "effects": [
+          {
+            "type": "rewrite",
+            "target": "tab",
+            "screen": {
+              "title": "주소 바꿈",
+              "lines": [
+                "/api/orders/1003"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "tab",
+        "to": "shop",
+        "title": "남의 주문 번호로 요청",
+        "label": "GET /api/orders/1003",
+        "caption": "바꾼 주소로 요청합니다. 자기 쿠키를 붙였으니 로그인 확인은 통과하고, 주문 1003의 주인을 확인하지 않으므로 검문소가 그대로 들여보냅니다.",
+        "danger": true,
+        "effects": [
+          {
+            "type": "attach",
+            "item": "cookie",
+            "from": "jar",
+            "label": "Cookie"
+          },
+          {
+            "type": "inspect",
+            "at": "shop",
+            "contents": [
+              "GET /api/orders/1003",
+              "Cookie: session (user 7)"
+            ],
+            "checks": [
+              {
+                "name": "로그인",
+                "result": "user 7",
+                "status": "ok"
+              },
+              {
+                "name": "주문의 주인 확인",
+                "result": "검사 안 함",
+                "status": "skip"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "shop",
+        "to": "db",
+        "roundTrip": true,
+        "returnLabel": "주문 1003 (김OO)",
+        "title": "주문 1003을 꺼냄",
+        "label": "SELECT … WHERE id = 1003",
+        "caption": "쇼핑몰은 번호만 보고 DB에서 주문 1003을 꺼냅니다. 이 주문의 주인은 user 9(김OO)인데, 서버는 요청한 사람이 user 7이라는 것과 비교하지 않습니다.",
+        "danger": true
+      },
+      {
+        "action": "send",
+        "from": "shop",
+        "to": "tab",
+        "title": "남의 주문이 보임",
+        "label": "200 OK · 주문 1003",
+        "caption": "다른 고객의 이름과 주소, 주문 내용이 공격자 화면에 나타납니다. 번호를 1004, 1005로 계속 바꾸면 많은 고객의 정보를 모을 수 있습니다.",
+        "danger": true,
+        "effects": [
+          {
+            "type": "rewrite",
+            "target": "tab",
+            "screen": {
+              "title": "주문 1003",
+              "lines": [
+                "받는 사람: 김OO",
+                "주소: 서울시 …"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "주인 확인",
+      "kind": "defense",
+      "description": "서버가 객체를 꺼낼 때마다 토큰(세션)의 사용자와 그 객체의 주인을 비교하고, 다르면 거부합니다. 요청 본문이나 주소에 든 사용자 ID는 믿지 않고, 조회 자체를 \"이 사용자의 주문 중에서\"로 좁히는 것이 안전합니다. 남의 리소스에 403 대신 404로 답해 그 번호의 주문이 있는지조차 알리지 않는 방법도 있습니다.",
+      "blockedAtStep": 4,
+      "blockedTitle": "주인이 아니면 거부",
+      "blockedLabel": "403 · 내 주문 아님",
+      "blockedCaption": "검문소가 토큰의 사용자(user 7)와 주문 1003의 주인(user 9)을 비교합니다. 서로 다르므로 요청을 거부합니다. 번호를 아무리 바꿔도 자기 주문만 볼 수 있습니다.",
+      "overrides": [
+        {
+          "step": 2,
+          "effects": [
+            {
+              "type": "attach",
+              "item": "cookie",
+              "from": "jar",
+              "label": "Cookie"
+            },
+            {
+              "type": "inspect",
+              "at": "shop",
+              "contents": [
+                "GET /api/orders/1002",
+                "Cookie: session (user 7)"
+              ],
+              "checks": [
+                {
+                  "name": "로그인",
+                  "result": "user 7",
+                  "status": "ok"
+                },
+                {
+                  "name": "주문의 주인 확인",
+                  "result": "user 7 = 1002의 주인",
+                  "status": "ok"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "step": 4,
+          "effects": [
+            {
+              "type": "attach",
+              "item": "cookie",
+              "from": "jar",
+              "label": "Cookie"
+            },
+            {
+              "type": "inspect",
+              "at": "shop",
+              "contents": [
+                "GET /api/orders/1003",
+                "Cookie: session (user 7)"
+              ],
+              "checks": [
+                {
+                  "name": "로그인",
+                  "result": "user 7",
+                  "status": "ok"
+                },
+                {
+                  "name": "주문의 주인 확인",
+                  "result": "1003의 주인 ≠ user 7",
+                  "status": "fail"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "추측하기 어려운 ID",
+      "kind": "defense",
+      "description": "차례로 늘어나는 번호 대신 UUID처럼 긴 무작위 ID를 쓰면 남의 번호를 짐작하기 어려워집니다. 하지만 ID가 로그나 공유 링크로 새어 나가면 그대로 쓰일 수 있으므로 주인 확인을 대신할 수 없고, 함께 쓰는 보조 수단입니다."
+    }
+  ],
+  "references": [
+    {
+      "title": "OWASP Insecure Direct Object Reference Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html"
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 · API1 Broken Object Level Authorization",
+      "url": "https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization"
+    }
+  ],
+  "related": [
+    "csrf"
+  ]
+}

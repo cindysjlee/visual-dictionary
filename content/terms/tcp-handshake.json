@@ -85,5 +85,5 @@
     { "title": "RFC 9293 · Transmission Control Protocol (3.5 Establishing a Connection)", "url": "https://www.rfc-editor.org/rfc/rfc9293#section-3.5" },
     { "title": "MDN · TCP handshake", "url": "https://developer.mozilla.org/en-US/docs/Glossary/TCP_handshake" }
   ],
-  "related": []
+  "related": ["syn-flood"]
 }

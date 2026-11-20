@@ -123,5 +123,5 @@
     { "title": "MDN · Call stack", "url": "https://developer.mozilla.org/en-US/docs/Glossary/Call_stack" },
     { "title": "Wikipedia · Call stack", "url": "https://en.wikipedia.org/wiki/Call_stack" }
   ],
-  "related": []
+  "related": ["stack-overflow"]
 }
