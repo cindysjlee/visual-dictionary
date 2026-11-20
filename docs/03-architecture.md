@@ -193,7 +193,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 | Frontend (웹 빌드 결과물) | Amazon S3 (비공개) + CloudFront | OAC로 CloudFront만 버킷에 접근, HTTPS 전용, 403·404를 `index.html`(200)로 응답 (FR-DEP-01, 02) |
 | 콘텐츠 (용어 JSON) | 같은 S3 버킷 + CloudFront | 빌드 때 생성된 `/content/index.json`, `/content/terms/{id}.json`을 정적 파일로 제공 |
 | 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`와 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`)뿐이다(와일드카드 없음). 학습 기록 API는 CloudFront `/api/*`로 같은 출처라 추가하지 않는다. `/api/*` 응답에도 같은 헤더를 붙인다 (FR-DEP-04) |
-| 인증 | Amazon Cognito User Pool (Lite, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP만·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
+| 인증 | Amazon Cognito User Pool (Essentials, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 구글 로그인(8단계, FR-AUTH-07): 로그인 도메인 `visual-dictionary-auth.auth.ap-northeast-2.amazoncognito.com`(managed login), OAuth는 인가 코드 + PKCE만(implicit 없음), 콜백 `/auth/callback`·로그아웃 `/`. 구글 클라이언트 값은 Secrets Manager `visual-dictionary/google-oauth`를 CloudFormation dynamic reference로 읽는다. Essentials는 Lite와 같이 월 1만 MAU 무료(넘으면 MAU당 $0.015), 시크릿 월 $0.40. 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
 | Backend | API Gateway (HTTP API) + Lambda (스택 `VisualDictionaryApi`) | 6단계: progress(조회·저장), account(탈퇴), 정리(큐 소비자). activity는 7단계. 모든 경로에 JWT 인가, 스테이지 요청 제한 초당 10·버스트 20, CloudFront `/api/*`로 연결 (FR-DEP-03) |
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
 | 탈퇴 정리 | Amazon SQS(정리 큐 + DLQ) + 정리 Lambda | 회원 탈퇴 정리 작업 전달, 실패 작업 보관(14일)과 경보 |
@@ -228,6 +228,23 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 - **가입 여부 노출(한계):** 로그인·재설정은 사용자 존재 노출 방지로 가입 여부를 드러내지 않지만, 가입 화면의 "이미 가입된 이메일" 안내는 요구사항(FR-AUTH-02) 때문에 남긴다. 그래서 가입 화면으로 어떤 이메일이 가입됐는지 알아낼 수 있다는 한계가 있다.
 - **메일 한도:** Cognito 기본 메일은 계정 전체 하루 50통이라, 누가 가입·코드 재발송을 반복하면 그날 다른 사용자의 인증 메일이 막힐 수 있다. 대안은 사용자 풀에 AWS WAF 요청 수 제한을 거는 것(웹 ACL 월 $5 + 규칙 월 $1 + 요청 100만 건당 $0.60)이고, 과제 규모에서는 적용하지 않는다. 사용자가 늘면 SES 연결(1,000통당 $0.10)과 함께 다시 정한다.
 - **정리 순서:** 사용자 풀은 삭제 보호와 RETAIN이 걸려 있어 `cdk destroy`로 스택을 지워도 남는다. 지우려면 AWS 콘솔(서울 리전) → Amazon Cognito → 사용자 풀 → 해당 풀 → 설정 탭 → 삭제 방지 → 편집에서 끈 뒤 저장하고, 사용자 풀 목록에서 그 풀을 선택해 삭제를 따로 실행한다. 학습 기록 테이블(`LearningRecord`, 스택 `VisualDictionaryApi`)도 삭제 보호와 RETAIN이 걸려 있다. 지우려면 AWS 콘솔(서울 리전) → DynamoDB → 테이블 → 해당 테이블 → 추가 설정 탭 → 삭제 방지 → 편집(또는 끄기)에서 끈 뒤, 테이블 목록에서 선택해 삭제를 따로 실행한다. 탈퇴 정리 DLQ·로그 그룹은 스택과 함께 지워진다.
+
+**구글 로그인(8단계).** "Google로 계속하기"는 Amplify `signInWithRedirect({ provider: "Google" })`로 로그인 도메인의 `/oauth2/authorize?identity_provider=Google`(인가 코드 + PKCE)을 거쳐 구글 화면으로 간다. 돌아오면 `/auth/callback`에서 OAuth 리스너가 코드를 토큰으로 바꾸고, 돌아갈 곳은 `customState`로 넘긴 next를 `safeNext`로 다시 검증해 보낸다. CSP는 `connect-src`에 로그인 도메인을 더한다(토큰 교환 `/oauth2/token`·취소 `/oauth2/revoke`). 구글·로그인 도메인으로의 화면 이동은 CSP 대상이 아니다. 구글 사용자의 로그아웃은 로그인 도메인의 `/logout`을 거쳐 첫 화면으로 돌아온다(구글 계정 로그인은 그대로).
+
+**계정 정책: 같은 이메일은 합치지 않는다.** 구글 계정과 이메일 가입 계정은 이메일이 같아도 서로 다른 Cognito 사용자다(구글 사용자 이름은 `Google_<구글 sub>`, sub도 다름). 연결 트리거(Pre sign-up Lambda + `AdminLinkProviderForUser`)를 두지 않았다. 이유: 구현이 단순하고(Lambda·추가 권한 없음), 학습 기록은 계정(sub)별로 따로 쌓이므로 섞이지 않는다. 로그인·가입 화면에 "구글 로그인과 이메일 가입은 서로 다른 계정이에요"를 안내한다. 확인(8단계, 2026-11-20): 구글 사용자가 있는 이메일로 이메일 가입(`sign-up`)을 부르면 거부되지 않고 별도의 UNCONFIRMED 사용자(다른 sub, 외부 IdP 연결 없음)가 생겼다. 확인용 사용자는 바로 지웠다.
+
+**구글 로그인 사람 확인 체크리스트.** 구글은 자동화된 로그인을 막아 스크립트로 확인할 수 없다. 구글 로그인 관련 코드나 설정(Auth 스택, 로그인 화면, 콜백, CSP)을 바꾸면 실제 구글 계정으로 순서대로 확인한다. 1~5는 화면, 6은 읽기 전용 조회(Cognito `list-users` 이메일 필터, 두 테이블 scan, 정리 DLQ).
+
+1. 로그인: `/auth/login`에서 "Google로 계속하기" → 구글 계정 선택 → 돌아와 상단바에 구글 이메일
+2. 새로고침해도 로그인 유지
+3. 학습 기록: 용어 하나를 읽음으로 → 진행률 1 / 8, 내 학습의 최근 본 용어에 표시
+4. 로그아웃: 로그인 도메인을 거쳐 첫 화면, 상단바에 "로그인"
+5. 탈퇴: 다시 로그인 → `/me`에 비밀번호 칸 없음·"탈퇴하기" 꺼짐 → "Google로 다시 확인"을 누르면 **구글 계정 선택 화면이 반드시 나온다**(바로 돌아오면 실패: managed login·`prompt=select_account` 전달 확인) → 돌아와 "Google 계정을 다시 확인했어요" 후 "탈퇴하기" 켜짐 → 대화상자에서 탈퇴 → 첫 화면에 탈퇴 안내
+6. 탈퇴 후: Cognito에 그 이메일 사용자 0명, `LearningRecord` 기록 0건(탈퇴 표시 `#deleted`는 2시간 TTL로 남는 것이 정상), `RecentView` 0건, 정리 DLQ 0건
+
+8단계 첫 확인(2026-11-20, 프로젝트 계정)은 1~6 모두 통과했다. 실제 구글 경로 중 자동으로 확인하는 것은 배포 후 로그인 도메인의 `identity_provider=Google` 요청이 `accounts.google.com`으로 302 되고 `redirect_uri`가 `/oauth2/idpresponse`인지, `prompt=select_account`가 넘어가는지까지다(check:aws는 앱 클라이언트의 OAuth 설정·로그인 수단을 확인). 화면 흐름은 가짜 구글 인증(`features/auth/fake.ts`) 위의 E2E `@google`로 확인한다.
+
+**개인정보처리방침.** `/privacy`(FR-AUTH-09)에 처리하는 정보·목적·보관 기간·제3자 제공 없음·처리 위탁(AWS, Google)·문의처(`visualdict.help@gmail.com`)를 둔다. 푸터, 로그인·가입 화면에서 링크하고 Google 동의 화면의 개인정보처리방침 주소로도 쓴다. 저장 항목이나 보관 기간을 바꾸면 이 페이지도 함께 고친다.
 
 ### 2.5 학습 기록 API와 회원 탈퇴 (6단계)
 

@@ -69,14 +69,14 @@ docs/                     설계 문서
 | 6 | Progress API, 읽음 기록·진행률·읽음 필터, Account API(탈퇴 시 기록 삭제) | 다른 브라우저에서도 같은 진행률, 탈퇴 후 기록 없음 |
 | 7 | 선택 기능: 최근 본 용어, 관련 용어, ~~재생 속도~~(완료, 0.75~2×), 자동 배포 | 요구사항의 "선택" 항목 |
 
-**현재 단계: 7단계 완료(최근 본 용어, 관련 용어 두 쌍, 자동 배포: CI 수동 실행 성공 뒤 main push 실행 켬). 8단계(구글 로그인, 방안 A: Essentials) 진행 중.** 단계를 끝내면 이 줄을 갱신할 것.
+**현재 단계: 8단계 완료(구글 로그인: Essentials·로그인 도메인·인가 코드+PKCE, 같은 이메일은 별도 계정, 탈퇴 재인증 서버 강제(auth_time 5분), /privacy, 사람 확인 체크리스트 1~6 통과).** 단계를 끝내면 이 줄을 갱신할 것.
+8단계 결과: Auth 스택(Essentials, 로그인 도메인 `visual-dictionary-auth`, 구글 IdP는 Secrets Manager `visual-dictionary/google-oauth` dynamic reference, OAuth 코드 흐름만), CSP `connect-src`에 로그인 도메인, `/auth/callback`·`/privacy`·푸터, AccountFn `reauthFresh()`, E2E `@google`, smoke:progress 오래된 토큰 거부(약 5분). 구글 관련 코드·설정을 바꾸면 docs/03 2.4의 사람 확인 체크리스트를 실제 구글 계정으로 다시 한다.
 6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
 남은 일:
-- 8단계 구글 로그인: 8a 로그인 도메인·Essentials → (사용자) Google 콘솔·Secrets Manager → 8a 구글 IdP·앱 클라이언트 OAuth·CSP → 8b 화면·/privacy → 8c AccountFn auth_time 5분(모든 사용자)·smoke → 8d 문서. CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
+- CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
 - aws-cdk-lib 새 버전이 나오면 올리기(Dependabot: 안에 든 minimatch 10.2.6 서비스 거부 취약점, 11.0.1에서 수정. 배포 도구 쪽이라 화면·Lambda에는 없음).
 - 8단계 끝나고: 사용자가 토큰의 `aws.cognito.signin.user.admin` 범위로 Cognito `DeleteUser`를 직접 부르면 우리 탈퇴 API를 거치지 않아 학습 기록·최근 본 용어가 남는다. 하루 한 번 도는 정리 작업(기록의 userId가 Cognito에 없으면 정리 큐로 삭제)을 추가하고, smoke에 "Cognito에서 직접 지운 테스트 사용자의 기록이 정리 작업 후 0건" 검사를 넣는다. 비용도 같이 정리.
-- /privacy 문의처: 사용자가 프로젝트용 메일을 만들어 알려 주면 넣는다(그전까지 자리만 비움).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
 - 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
 - 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.
