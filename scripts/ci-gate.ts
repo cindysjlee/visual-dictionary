@@ -1,11 +1,13 @@
 // 자동 배포 관문(.github/workflows/deploy.yml, docs/03 2.6). 멈출 때는 작업 요약(GITHUB_STEP_SUMMARY)에 이유를 남기고 종료 코드 1.
 //   node scripts/ci-gate.ts security  → `cdk diff --security-only`(모든 스택)에 IAM·보안 그룹 변경 표가 있으면 멈춘다(권한 확장은 사람이 승인해 로컬에서 배포)
 //   node scripts/ci-gate.ts changes   → 변경 세트(ci-gate)를 만들고(prepare-change-set) 리소스 삭제(Remove)·교체(Replacement True/Conditional)가 있으면 멈춘다.
+//                                       예외(ci-gate-rules.ts): CDK 메타데이터는 무시, 파일 배포(Custom::CDKBucketDeployment)의 조건부 교체만 허용
 //                                       없으면 변경이 있는 스택 목록을 GITHUB_OUTPUT stacks에 남긴다(배포 단계가 같은 변경 세트를 실행)
 // 로컬에서도 돌릴 수 있다(프로필 vd). 출력·요약의 12자리 숫자(계정 ID)는 가린다
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { isRisky, realChanges, type ResourceChange } from "./ci-gate-rules.ts";
 
 const REGION = "ap-northeast-2";
 const CHANGE_SET = "ci-gate";
@@ -45,7 +47,7 @@ if (mode === "security") {
   const prepared = cdk("deploy", "--all", "--method=prepare-change-set", "--change-set-name", CHANGE_SET);
   if (prepared.status !== 0) stop("변경 세트 만들기 실패", "`cdk deploy --method=prepare-change-set`가 실패했습니다.", prepared.out);
 
-  type Change = { ResourceChange: { Action: string; Replacement?: string; LogicalResourceId: string; ResourceType: string } };
+  type Change = { ResourceChange: ResourceChange };
   const risky: string[] = [];
   const changed: string[] = [];
   for (const stack of stacks) {
@@ -57,12 +59,12 @@ if (mode === "security") {
     const cs = JSON.parse(r.out) as { Status: string; StatusReason?: string; Changes: Change[] };
     if (cs.Status === "FAILED" && /didn't contain changes|No updates/i.test(cs.StatusReason ?? "")) continue;
     if (cs.Status !== "CREATE_COMPLETE") stop("변경 세트 상태 이상", `${stack}: ${cs.Status} ${cs.StatusReason ?? ""}`, r.out);
-    // AWS::CDK::Metadata는 CDK 버전·통계만 담은 가상 리소스(데이터 없음). 로컬과 CI에서 값이 달라 매번 "교체: Conditional"로 잡히므로 무시한다
-    const real = cs.Changes.filter(({ ResourceChange: c }) => c.ResourceType !== "AWS::CDK::Metadata");
+    // 판단은 ci-gate-rules.ts(단위 테스트): 가상 리소스 제외, 파일 배포의 조건부 교체만 허용
+    const real = realChanges(cs.Changes.map((c) => c.ResourceChange));
     if (!real.length) continue;
     changed.push(stack);
-    for (const { ResourceChange: c } of real) {
-      if (c.Action === "Remove" || c.Replacement === "True" || c.Replacement === "Conditional") {
+    for (const c of real) {
+      if (isRisky(c)) {
         risky.push(`| ${stack} | ${c.LogicalResourceId} | ${c.ResourceType} | ${c.Action}${c.Replacement && c.Action === "Modify" ? ` (교체: ${c.Replacement})` : ""} |`);
       }
     }
