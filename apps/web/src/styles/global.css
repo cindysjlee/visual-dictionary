@@ -1520,3 +1520,22 @@ button:disabled {
   color: var(--defense-text);
   font-weight: 600;
 }
+
+.privacy ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.privacy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.privacy-table th,
+.privacy-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
