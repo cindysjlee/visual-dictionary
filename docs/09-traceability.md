@@ -1,6 +1,6 @@
 # 요구사항 추적 매트릭스
 
-`01-requirements.md`의 요구사항(FR 41개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-21(커밋 `55d7297`)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
+`01-requirements.md`의 요구사항(FR 41개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-21(중간 점검 2차, 빠진 테스트 보강 뒤)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
 
 **상태**
 - **완료**: 구현됐고, 요구사항의 핵심 동작을 자동 테스트(단위·E2E·smoke 중 하나 이상)가 확인한다.
@@ -15,20 +15,20 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-EXP-01 용어 목록 | docs/05 화면 구조, docs/03 1.1 S3 | `features/explore/HomePage.tsx` | E `a11y.e2e.ts`(홈 카드 표시 후 axe), E `progress.e2e.ts` @progress(카드 읽음 표시) | 부분 테스트 | 카드 구성(이름·요약·배지)을 직접 확인하는 테스트 없음 |
-| FR-EXP-02 카테고리 필터 | docs/05 | `HomePage.tsx` | E `progress.e2e.ts` @progress(읽음 필터와 함께) | 부분 테스트 | 비회원 상태 카테고리 단독 필터 테스트 없음 |
-| FR-EXP-03 키워드 검색 | docs/05 | `HomePage.tsx`(이름·영문명·요약·별칭, 소문자 비교) | E `progress.e2e.ts` @progress(필터와 함께) | 부분 테스트 | 별칭·대소문자 무시를 확인하는 테스트 없음 |
-| FR-EXP-04 결과 없음 안내 | docs/05 | `HomePage.tsx`("전체 목록 보기") | 없음 | **테스트 없음** | |
+| FR-EXP-01 용어 목록 | docs/05 화면 구조, docs/03 1.1 S3 | `features/explore/HomePage.tsx` | E `explore.e2e.ts` @explore(모든 카드의 이름·요약·카테고리 배지), E `a11y.e2e.ts` | 완료 | |
+| FR-EXP-02 카테고리 필터 | docs/05 | `HomePage.tsx` | E `explore.e2e.ts`(비회원, 기본 "전체", 카테고리마다 그 용어만), E `progress.e2e.ts`(읽음 필터와 함께) | 완료 | |
+| FR-EXP-03 키워드 검색 | docs/05 | `HomePage.tsx`(이름·영문명·요약·별칭, 소문자 비교) | E `explore.e2e.ts`(별칭 대문자 입력·영문명 소문자·한글 별칭·요약 일부, 카테고리와 함께) | 완료 | |
+| FR-EXP-04 결과 없음 안내 | docs/05 | `HomePage.tsx`("전체 목록 보기") | E `explore.e2e.ts`(안내 문구·버튼, 누르면 검색어·카테고리 초기화) | 완료 | |
 | FR-EXP-05 상세 진입·고유 URL | docs/03 1.1 | `main.tsx` 라우트, `features/term/TermPage.tsx` | E `player.e2e.ts`(모든 용어 `/terms/<id>` 직접 열기), S smoke:prod(published 전부 200) | 완료 | |
 
 ## 2. 상세(FR-DTL)
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-DTL-01 상세 구성 순서 | docs/05 배치 | `TermPage.tsx` | E `a11y.e2e.ts`(상세 axe) | 부분 테스트 | 순서를 확인하는 테스트 없음 |
+| FR-DTL-01 상세 구성 순서 | docs/05 배치 | `TermPage.tsx` | E `explore.e2e.ts`(모든 용어: 이름 → 설명 → 플레이어 자막 → 방어·해결 → 참고 자료의 문서 순서), E `a11y.e2e.ts` | 완료 | |
 | FR-DTL-02 방어·해결 방법 | docs/04, docs/06 | `TermPage.tsx`, `content-schema` `modeDefenses` | E `player.e2e.ts`(방어·해결 방법 탭·칩), 단 `scene.test.ts` | 완료 | CS 용어는 "해결 방법"(대체 흐름, CH-21) |
-| FR-DTL-03 참고 자료 | docs/04 | `TermPage.tsx`, 스키마의 `references` 필수 | 단 `index.test.ts`(스키마) | 부분 테스트 | 화면 표시를 확인하는 테스트 없음 |
-| FR-DTL-04 없는 용어 처리 | docs/03 2.4·CLAUDE.md(개발 서버·운영 404 처리) | `TermPage.tsx` → `NotFoundPage.tsx` | 없음 | **테스트 없음** | smoke:prod는 없는 주소의 응답 코드만 본다 |
+| FR-DTL-03 참고 자료 | docs/04 | `TermPage.tsx`, 스키마의 `references` 필수 | 단 `index.test.ts`(스키마), E `explore.e2e.ts`(모든 용어의 제목·주소가 JSON과 같음) | 완료 | |
+| FR-DTL-04 없는 용어 처리 | docs/03 2.4·CLAUDE.md(개발 서버·운영 404 처리) | `TermPage.tsx` → `NotFoundPage.tsx` | E `explore.e2e.ts`(없는 용어·없는 화면 주소: 안내와 목록 버튼), S smoke:prod(응답 코드) | 완료 | |
 | FR-DTL-05 관련 용어 | docs/05 | `TermPage.tsx`(JSON 순서), 콘텐츠 `related` | E `related.e2e.ts` @<id>, 단 `index.test.ts`(자기 참조 거부) | 완료 | |
 
 ## 3. 애니메이션(FR-ANI)
@@ -42,7 +42,7 @@
 | FR-ANI-05 자막 동기화 | docs/05 | `PlayerShell.tsx`(aria-live), `StepList2D.tsx` | E `player.e2e.ts`(모든 용어·모드 단계별 자막·번호) | 완료 | |
 | FR-ANI-06 방어 모드 | docs/04, docs/06 | `engine.ts`, `content-schema/scene.ts` | 단 `engine.test.ts`·`simulate.test.ts`, E `player.e2e.ts` @csrf(5단계 403·401) | 완료 | |
 | FR-ANI-07 플레이어 유형 | docs/06 | `players/Player.tsx`(flow·stack·lock) | 단 `simulate.test.ts`, `stackState.test.ts`, `lockState.test.ts`, E 장면 기록 | 완료 | |
-| FR-ANI-08 재생 속도 | docs/05 | `engine.ts`, `speedStore.ts` | 단 `engine.test.ts`·`speedStore.test.ts`, E `player.e2e.ts`(2×, 로컬 전체 E2E 전용) | **문서와 다름** | 요구사항 0.5·1·1.5배, 구현 0.75·1·1.5·2배(CH-18) |
+| FR-ANI-08 재생 속도 | docs/05 | `engine.ts`, `speedStore.ts` | 단 `engine.test.ts`·`speedStore.test.ts`, E `player.e2e.ts`(2×, 로컬 전체 E2E 전용) | 완료 | docs/01을 구현(0.75·1·1.5·2배)에 맞춤(CH-18, CH-46) |
 
 ## 4. 인증(FR-AUTH)
 
@@ -52,7 +52,7 @@
 | FR-AUTH-02 회원가입 | docs/03 2.4 | `SignupPage.tsx`, `password.ts`, `cognito.ts`, `infra/lib/auth-stack.ts` | 단 `auth.test.ts`, E `auth.e2e.ts`, 인 `auth-stack.test.ts`, S smoke:auth:signup | 완료 | 실제 인증 메일 수신은 사람 확인 |
 | FR-AUTH-03 로그인·로그아웃 | docs/03 2.4 | `LoginPage.tsx`, `auth/store.ts` | E `auth.e2e.ts`, S smoke:auth(실제 Cognito, 새로고침 유지) | 완료 | |
 | FR-AUTH-04 상태 표시 | docs/05 | `Layout.tsx` AccountBar | E `auth.e2e.ts`, `google.e2e.ts` | 완료 | |
-| FR-AUTH-05 비밀번호 재설정 | docs/03 2.4 | `ResetPage.tsx` | E `auth.e2e.ts`(가짜 인증) | 부분 테스트 | 실제 재설정 메일 경로는 사람 확인 |
+| FR-AUTH-05 비밀번호 재설정 | docs/03 2.4 | `ResetPage.tsx` | E `auth.e2e.ts`(성공, 틀린 코드면 예전 비밀번호 유지, 확인 불일치, 가입하지 않은 이메일도 같은 안내), 단 `auth.test.ts` | 완료 | 실제 메일 경로는 사람 확인(인증 메일 하루 50통 한도) |
 | FR-AUTH-06 회원 탈퇴 | docs/03 2.5 | `MePage.tsx`, `services/api/src/account.ts`·`cleanup.ts`·`orphans.ts` | 단 `api.test.ts`, E `progress.e2e.ts`, S smoke:progress(탈퇴·정리 후 0건), C check:aws | 완료 | |
 | FR-AUTH-07 Google 로그인 | docs/03 2.4 | `cognito.ts`, `CallbackPage.tsx`, `AuthForm.tsx`, `auth-stack.ts` | E `google.e2e.ts` @google(가짜 구글), 인 `auth-stack.test.ts`, C check:aws, 사 구글 체크리스트(docs/03) | 완료 | 실제 구글 로그인은 자동화 불가(사람 확인) |
 | FR-AUTH-08 탈퇴 재확인 | docs/03 2.5 | `account.ts` `reauthFresh()`, `cognito.ts` `verifyPassword`·`reauthWithGoogle` | 단 `api.test.ts`, E `google.e2e.ts`, S smoke:progress(5분 넘은 토큰 → 403) | 완료 | |
@@ -68,7 +68,7 @@
 | FR-PRG-04 읽음 필터 | docs/05 | `summary.ts`, `HomePage.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts` | 완료 | |
 | FR-PRG-05 진행률 | docs/02 규칙 | `summary.ts`, `ProgressSummary.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts`, S smoke:progress(다른 브라우저 같은 진행률) | 완료 | |
 | FR-PRG-06 이어서 보기 | docs/03 2.5 | `activity.ts`, `progress/recent.ts`, `HomePage.tsx`, `MePage.tsx` | 단 `api.test.ts`·`recent.test.ts`, E `progress.e2e.ts` @activity, S smoke:progress | 완료 | |
-| FR-PRG-07 비회원 기록 이전 | 없음 | 없음 | 없음 | **미구현** | 선택 요구사항 |
+| FR-PRG-07 비회원 기록 이전 | 없음 | 없음 | 없음 | **미구현(범위 제외)** | 이번 과제 범위에서 구현하지 않는 선택 기능. 이유는 9절 |
 
 ## 6. 콘텐츠(FR-CNT)
 
@@ -78,44 +78,43 @@
 | FR-CNT-02 스키마 검증 | docs/04 검증 규칙 | `index.ts` superRefine, `scene.ts` `checkScene`, `scripts/validate-content.ts` | 단 `index.test.ts`·`scene.test.ts`·`validate-content.test.ts`, verify(빌드 실패) | 완료 | |
 | FR-CNT-03 인덱스 자동 생성 | docs/04 | `scripts/build-index.ts` | 단 `validate-content.test.ts`, S smoke:prod(index.json = published 목록) | 완료 | |
 | FR-CNT-04 검수 상태 | docs/04 | `build-index.ts`(개발·배포 폴더 분리), Vite 설정 | S smoke:prod(published만), E `test:e2e:drafts` | 완료 | |
-| FR-CNT-05 용어 ID 불변 | CLAUDE.md 원칙 7, docs/02 규칙 | `summary.ts`(목록에 없는 용어 기록 제외) | 단 `summary.test.ts` | 부분 테스트 | ID를 바꾸지 않는 것은 절차 규칙이고 자동 검사 없음 |
+| FR-CNT-05 용어 ID 불변 | CLAUDE.md 원칙 7, docs/02 규칙, docs/04 검증 | `validate-content.ts` + `content/published-ids.json`, `summary.ts`(목록에 없는 용어 기록 제외) | 단 `validate-content.test.ts`(공개한 id의 파일이 없으면 오류, retired는 통과, 목록에 없는 published 오류), 단 `summary.test.ts` | 완료 | CH-45 |
 
 ## 7. 배포(FR-DEP)
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | FR-DEP-01 프론트엔드 호스팅 | docs/03 2.3 | `infra/lib/web-stack.ts` | 인 `web-stack.test.ts`, S smoke:prod, C check:aws | 완료 | |
-| FR-DEP-02 SPA 라우팅 | docs/03 2.5(6단계) | `web-stack.ts` SPA 라우팅 함수 | 인 `web-stack.test.ts`, S smoke:prod, C check:aws | **문서와 다름** | 대체 응답 대신 CloudFront Function, 없는 파일은 404(CH-26) |
+| FR-DEP-02 SPA 라우팅 | docs/03 2.5(6단계) | `web-stack.ts` SPA 라우팅 함수 | 인 `web-stack.test.ts`, S smoke:prod, C check:aws | 완료 | docs/01을 구현(CloudFront Function, 없는 파일 404)에 맞춤(CH-26, CH-46) |
 | FR-DEP-03 학습 진행 API | docs/03 2.5 | `infra/lib/api-stack.ts`, `services/api/src/handlers.ts` | 단 `api.test.ts`, 인 `api-stack.test.ts`, S smoke:progress(경로 전수), C check:aws | 완료 | |
 | FR-DEP-04 보안 응답 헤더 | docs/03 2.4 | `web-stack.ts`, `infra/lib/csp.ts` | 인 `web-stack.test.ts`, S smoke:prod·smoke:auth(CSP 위반 없음), C check:aws | 완료 | |
-| FR-DEP-05 자동 배포 | docs/03 2.6 | `.github/workflows/deploy.yml`, `scripts/ci-gate.ts`·`ci-gate-rules.ts`, `infra/lib/ci-stack.ts` | 단 `ci-gate-rules.test.ts`, 인 `ci-stack.test.ts`, CI 실행, C check:aws(CI 역할) | 완료(설명 범위 차이) | 관문을 거쳐 배포(CH-31) |
+| FR-DEP-05 자동 배포 | docs/03 2.6 | `.github/workflows/deploy.yml`, `scripts/ci-gate.ts`·`ci-gate-rules.ts`, `infra/lib/ci-stack.ts` | 단 `ci-gate-rules.test.ts`, 인 `ci-stack.test.ts`, CI 실행, C check:aws(CI 역할) | 완료 | docs/01을 관문 방식에 맞춤(CH-31, CH-46). CI가 변경 세트를 실제로 실행한 적은 아직 없음(docs/10) |
 
 ## 8. 비기능·설계 제약(NFR, DC)
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | NFR-01 보안 | docs/03 2.4~2.6 | API(토큰 sub로만 대상), Cognito, CSP, OIDC 역할 | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | |
-| NFR-02 성능·가용성 | docs/03 1.2 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `progress.e2e.ts`(API 실패해도 재생 끝까지), 측정 1회(11-18 LCP 230ms, CLS 0.00) | 부분 테스트 | "첫 화면 3초·기록 1초" 수치를 확인하는 자동 테스트 없음 |
-| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드 | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태) | 부분 테스트 | 요구사항은 360px, 확인은 375px 사람 보조 확인뿐 |
+| NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(홈·상세 LCP ≤ 2.5초, CLS ≤ 0.1, Lighthouse 데스크톱 네트워크 조건), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 부분 테스트 | "기록 조회·저장 1초"를 재는 자동 테스트 없음. LCP는 로컬 빌드 기준(CDN 거리 제외) |
+| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드 | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `narrow.e2e.ts` @narrow(360px: 홈·상세 8개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 1920px은 자동 검사 없음(기본 1440px) |
 | DC-01 프론트엔드 기술 | docs/06, CLAUDE.md 원칙 8 | R3F 장면, PlaybackEngine | S/검사 `check:bundle`(홈 묶음에 three 없음) | 완료 | |
 | DC-02 인프라·백엔드 | docs/03 2.2~2.3 | `infra/lib/*.ts` | 인 테스트 4개, C check:aws | 완료 | |
 | DC-03 콘텐츠 제작 방식 | docs/04, CLAUDE.md 원칙 1 | 용어 JSON + 플레이어 3종 | 단 `simulate.test.ts`(모든 용어×모드가 데이터만으로 끝까지) | 완료 | |
 
 ## 9. 따로 모은 항목
 
-**미구현**
-- FR-PRG-07 비회원 기록 이전(선택)
+**미구현(이번 과제 범위 제외)**
+- FR-PRG-07 비회원 기록 이전(선택). 구현하지 않는 이유:
+  - 전제가 되는 "비회원 읽음 기록의 브라우저 저장"이 지금 없다. 비회원은 끝까지 보면 로그인 안내만 받는다(FR-PRG-01). 이전 기능을 넣으려면 그 저장부터 새로 만들어야 한다.
+  - 옮길 때 서버 기록과 부딪히는 경우(서버에는 직접 "안 읽음", 브라우저에는 "읽음")의 규칙과 여러 건을 한 번에 쓰는 API가 더 필요해, 선택 요구사항에 비해 범위가 크다.
+  - 핵심 가치(시각화)와 필수 요구사항을 먼저 끝내기로 한 범위 결정(docs/01 7절 "범위 위험")을 따른다.
 
 **테스트 없음**
-- FR-EXP-04 검색 결과 없음 안내
-- FR-DTL-04 없는 용어 처리
+- 없음(11-21 보강: FR-EXP-04, FR-DTL-04에 E2E 추가)
 
 **부분 테스트**(자동 테스트가 일부만 확인)
-- FR-EXP-01 카드 구성, FR-EXP-02 비회원 카테고리 필터, FR-EXP-03 별칭·대소문자 검색
-- FR-DTL-01 상세 구성 순서, FR-DTL-03 참고 자료 표시
-- FR-AUTH-05 실제 재설정 메일(사람 확인)
-- FR-CNT-05 ID 불변(절차)
-- NFR-02 성능 수치, NFR-03 360px
+- NFR-02: "기록 조회·저장 1초"는 자동으로 재지 않는다(LCP·CLS·홈 묶음 크기는 자동 검사)
+- 11-21 보강으로 완료가 된 것: FR-EXP-01·02·03, FR-DTL-01·03, FR-AUTH-05(실제 메일은 계속 사람 확인), FR-CNT-05, NFR-03
 
 **문서와 다름**
-- FR-ANI-08 재생 속도 배수, FR-DEP-02 SPA 라우팅 방식
+- 없음(11-21 docs/01을 구현에 맞춤: FR-ANI-08, FR-DEP-02, FR-DEP-05, CH-46)

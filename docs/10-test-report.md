@@ -1,6 +1,6 @@
 # 테스트 계획·결과 보고서
 
-기준 시점: 2026-11-21, 커밋 `55d7297`(개인정보처리방침 정비까지 배포). 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
+기준 시점: 2026-11-21, 중간 점검 2차(빠진 테스트 보강: 탐색·상세·재설정 E2E, 360px, 성능, 공개 ID 검사). 운영 smoke·check:aws 수치는 커밋 `55d7297` 배포 때 것이다. 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
 
 ## 1. 테스트 계획(언제 무엇을 돌리나)
 
@@ -9,7 +9,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 시점 | 실행 | 비고 |
 | --- | --- | --- |
 | 코드를 고칠 때마다 | `npm run verify` | 콘텐츠 검증 → 단위·인프라 테스트 → 타입 검사·빌드 → 홈 묶음 검사(`check:bundle`) |
-| 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google` |
+| 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google`, `@explore`, `@narrow`, `@perf` |
 | push·배포 직전 | 전체 E2E(`npm run test:e2e`, draft가 있으면 `test:e2e:drafts`) | 실제 속도 테스트 2개 포함 |
 | 배포 뒤 | `smoke:prod`, `smoke:auth`, `smoke:progress`, `check:aws` | 인증 코드를 바꿨을 때만 `smoke:auth:signup`(인증 메일 1통) |
 | main push마다(CI) | verify → E2E(실제 속도 제외) → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
@@ -19,9 +19,9 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 | 수준 | 대상과 목적 | 테스트 수 | 최근 결과 | 실행 시간 |
 | --- | --- | --- | --- | --- |
-| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 176(파일 17개) | 통과 176 / 실패 0 (11-21) | verify 전체 약 30~46초(빌드 포함) |
+| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 178(파일 17개) | 통과 178 / 실패 0 (11-21) | verify 전체 약 30~46초(빌드 포함) |
 | 인프라(CDK assertions) | S3·CloudFront·헤더·캐시, Cognito·OAuth, API·Lambda 권한·일정, CI 역할 신뢰·권한, 템플릿 비ASCII·메일 해시 | 32(파일 4개) | 통과 32 / 실패 0 (11-21) | verify에 포함 |
-| E2E(Playwright, 데스크톱 1440×900) | 화면 흐름(가짜 인증·가짜 API), 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크) | 124(main 122 + 실제 속도 2) | 통과 124 / 실패 0 (11-21, 로컬) | 로컬 4.3~4.9분(workers 4), CI 약 9~14분(workers 2, 122개) |
+| E2E(Playwright, 데스크톱 1440×900. `@narrow`만 360×800) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px 레이아웃, LCP·CLS | 161(main 159 + 실제 속도 2) | 통과 161 / 실패 0 (11-21, 로컬) | 로컬 5.0분(workers 4), CI 약 9~14분(workers 2, 보강 전 122개 기준) |
 | smoke:prod | 운영 보안 헤더·CSP, SPA 라우팅·404, published 용어 상세·JSON, `/config.json`, 캐시 헤더 | 35 | 통과 35 / 실패 0 (11-21) | 2~3초 |
 | smoke:auth | 실제 Cognito: 로그인·새로고침 유지·로그아웃, CSP 위반 없음 | 8 | 통과 8 / 실패 0 (11-21) | 약 9초 |
 | smoke:progress | 실제 API: 토큰 검증(없음·변조·만료), 사용자 격리, 다른 브라우저 진행률, API 경로 전수 호출, 화면 탈퇴·정리, 오래된 토큰 탈퇴 거부, 고아 정리 | 41 | 통과 41 / 실패 0 (11-21) | 약 5분 45초(5분 넘은 토큰을 만들기 위한 대기 포함) |
@@ -36,7 +36,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | --- | --- |
 | 화면·플레이어 | `auth.test.ts`(17), `recent.test.ts`(2), `summary.test.ts`(3), `engine.test.ts`(18), `simulate.test.ts`(28), `speedStore.test.ts`(2), `lockState.test.ts`(3), `three/pure.test.ts`(13), `stackState.test.ts`(3), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2) |
 | 콘텐츠 스키마 | `index.test.ts`(15), `scene.test.ts`(24) |
-| 스크립트 | `validate-content.test.ts`(7), `ci-gate-rules.test.ts`(2), `changeset-prepare.test.ts`(3) |
+| 스크립트 | `validate-content.test.ts`(9, 공개 ID 검사 2개 추가), `ci-gate-rules.test.ts`(2), `changeset-prepare.test.ts`(3) |
 | API | `api.test.ts`(32) |
 | 인프라 | `web-stack.test.ts`(9), `auth-stack.test.ts`(7), `api-stack.test.ts`(8), `ci-stack.test.ts`(8) |
 
@@ -47,17 +47,32 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | `player.e2e.ts` | 43 + 실제 속도 2 | 용어 ID, `@csrf` | 재생 시작·모드 전환, 방어 모드 차단, 2D 대체, 모든 용어×모드 장면 기록과 단계별 자막·번호, 2× 속도 |
 | `scene-layout.e2e.ts` | 19 | 용어 ID | 단계마다 등장 행위자가 화면 안, 겹침 20% 이하, 라벨·도장 겹침 |
 | `a11y.e2e.ts` | 30 | 용어 ID, `@auth`, `@google` | 홈·상세 8개·계정 화면 4개·콜백·/privacy × 라이트·다크 axe(serious·critical 0) |
-| `auth.e2e.ts` | 10 | `@auth` | 가입·인증 코드·로그인·재설정, 존재 노출 방지, next 차단 5가지, 끝까지 본 뒤 로그인 안내 |
+| `auth.e2e.ts` | 12 | `@auth` | 가입·인증 코드·로그인·재설정(성공·틀린 코드·확인 불일치·가입 안 한 이메일), 존재 노출 방지, next 차단 5가지, 끝까지 본 뒤 로그인 안내 |
+| `explore.e2e.ts` | 19 | `@explore`, 용어 ID | 홈 카드 구성, 비회원 카테고리 필터, 검색 5가지(별칭·영문명·대소문자·요약), 검색+카테고리, 결과 없음 안내, 용어마다 상세 구성 순서·참고 자료, 없는 용어·없는 화면 |
+| `narrow.e2e.ts` | 14 | `@narrow` | 360×800에서 홈·상세 8개·로그인·가입·재설정·/me·/privacy의 가로 스크롤·화면 밖 요소 0 |
+| `perf.e2e.ts` | 2 | `@perf` | 홈·상세(CSRF) LCP·CLS(아래 "성능 기준") |
 | `progress.e2e.ts` | 7 | `@progress`, `@activity` | 읽음 저장·유지·되돌림, API 실패해도 재생, 홈 표시·필터·진행률, /me, 탈퇴, 최근 본 용어 |
 | `google.e2e.ts` | 5 | `@google` | 구글 로그인 흐름(가짜), 콜백 실패·코드 없음·사이트 밖 next, 구글 사용자 탈퇴 재확인, 푸터·/privacy |
 | `related.e2e.ts` | 8 | 용어 ID | 관련 용어 카드 순서·이동 |
+
+### 성능 기준(NFR-02)
+
+| 지표 | 기준 | 근거 | 최근 측정(11-21, 로컬 전체 E2E 중) | 검사 |
+| --- | --- | --- | --- | --- |
+| 첫 화면 LCP(홈·상세) | ≤ 2.5초 | web.dev Core Web Vitals "좋음" 기준. 요구사항 "첫 화면 3초 이내"보다 엄격하게 잡음 | 홈 936ms, 상세(CSRF) 1044ms | `perf.e2e.ts` |
+| CLS(홈·상세, 플레이어가 뜬 뒤까지) | ≤ 0.1 | web.dev "좋음" 기준 | 홈 0.023, 상세 0.000 (보강 전 홈 0.091, DF-46) | `perf.e2e.ts` |
+| 홈 진입 묶음 크기 | gzip ≤ 120KB, three.js 없음 | docs/06 5절(3D는 상세에서만 동적 로드) | 102.9KB | `check:bundle`(verify에 포함) |
+
+- 측정 조건: 네트워크를 Lighthouse 데스크톱 조건(왕복 40ms, 10Mbps)으로 늦추고, 로컬 테스트 빌드(`dist-e2e`)를 대상으로 E2E 병렬 실행(workers 4) 중에 잰다. CDN까지의 거리와 운영 캐시는 들어가지 않는다.
+- 테스트 빌드에는 장면 기록 코드가 있어 운영 묶음보다 조금 크다. 그래서 운영보다 불리한 쪽으로 잰다.
+- 요구사항의 "학습 기록 조회·저장 1초"는 자동으로 재지 않는다(아래 5절).
 
 ## 3. 테스트가 잡은 결함(docs/08 연결)
 
 | 수준 | 잡은 결함 | 그 뒤 추가한 검사 |
 | --- | --- | --- |
 | 단위·타입 검사 | DF-10(생성자 매개변수 속성) | CLAUDE.md 문법 규칙 |
-| E2E | DF-20(LockScene 2D로 떨어짐), DF-21·DF-22(겹침·화면 밖), DF-26(E2E 멈춤), DF-31(관련 용어 순서) | 장면 기록·겹침 검사, 멈춤 진단 리포터 |
+| E2E | DF-20(LockScene 2D로 떨어짐), DF-21·DF-22(겹침·화면 밖), DF-26(E2E 멈춤), DF-31(관련 용어 순서), DF-46(홈 CLS 0.091, 성능 측정) | 장면 기록·겹침 검사, 멈춤 진단 리포터, LCP·CLS 검사 |
 | 번들 검사(`check:bundle`) | DF-08(홈 묶음에 motion), DF-28(가짜 구현 청크가 운영 묶음에) | 가짜 구현 표시 검사 |
 | smoke | DF-33(최근 본 용어 GET 500, IAM 권한 누락), DF-36(탈퇴 정리 경쟁) | API 경로 전수 실제 호출, PR-07 |
 | check:aws | DF-39(조건 비교 키 순서) | 정렬 비교 |
@@ -84,9 +99,9 @@ GitHub Actions `deploy` 워크플로, 2026-11-20 ~ 21(UTC 기준 시작 시각).
 
 - **CI가 실제로 배포하는 경로**: 지금까지 모든 배포를 로컬에서 먼저 해서, CI의 "변경 세트 실행" 단계는 한 번도 실제로 돌지 않았다.
 - **smoke:auth:signup**: 8단계(구글 로그인, 인증 코드 변경) 뒤에는 다시 돌리지 않았다. CLAUDE.md는 인증 코드를 바꿔 배포했을 때 돌리게 되어 있다.
-- **성능 수치(NFR-02)**: 첫 화면 3초·기록 1초를 자동으로 재는 테스트가 없다. 측정은 11-18 Lighthouse·성능 기록 한 번(LCP 230ms, CLS 0.00)뿐이다.
-- **360px(NFR-03)**: 375px 사람 확인만 했다.
-- **탐색 일부**: 검색 결과 없음 안내(FR-EXP-04), 없는 용어 페이지(FR-DTL-04)는 자동 테스트가 없다.
+- **기록 API 응답 시간(NFR-02 "1초")**: 자동으로 재지 않는다. 첫 화면 LCP·CLS와 홈 묶음 크기는 자동 검사가 있지만(2절 "성능 기준") 운영 CDN이 아니라 로컬 빌드 기준이다.
+- **1920px(NFR-03)**: 자동 검사는 1440px(기본)과 360px(`@narrow`)뿐이다.
+- **CI에서 새 E2E 37개**: 이 문서 기준으로 아직 CI에서 돌지 않았다(다음 push부터 돈다). `@perf`는 CI 러너(GPU 없음, workers 2)에서 수치가 로컬보다 크게 나올 수 있다.
 - **실제 메일·구글 경로**: 가입·재설정 메일과 구글 로그인은 사람이 직접 확인했고 자동 테스트는 가짜 구현 위에서만 돈다.
 - **고아 정리 일정의 실제 실행**: 매일 03:00 Scheduler 실행은 아직 결과를 확인하지 않았다(smoke는 함수를 직접 실행해 확인).
 - **실제 속도 E2E 2개**: GPU가 없는 CI에서는 돌지 않고 로컬 전체 E2E에서만 돈다.

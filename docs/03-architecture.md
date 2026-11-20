@@ -437,7 +437,7 @@ flowchart TB
 | account Lambda → **EventBridge**(MemberWithdrawn 이벤트) → progress·activity가 기록 삭제, 실패 시 SQS DLQ | AccountFn이 탈퇴 표시 → **SQS 정리 큐**(10초 지연) → Cognito 삭제, **정리 Lambda 하나**가 두 테이블을 지움, 5번 실패하면 DLQ(14일)·경보 | CH-27, CH-29, CH-40 |
 | account `DELETE /me`, `/progress`, `/activity` | `/api/account`·`/api/progress`·`/api/activity`, 브라우저는 CloudFront `/api/*`를 거쳐 같은 출처로 부름 | CH-26 |
 | CloudFront: HTTPS·OAC·응답 헤더 정책, 403/404 → index.html | 같음 + **SPA 라우팅 함수**(확장자 없는 화면 주소만 index.html, 없는 파일은 404), `/api/*` 동작, 캐시 정책 3가지 | CH-14, CH-26 |
-| Route 53(선택)·ACM 인증서(us-east-1) | 쓰지 않음. CloudFront 기본 도메인(`*.cloudfront.net`) | 1단계 결정(`a31fb77`·`f7e3588`), 변경 이력 미기재 |
+| Route 53(선택)·ACM 인증서(us-east-1) | 쓰지 않음. CloudFront 기본 도메인(`*.cloudfront.net`). 이유: 과제 범위와 비용(도메인 연 1~2만 원, Route 53 호스팅 영역 월 $0.5). 구글 승인 도메인도 이 주소 | CH-44 |
 | Cognito User Pool(가입·로그인·인증·재설정) | **Essentials**, 로그인 도메인(managed login, 인가 코드 + PKCE), **Google IdP**, Secrets Manager | CH-35, CH-36 |
 | GitHub Actions → S3 업로드·캐시 무효화·CDK 배포(권한 방식 미정) | **OIDC 역할**(이 저장소 main만, 변하지 않는 sub) → CDK 부트스트랩 역할, 보안·변경 관문 뒤 변경 세트 실행 | CH-31, CH-34, CH-41 |
 | (없음) | **고아 기록 정리**: Scheduler(프로젝트 전용 그룹, 매일 03:00) → OrphanSweepFn → 정리 큐 | CH-39, CH-42 |

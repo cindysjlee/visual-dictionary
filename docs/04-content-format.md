@@ -158,6 +158,7 @@
 
 - 스키마 위반(필수 필드 누락, 허용되지 않은 값)
 - 파일명과 `id` 불일치, 중복 `id`
+- 한 번 공개한 `id`(`content/published-ids.json`)의 파일이 없음(이름 변경·삭제), `published` 용어가 그 목록에 없음. 처음 공개할 때 목록에 `id`를 추가하고, 내릴 때는 파일을 지우지 말고 `status`를 `retired`로 둔다(FR-CNT-05)
 - `actors`에 없는 `from`/`to`
 - `playerType`에 맞지 않는 `action` (예: flow인데 push)
 - `blockedAtStep`이 단계 수를 넘음, `blockedAtStep`이 있는데 `blockedLabel`/`blockedCaption` 없음

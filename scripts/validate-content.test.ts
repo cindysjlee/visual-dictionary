@@ -28,6 +28,23 @@ describe("loadTerms", () => {
     expect(loadTerms(dir).errors).toEqual(["csrf.json: scenario.steps[4].to - actors에 없는 행위자: nobody"]);
   });
 
+  it("공개했던 id의 파일이 없으면(이름 변경·삭제) 오류, retired로 남기면 통과 (FR-CNT-05)", () => {
+    const dir = tempDir();
+    const csrf = JSON.parse(readFileSync(csrfPath, "utf8"));
+    writeFileSync(join(dir, "xsrf.json"), JSON.stringify({ ...csrf, id: "xsrf" }));
+    expect(loadTerms(dir, ["csrf", "xsrf"]).errors).toEqual([
+      `published-ids.json: "csrf" - 공개했던 용어의 파일이 없습니다. id는 바꾸지 말고, 내리려면 status를 retired로 두세요`,
+    ]);
+    writeFileSync(join(dir, "csrf.json"), JSON.stringify({ ...csrf, status: "retired" }));
+    expect(loadTerms(dir, ["csrf", "xsrf"]).errors).toEqual([]);
+  });
+
+  it("published 용어가 공개 id 목록에 없으면 오류", () => {
+    const dir = tempDir();
+    copyFileSync(csrfPath, join(dir, "csrf.json"));
+    expect(loadTerms(dir, []).errors).toEqual([`csrf.json: id - 공개하는 용어는 content/published-ids.json에 "csrf"를 추가하세요(한 번 넣으면 지우지 않음)`]);
+  });
+
   it("없는 related는 경고만 낸다", () => {
     const dir = tempDir();
     copyFileSync(csrfPath, join(dir, "csrf.json"));

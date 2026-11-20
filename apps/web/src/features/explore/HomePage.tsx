@@ -98,16 +98,15 @@ function FeaturedCard({ entry, label }: { entry: IndexEntry; label: string }) {
         <div className="featured-name">{entry.name}</div>
         <p className="muted">{entry.summary}</p>
       </div>
-      {term && (
-        <ol className="step-list" aria-label={`${entry.name} 진행 단계`}>
-          {term.scenario.steps.map((step, i) => (
-            <li key={i} className={i + 1 === blockedAt ? "is-blocked" : step.danger ? "is-danger" : undefined}>
-              <span className="step-no">{String(i + 1).padStart(2, "0")}</span>
-              <span>{step.title}</span>
-            </li>
-          ))}
-        </ol>
-      )}
+      {/* 용어를 받기 전에도 단계 수만큼 줄을 그려 자리를 잡는다(아래 카드가 밀리지 않게, CLS) */}
+      <ol className="step-list" aria-label={`${entry.name} 진행 단계`} aria-busy={!term}>
+        {(term?.scenario.steps ?? Array.from({ length: entry.stepCount }, () => undefined)).map((step, i) => (
+          <li key={i} className={i + 1 === blockedAt ? "is-blocked" : step?.danger ? "is-danger" : undefined}>
+            <span className="step-no">{String(i + 1).padStart(2, "0")}</span>
+            <span>{step?.title ?? " "}</span>
+          </li>
+        ))}
+      </ol>
       <div className="featured-foot">
         {blockedAt && (
           <span className="defense-note">

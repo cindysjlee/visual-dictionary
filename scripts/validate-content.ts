@@ -5,11 +5,14 @@ import { fileURLToPath } from "node:url";
 import { termSchema, type Term } from "@app/content-schema";
 
 export const TERMS_DIR = fileURLToPath(new URL("../content/terms/", import.meta.url));
+/** 한 번이라도 공개(published)한 용어 id. 학습 기록의 키라 바꾸거나 지우지 않는다(FR-CNT-05). 용어를 내리려면 status를 retired로 */
+export const PUBLISHED_IDS = fileURLToPath(new URL("../content/published-ids.json", import.meta.url));
+const readPublishedIds = () => JSON.parse(readFileSync(PUBLISHED_IDS, "utf8")) as string[];
 
 const formatPath = (path: PropertyKey[]) =>
   path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("").replace(/^\./, "") || "(전체)";
 
-export function loadTerms(dir = TERMS_DIR) {
+export function loadTerms(dir = TERMS_DIR, publishedIds: string[] | undefined = dir === TERMS_DIR ? readPublishedIds() : undefined) {
   const terms: Term[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -43,6 +46,16 @@ export function loadTerms(dir = TERMS_DIR) {
       warnings.push(`${file}: defenses - 보안 용어는 방어 기법 1개 이상 권장`);
     }
     terms.push(term);
+  }
+
+  // 임시 폴더로 도는 단위 테스트는 목록을 넘길 때만 검사한다
+  for (const id of publishedIds ?? []) {
+    if (!fileById.has(id)) errors.push(`published-ids.json: "${id}" - 공개했던 용어의 파일이 없습니다. id는 바꾸지 말고, 내리려면 status를 retired로 두세요`);
+  }
+  for (const term of terms) {
+    if (publishedIds && term.status === "published" && !publishedIds.includes(term.id)) {
+      errors.push(`${fileById.get(term.id)}: id - 공개하는 용어는 content/published-ids.json에 "${term.id}"를 추가하세요(한 번 넣으면 지우지 않음)`);
+    }
   }
 
   for (const term of terms) {

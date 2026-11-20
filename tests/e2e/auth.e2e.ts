@@ -108,6 +108,44 @@ test("비밀번호 재설정: 코드와 새 비밀번호 → 새 비밀번호로
   await expect(bar(page)).toContainText("reset@example.com");
 });
 
+/** 재설정 화면에서 이메일을 넣고 코드 단계까지 간다 */
+async function startReset(page: Page, email: string) {
+  await page.goto("/auth/reset");
+  await expect(page.getByRole("heading", { name: "비밀번호 재설정" })).toBeVisible();
+  await field(page, "이메일").fill(email);
+  await page.getByRole("button", { name: "인증 코드 받기" }).click();
+  await expect(page.getByRole("status")).toContainText("가입된 이메일이라면");
+}
+
+test("비밀번호 재설정 실패: 틀린 코드는 거부되고 예전 비밀번호가 그대로, 확인이 다르면 보내기 전에 막는다", tag, async ({ page }) => {
+  await seedUser(page, "reset-fail@example.com");
+  await startReset(page, "reset-fail@example.com");
+  await field(page, "인증 코드").fill("000000");
+  await field(page, "새 비밀번호").fill("new12345");
+  await field(page, "새 비밀번호 확인").fill("new12345");
+  await page.getByRole("button", { name: "비밀번호 바꾸기" }).click();
+  await expect(page.getByRole("alert")).toContainText("인증 코드가 맞지 않아요");
+
+  await field(page, "인증 코드").fill(CODE);
+  await field(page, "새 비밀번호 확인").fill("new12399");
+  await page.getByRole("button", { name: "비밀번호 바꾸기" }).click();
+  await expect(page.getByRole("alert")).toContainText("비밀번호 확인이 일치하지 않아요");
+  await expect(page).toHaveURL(/\/auth\/reset$/);
+
+  await page.goto("/auth/login");
+  await login(page, "reset-fail@example.com");
+  await expect(bar(page)).toContainText("reset-fail@example.com");
+});
+
+test("비밀번호 재설정: 가입하지 않은 이메일도 같은 안내(존재 노출 방지)이고 코드 단계에서 실패한다", tag, async ({ page }) => {
+  await startReset(page, "nobody@example.com");
+  await field(page, "인증 코드").fill(CODE);
+  await field(page, "새 비밀번호").fill("new12345");
+  await field(page, "새 비밀번호 확인").fill("new12345");
+  await page.getByRole("button", { name: "비밀번호 바꾸기" }).click();
+  await expect(page.getByRole("alert")).toContainText("인증 코드가 맞지 않아요");
+});
+
 for (const next of ["//evil.com", "/\\evil.com", "https://evil.com", "javascript:alert(1)"]) {
   test(`next 차단: ${next} → 로그인 뒤 사이트 첫 화면(/)`, tag, async ({ page, baseURL }) => {
     await seedUser(page, "safe@example.com");
