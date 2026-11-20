@@ -5,6 +5,7 @@
 //                                       없으면 변경이 있는 스택 목록을 GITHUB_OUTPUT stacks에 남긴다(배포 단계가 같은 변경 세트를 실행)
 // 로컬에서도 돌릴 수 있다(프로필 vd). 출력·요약의 12자리 숫자(계정 ID)는 가린다
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { isRisky, realChanges, type ResourceChange } from "./ci-gate-rules.ts";
@@ -18,10 +19,13 @@ const redact = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "").replace(/\b\d{12}
 const summary = (md: string) => (process.env.GITHUB_STEP_SUMMARY ? appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`) : console.log(md));
 const output = (line: string) => (process.env.GITHUB_OUTPUT ? appendFileSync(process.env.GITHUB_OUTPUT, `${line}\n`) : console.log(`[output] ${line}`));
 const run = (cmd: string, args: string[], cwd?: string) => {
-  const r = spawnSync(cmd, args, { cwd, encoding: "utf8", shell: process.platform === "win32", maxBuffer: 64 * 1024 * 1024 });
+  // 셸을 거치지 않는다(인자를 배열 그대로 넘김, DEP0190 없음). aws·gh·git은 실행 파일이라 Windows에서도 셸이 필요 없다
+  const r = spawnSync(cmd, args, { cwd, encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
   return { status: r.status ?? 1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 };
-const cdk = (...args: string[]) => run("npx", ["cdk", ...args, ...profile], infraDir);
+// npx는 Windows에서 .cmd라 셸 없이 못 띄운다: Node로 CDK CLI의 JS 진입점을 직접 실행한다(같은 CDK 버전)
+const CDK_BIN = createRequire(import.meta.url).resolve("aws-cdk/bin/cdk");
+const cdk = (...args: string[]) => run(process.execPath, [CDK_BIN, ...args, ...profile], infraDir);
 const stop = (title: string, reason: string, detail: string) => {
   summary(`## 배포 멈춤: ${title}\n\n${reason}\n\n\`\`\`\n${redact(detail).slice(0, 30_000)}\n\`\`\``);
   console.error(`배포 멈춤: ${title}`);

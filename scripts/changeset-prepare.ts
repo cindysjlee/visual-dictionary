@@ -3,6 +3,7 @@
 // --method=prepare-change-set과 --require-approval never는 여기 고정한다(IAM 변경이 섞이면 prepare도 확인을 요구하므로). 실행 옵션은 받지 않는다.
 // 확인한 변경 세트의 실행은 사용자 "승인" 뒤에만: cdk deploy <스택> --exclusively --method=execute-change-set --change-set-name <이름> (CLAUDE.md)
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const STACKS = ["VisualDictionaryAuth", "VisualDictionaryApi", "VisualDictionaryWeb", "VisualDictionaryCi"] as const;
@@ -31,7 +32,10 @@ if (import.meta.main) {
   const { stack, name } = parsed;
   const profile = ["--profile", process.env.AWS_PROFILE ?? "vd"];
   const infraDir = fileURLToPath(new URL("../infra/", import.meta.url));
-  const run = (cmd: string, args: string[], cwd?: string) => spawnSync(cmd, args, { cwd, encoding: "utf8", shell: process.platform === "win32", maxBuffer: 64 * 1024 * 1024 });
+  // 셸을 거치지 않는다(인자를 배열 그대로 넘김, DEP0190 없음). aws·gh·git은 실행 파일이라 Windows에서도 셸이 필요 없다
+  const run = (cmd: string, args: string[], cwd?: string) => spawnSync(cmd, args, { cwd, encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
+  // npx는 Windows에서 .cmd라 셸 없이 못 띄운다: Node로 CDK CLI의 JS 진입점을 직접 실행한다(같은 CDK 버전)
+  const cdkBin = createRequire(import.meta.url).resolve("aws-cdk/bin/cdk");
 
   // CI 스택은 OIDC sub를 CDK context로 받는다(저장소 파일에 적지 않음, docs/03 2.6). GitHub가 실제로 보내는 값에서 만든다
   const context: string[] = [];
@@ -46,8 +50,8 @@ if (import.meta.main) {
   }
 
   const prepared = run(
-    "npx",
-    ["cdk", "deploy", stack, "--exclusively", "--method=prepare-change-set", "--change-set-name", name, "--require-approval", "never", ...context, ...profile],
+    process.execPath,
+    [cdkBin, "deploy", stack, "--exclusively", "--method=prepare-change-set", "--change-set-name", name, "--require-approval", "never", ...context, ...profile],
     infraDir,
   );
   if (prepared.status !== 0) {
