@@ -6,8 +6,8 @@ import { CSP, LOGIN_DOMAIN_PREFIX, SITE_ORIGIN } from "../infra/lib/csp.ts";
 
 const OAUTH_CALLBACK = `${SITE_ORIGIN}/auth/callback`;
 const OAUTH_LOGOUT = `${SITE_ORIGIN}/`;
-/** 앱 클라이언트의 로그인 수단. 구글 IdP를 붙이면 "Google"을 더한다(8a 후반) */
-const IDENTITY_PROVIDERS = ["COGNITO"] as const;
+/** 앱 클라이언트의 로그인 수단: 이메일(COGNITO)과 구글(8단계) */
+const IDENTITY_PROVIDERS = ["COGNITO", "Google"] as const;
 
 const REGION = "ap-northeast-2";
 // CI(GitHub Actions)는 OIDC로 받은 환경 자격 증명을 쓴다. 로컬은 프로필 vd

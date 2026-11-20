@@ -93,7 +93,9 @@ describe("WebStack", () => {
     });
     expect(CSP).toContain("frame-ancestors 'none'");
     // 연결 대상은 자기 사이트와 서울 사용자 풀 엔드포인트뿐(와일드카드 없음, FR-DEP-04)
-    expect(CSP.split("; ").find((d) => d.startsWith("connect-src"))).toBe("connect-src 'self' https://cognito-idp.ap-northeast-2.amazonaws.com");
+    expect(CSP.split("; ").find((d) => d.startsWith("connect-src"))).toBe(
+      "connect-src 'self' https://cognito-idp.ap-northeast-2.amazonaws.com https://visual-dictionary-auth.auth.ap-northeast-2.amazoncognito.com",
+    );
     expect(CSP).not.toContain("*");
   });
 

@@ -46,16 +46,27 @@ describe("AuthStack", () => {
     });
   });
 
-  it("OAuth: 인가 코드만(implicit·example.com 없음), 콜백·로그아웃은 이 사이트, 로그인 수단은 아직 COGNITO만", () => {
+  it("OAuth: 인가 코드만(implicit·example.com 없음), 콜백·로그아웃은 이 사이트, 로그인 수단은 이메일(COGNITO)과 Google", () => {
     template.hasResourceProperties("AWS::Cognito::UserPoolClient", {
       AllowedOAuthFlowsUserPoolClient: true,
       AllowedOAuthFlows: ["code"],
       AllowedOAuthScopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
       CallbackURLs: ["https://d1y3rvak3nd08u.cloudfront.net/auth/callback"],
       LogoutURLs: ["https://d1y3rvak3nd08u.cloudfront.net/"],
-      SupportedIdentityProviders: ["COGNITO"],
+      SupportedIdentityProviders: ["COGNITO", "Google"],
     });
     expect(JSON.stringify(template.toJSON())).not.toContain("example.com");
+  });
+
+  it("구글 IdP: 클라이언트 ID·비밀값은 Secrets Manager dynamic reference로만, 범위 openid email profile, email·email_verified 매핑", () => {
+    const idp = Object.values(template.findResources("AWS::Cognito::UserPoolIdentityProvider"))[0]!.Properties;
+    expect(idp.ProviderName).toBe("Google");
+    expect(idp.ProviderType).toBe("Google");
+    expect(idp.ProviderDetails.authorize_scopes).toBe("openid email profile");
+    const ref = (field: string) => `{{resolve:secretsmanager:visual-dictionary/google-oauth:SecretString:${field}::}}`;
+    expect(idp.ProviderDetails.client_id).toBe(ref("client_id"));
+    expect(idp.ProviderDetails.client_secret).toBe(ref("client_secret"));
+    expect(idp.AttributeMapping).toEqual({ email: "email", email_verified: "email_verified" });
   });
 
   it("로그인 도메인: 접두어 visual-dictionary-auth, managed login(버전 2), Cognito 기본 브랜딩", () => {

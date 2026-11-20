@@ -13,7 +13,8 @@ export const CSP = [
   "style-src 'self'",
   "font-src 'self'",
   "img-src 'self' data:",
-  `connect-src 'self' ${COGNITO_ORIGIN}`,
+  // 로그인 도메인: 구글 로그인 뒤 Amplify가 인가 코드를 토큰으로 바꾸고(/oauth2/token) 로그아웃 때 토큰을 취소한다(/oauth2/revoke). 화면 이동은 CSP 대상이 아니다
+  `connect-src 'self' ${COGNITO_ORIGIN} ${LOGIN_ORIGIN}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

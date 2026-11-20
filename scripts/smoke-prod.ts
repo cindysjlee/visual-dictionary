@@ -5,7 +5,7 @@ const TERMS_DIR = new URL("../content/terms/", import.meta.url);
 const base = (process.argv[2] ?? process.env.SITE_URL ?? "https://d1y3rvak3nd08u.cloudfront.net").replace(/\/$/, "");
 
 const EXPECTED_HEADERS: Record<string, string> = {
-  // CloudFront에 넣은 값과 같은 상수(infra/lib/csp.ts): connect-src는 'self'와 서울 사용자 풀 엔드포인트뿐
+  // CloudFront에 넣은 값과 같은 상수(infra/lib/csp.ts): connect-src는 'self'와 서울 사용자 풀 엔드포인트, 로그인 도메인(구글 로그인 토큰 교환)뿐
   "content-security-policy": CSP,
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-frame-options": "DENY",

@@ -1,5 +1,5 @@
 // 회원 인증: Cognito 사용자 풀(Essentials) + 웹 앱 클라이언트 + 로그인 도메인. FR-AUTH-02·03·05·07, NFR-01 (docs/03 인증)
-import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, type StackProps } from "aws-cdk-lib";
 import {
   AccountRecovery,
   CfnManagedLoginBranding,
@@ -7,9 +7,11 @@ import {
   ManagedLoginVersion,
   Mfa,
   OAuthScope,
+  ProviderAttribute,
   UserPool,
   UserPoolClient,
   UserPoolClientIdentityProvider,
+  UserPoolIdentityProviderGoogle,
   UserPoolEmail,
   VerificationEmailStyle,
 } from "aws-cdk-lib/aws-cognito";
@@ -19,6 +21,8 @@ import { LOGIN_DOMAIN_PREFIX, LOGIN_ORIGIN, SITE_ORIGIN } from "./csp.ts";
 /** OAuth 콜백·로그아웃 주소(8단계 구글 로그인). 개발 서버는 가짜 인증이라 localhost는 등록하지 않는다 */
 export const OAUTH_CALLBACK = `${SITE_ORIGIN}/auth/callback`;
 export const OAUTH_LOGOUT = `${SITE_ORIGIN}/`;
+/** 구글 OAuth 클라이언트(키 client_id·client_secret). 사용자가 콘솔에서 넣고, 템플릿에는 dynamic reference만 남는다 */
+export const GOOGLE_SECRET_NAME = "visual-dictionary/google-oauth";
 
 /** 토큰 유효 시간: 액세스·ID 1시간, 리프레시 30일(브라우저를 닫았다 열어도 로그인 유지, FR-AUTH-03) */
 export const TOKEN_VALIDITY = { access: Duration.hours(1), id: Duration.hours(1), refresh: Duration.days(30) };
@@ -70,9 +74,20 @@ export class AuthStack extends Stack {
         callbackUrls: [OAUTH_CALLBACK],
         logoutUrls: [OAUTH_LOGOUT],
       },
-      // 구글은 8a 후반(Google 콘솔·Secrets Manager 준비 뒤)에 추가한다
-      supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO, UserPoolClientIdentityProvider.GOOGLE],
     });
+
+    // 구글 로그인(FR-AUTH-07). 같은 이메일의 이메일 가입 계정과 합치지 않는다(연결 트리거 없음, docs/03).
+    // 클라이언트 ID·비밀값은 Secrets Manager에서 CloudFormation dynamic reference로 읽는다(값이 템플릿·저장소에 남지 않음)
+    const google = new UserPoolIdentityProviderGoogle(this, "Google", {
+      userPool: this.userPool,
+      clientId: SecretValue.secretsManager(GOOGLE_SECRET_NAME, { jsonField: "client_id" }).unsafeUnwrap(),
+      clientSecretValue: SecretValue.secretsManager(GOOGLE_SECRET_NAME, { jsonField: "client_secret" }),
+      scopes: ["openid", "email", "profile"],
+      // email_verified를 매핑하지 않으면 Cognito가 이메일을 미인증으로 본다
+      attributeMapping: { email: ProviderAttribute.GOOGLE_EMAIL, emailVerified: ProviderAttribute.GOOGLE_EMAIL_VERIFIED },
+    });
+    this.client.node.addDependency(google);
 
     // 로그인 도메인: managed login(Essentials). 화면은 Cognito 기본 모양(브랜딩)을 쓰고, 앱은 identity_provider=Google로 구글 화면에 바로 보낸다
     this.userPool.addDomain("LoginDomain", {
