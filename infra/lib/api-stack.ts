@@ -119,7 +119,8 @@ export class ApiStack extends Stack {
     sweep.addToRolePolicy(new PolicyStatement({ actions: ["cognito-idp:ListUsers"], resources: [props.userPool.userPoolArn] }));
     // 이 프로젝트 전용 일정 그룹: Scheduler 역할의 신뢰 조건(aws:SourceArn)이 계정 전체 default 그룹이 아니라 이 그룹으로 좁혀진다
     const scheduleGroup = new ScheduleGroup(this, "Schedules", { scheduleGroupName: "visual-dictionary", removalPolicy: RemovalPolicy.DESTROY });
-    new Schedule(this, "OrphanSweepDaily", {
+    // 논리 ID를 바꿔 새 그룹에 새 일정을 만들고 default 그룹의 예전 일정은 지운다(그룹 변경을 제자리 수정으로 하면 Scheduler가 NotFound로 실패)
+    new Schedule(this, "OrphanSweepSchedule", {
       scheduleGroup,
       description: "Daily orphan record sweep: records of users deleted directly in Cognito go to the cleanup queue",
       schedule: ScheduleExpression.cron({ minute: "0", hour: "3", timeZone: TimeZone.ASIA_SEOUL }),
