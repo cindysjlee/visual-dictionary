@@ -16,6 +16,10 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 | `docs/04-content-format.md` | 용어 JSON 형식과 검증 규칙 (**콘텐츠 작업 전 필독**) |
 | `docs/05-ui-design.md` | 화면 구조(IA), 디자인 컨셉, 색·글꼴 |
 | `docs/06-3d-player.md` | 3D 플레이어 설계: 공간·카메라·효과 어휘·대체 화면 (**플레이어 작업 전 필독**) |
+| `docs/07-change-log.md` | 변경 이력(CH-*, 과정 규칙 PR-*) |
+| `docs/08-defect-log.md` | 결함 기록(DF-*) |
+| `docs/09-traceability.md` | 요구사항 추적 매트릭스(요구사항→설계→코드→테스트) |
+| `docs/10-test-report.md` | 테스트 계획·결과 보고서 |
 | `docs/examples/*.json` | CSRF(흐름형), 콜 스택(스택형), 데드락(점유형) 예시 데이터 |
 
 ## 반드시 지킬 설계 원칙

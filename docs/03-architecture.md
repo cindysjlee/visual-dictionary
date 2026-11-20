@@ -8,7 +8,18 @@
 
 요구사항 명세의 서브시스템(SS-01~SS-07)을 출발점으로, 실제로 코드가 나뉘는 단위에 맞게 6개 서브시스템으로 다시 정리했다.
 
-![서브시스템 분해도](images/subsystems.png)
+```mermaid
+flowchart TB
+  root["보안·CS 개념 시각화 사전"]
+  root --> S1["<b>S1 공통</b><br/>레이아웃·상단바·푸터<br/>라우팅·없는 페이지<br/>디자인 토큰·테마<br/>옛 청크 1회 새로고침"]
+  root --> S2["<b>S2 콘텐츠</b><br/>용어 JSON·Zod 스키마<br/>장면 검증(checkScene)<br/>인덱스 생성·draft 분리"]
+  root --> S3["<b>S3 탐색</b><br/>용어 목록·카테고리<br/>검색·결과 없음<br/>읽음 표시·필터"]
+  root --> S4["<b>S4 시각화</b><br/>상세 페이지<br/>PlaybackEngine·컨트롤·자막·속도<br/>3D Flow·Stack·Lock 장면<br/>방어·해결 모드, 2D 대체"]
+  root --> S5["<b>S5 인증</b><br/>가입·이메일 인증·로그인<br/>비밀번호 재설정<br/>Google 로그인·콜백<br/>탈퇴(재확인)·개인정보처리방침"]
+  root --> S6["<b>S6 학습 진행</b><br/>읽음 기록·진행률<br/>최근 본 용어·내 학습<br/>탈퇴 정리·고아 기록 정리"]
+```
+
+예전 제출본 그림은 1.6절에 있다.
 
 | 서브시스템 | 책임 | 관련 요구사항 |
 | --- | --- | --- |
@@ -25,7 +36,16 @@
 
 각 서브시스템을 Frontend, Backend, Database 계층으로 나누면 다음과 같다.
 
-![서브시스템별 계층 상세도](images/layers.png)
+| | Frontend(브라우저, React) | Backend(Lambda·관리형·빌드) | Database(DynamoDB·S3·Cognito) |
+| --- | --- | --- | --- |
+| S1 공통 | `Layout`·`main.tsx` 라우터·`NotFoundPage`·`useJson`·디자인 토큰 | API Gateway JWT 인가(토큰 확인), 핸들러별 입력 검증·공통 응답 형식 | 없음(정적 파일만) |
+| S2 콘텐츠 | `content-schema`(스키마·타입 공유) | `validate-content`·`build-index`(빌드 시) | `content/terms/*.json`(원본), `/content/index.json`·`/content/terms/{id}.json`(배포본, S3) |
+| S3 탐색 | `HomePage`(카테고리·검색·카드·읽음 필터) | 없음 | `index.json` 읽기 |
+| S4 시각화 | `TermPage`, `PlaybackEngine`(`engine.ts`), `PlayerShell`, `FlowScene`·`StackScene`·`LockScene`, `StepList2D` | 없음 | `terms/{id}.json` 읽기 |
+| S5 인증 | `LoginPage`·`SignupPage`·`ConfirmPage`·`ResetPage`·`CallbackPage`, 인증 저장소(`auth/store.ts`), `PrivacyPage` | Cognito 사용자 풀(Essentials, 로그인 도메인, Google IdP), Account API(탈퇴, 재인증 5분) | Cognito 사용자 저장소, Secrets Manager(Google 클라이언트) |
+| S6 학습 진행 | `StudyCard`·`ProgressSummary`·`MePage`, 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
+
+예전 제출본 그림은 1.6절에 있다.
 
 이 표에서 가장 중요한 특징은 **탐색(S3)과 시각화(S4)에 백엔드가 없다**는 점이다. 용어 콘텐츠는 운영 중에 바뀌지 않고 배포할 때만 바뀌므로, S2가 빌드 시점에 데이터 파일을 검증해 `/content/index.json`(목록·검색용)과 `/content/terms/{id}.json`(용어별 상세·시나리오)으로 만들어 두고, 브라우저는 이 정적 파일만 읽는다. 그래서 학습 기록 API가 멈춰도 용어 조회와 애니메이션 재생은 그대로 동작한다(NFR-02).
 
@@ -164,6 +184,25 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 워크플로 | `.github/workflows/deploy.yml` |
 | 배포된 리소스 설정 확인(읽기 전용) | `scripts/check-aws.ts` (`npm run check:aws`) |
 
+### 1.6 예전 제출본 모듈뷰와 달라진 점
+
+예전 제출본 그림(첫 커밋 `a31fb77`):
+
+![서브시스템 분해도(예전 제출본)](images/subsystems.png)
+
+![서브시스템별 계층 상세도(예전 제출본)](images/layers.png)
+
+| 위치 | 예전 제출본 | 현재 | 변경 ID(docs/07) |
+| --- | --- | --- | --- |
+| S1 Backend | 토큰 확인 미들웨어·입력 검증·공통 오류 응답 형식 | 토큰 확인은 API Gateway JWT 인가가 하고, 입력 검증은 각 핸들러(`progress.ts`·`activity.ts`·`account.ts`)가 한다. 공통 미들웨어 모듈은 없다 | 6단계 구현(`f153763`), 변경 이력 미기재 |
+| S1 Frontend | apiClient | 기능별 호출(`progress/http.ts`)과 같은 출처 `/api/*` | CH-26 |
+| S4 Frontend | FlowPlayer·StackPlayer·LockPlayer(SVG), DefenseToggle | 3D 장면 `FlowScene`·`StackScene`·`LockScene`(R3F), 방어·해결 모드 탭, 재생 속도, 2D 대체 화면 | CH-08, CH-18, CH-21 |
+| S5 Frontend | AuthProvider(토큰 관리) | 인증 저장소(`auth/store.ts`, Amplify는 동적 import), Google 콜백, 개인정보처리방침 | CH-35, CH-38 |
+| S5 Backend | Cognito User Pool, Account API | Cognito(Essentials, 로그인 도메인, Google IdP), Account API가 재인증(`auth_time` 5분)을 검사 | CH-35, CH-36, CH-37 |
+| S6 Frontend | ReadToggle·ReadFilter·ProgressSummary·RecentList·progressApi | `StudyCard`·`ProgressSummary`·`MePage`, 학습 기록 저장소(`useSyncExternalStore`, TanStack Query 아님) | CH-25 |
+| S6 Backend | Progress API, Activity API, 탈퇴 이벤트 처리 | 탈퇴 이벤트 처리 → SQS 정리 큐와 정리 Lambda 하나, 고아 기록 정리(Scheduler) 추가 | CH-29, CH-39 |
+| S2 | content-schema, validate-content, build-index | 같음. 개발용(draft 포함)·배포용 콘텐츠를 폴더로 나눔 | CH-03 |
+
 ## 2. 기술 스택 정의 및 할당뷰 아키텍처
 
 ### 2.1 구현 기술 스택
@@ -202,17 +241,83 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 
 ### 2.3 운영 환경 배치 아키텍처
 
-![운영 환경 배치 아키텍처](images/deployment.png)
+```mermaid
+flowchart TB
+  subgraph Client["사용자 기기"]
+    B["브라우저<br/>React SPA·3D 재생·진행률 계산<br/>로그인 토큰(localStorage)"]
+  end
+  subgraph GH["GitHub"]
+    Repo["저장소<br/>앱·콘텐츠 JSON·CDK"] --> GA["GitHub Actions(main push)<br/>verify → E2E → 보안 관문 → 변경 관문<br/>→ 변경 세트 실행 → smoke:prod → check:aws"]
+  end
+  subgraph Edge["AWS 글로벌·엣지"]
+    CF["CloudFront(기본 도메인)<br/>HTTPS·OAC·응답 헤더 정책(CSP·HSTS)<br/>SPA 라우팅 함수, /api/* 동작"]
+  end
+  subgraph Seoul["AWS ap-northeast-2 (서울)"]
+    S3[("S3(비공개)<br/>웹 빌드·콘텐츠 JSON·/config.json")]
+    APIGW["API Gateway HTTP API<br/>JWT 인가·초당 10/버스트 20"]
+    subgraph Cog["Cognito 사용자 풀(Essentials)"]
+      UP["가입·로그인·이메일 인증·재설정"]
+      LD["로그인 도메인(managed login)<br/>OAuth 인가 코드 + PKCE"]
+      GIdP["Google IdP"]
+    end
+    SM["Secrets Manager<br/>Google 클라이언트 값"]
+    subgraph L["Lambda (Node.js 22, ARM)"]
+      PF["ProgressFn<br/>/api/progress"]
+      AF["ActivityFn<br/>/api/activity"]
+      ACF["AccountFn<br/>DELETE /api/account"]
+      CLF["CleanupFn"]
+      OSF["OrphanSweepFn"]
+    end
+    Q["SQS 정리 큐<br/>(10초 지연 전달)"]
+    DLQ["SQS DLQ(14일)"]
+    LR[("DynamoDB LearningRecord<br/>+ 탈퇴 표시(TTL 2시간)")]
+    RV[("DynamoDB RecentView<br/>TTL 30일")]
+    SCH["EventBridge Scheduler<br/>그룹 visual-dictionary, 매일 03:00"]
+    CW["CloudWatch<br/>로그 14일·DLQ 경보·고아 정리 오류 경보"]
+    CI["CI 배포 역할(OIDC, main만)<br/>→ CDK 부트스트랩 역할"]
+  end
+  Google["Google 계정(accounts.google.com)"]
 
-그림의 요청 흐름은 다섯 가지다.
+  B -- "HTTPS" --> CF
+  CF -- "OAC" --> S3
+  CF -- "/api/*" --> APIGW
+  B -- "SRP 로그인·토큰" --> UP
+  B -- "리디렉션·토큰 교환" --> LD
+  LD --> GIdP --> Google
+  SM -. "배포 때 dynamic reference" .-> GIdP
+  APIGW -. "토큰 검증" .-> UP
+  APIGW --> PF & AF & ACF
+  PF --> LR
+  AF --> RV
+  AF -. "탈퇴 표시 확인" .-> LR
+  ACF -- "1 탈퇴 표시" --> LR
+  ACF -- "2 정리 작업" --> Q
+  ACF -- "3 사용자 삭제" --> UP
+  Q --> CLF
+  Q -. "5번 실패" .-> DLQ
+  CLF --> LR & RV
+  CLF -. "사용자 없음 확인" .-> UP
+  SCH --> OSF
+  OSF -. "Scan" .-> LR & RV
+  OSF -. "ListUsers" .-> UP
+  OSF -- "고아 sub" --> Q
+  GA -- "OIDC" --> CI
+  CI -- "CDK 배포" --> Seoul
+```
+
+예전 제출본 그림은 2.7절에 있다.
+
+그림의 주요 요청 흐름은 다음과 같다(8단계·고아 정리까지 반영, 2026-11-21 기준).
 
 1. **용어 보기**: 브라우저 → CloudFront → S3. 화면 파일과 용어 JSON을 받아 브라우저에서 애니메이션을 재생한다. 백엔드를 거치지 않는다.
 2. **로그인**: 브라우저 → Cognito. 로그인하면 토큰을 받아 이후 API 요청에 붙인다.
 3. **학습 기록 저장·조회**: 브라우저 → API Gateway(토큰 검증) → progress Lambda → DynamoDB.
 4. **회원 탈퇴**: 브라우저 → API Gateway → account Lambda가 탈퇴 표시를 쓰고, 정리 작업을 SQS에 넣은 뒤 Cognito 사용자를 삭제한다. 정리 Lambda가 큐에서 받아 학습 기록과 최근 본 용어를 지운다(2.5).
 5. **배포**: `npm run deploy`(7단계부터는 GitHub Actions)가 빌드한 뒤 CDK로 배포한다. 웹·콘텐츠는 S3에 올리고 CloudFront 캐시를 비우며, 백엔드도 같은 CDK 앱으로 배포한다.
+6. **Google 로그인(8단계)**: 브라우저 → 로그인 도메인(인가 코드 + PKCE) → Google → 로그인 도메인 → `/auth/callback`에서 토큰 교환. Google 클라이언트 값은 Secrets Manager에서 배포 때 읽는다(2.4).
+7. **고아 기록 정리**: Scheduler가 매일 03:00 OrphanSweepFn을 실행하고, Cognito에 없는 사용자의 기록을 정리 큐에 넣는다(2.5).
 
-그림은 7단계까지 끝난 최종 형태다. 4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 오른쪽 백엔드 영역은 5단계부터 차례로 추가된다. 인프라는 1단계부터 CDK(`infra/`, 리전 ap-northeast-2)로 관리한다.
+4단계까지는 브라우저, CloudFront, S3만으로 동작하고, Cognito와 백엔드 영역은 5단계부터 차례로 추가됐다. 인프라는 1단계부터 CDK(`infra/`, 리전 ap-northeast-2)로 관리한다.
 
 ### 2.4 인증과 보안 메모 (5단계)
 
@@ -320,3 +425,21 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 **비용.** GitHub Actions: 공개 저장소의 표준 러너는 무료다. AWS: OIDC 공급자·IAM 역할은 무료, 배포마다 CloudFront 무효화 4경로(월 1,000경로 무료, 그 뒤 경로당 $0.005), S3 업로드·CloudFormation은 사실상 $0.
 
 **직접 하는 설정.** ① GitHub 저장소 → Settings → Secrets and variables → Actions → Repository secrets → New repository secret: 이름 `AWS_DEPLOY_ROLE_ARN`, 값은 CI 스택 출력 `DeployRoleArn`. ② (권장) GitHub 프로필 → Settings → Notifications → System → Actions: 실패한 워크플로 메일 알림. ③ 공개 저장소 보안 기능: 저장소 → Settings → Advanced Security(이전 이름 Code security and analysis)에서 Secret Protection(secret scanning)과 Push protection, Dependabot alerts를 켠다.
+
+### 2.7 예전 제출본 배치 그림과 달라진 점
+
+예전 제출본 그림(첫 커밋 `a31fb77`):
+
+![운영 환경 배치 아키텍처(예전 제출본)](images/deployment.png)
+
+| 예전 제출본 | 현재(2.3 그림) | 변경 ID(docs/07) |
+| --- | --- | --- |
+| account Lambda → **EventBridge**(MemberWithdrawn 이벤트) → progress·activity가 기록 삭제, 실패 시 SQS DLQ | AccountFn이 탈퇴 표시 → **SQS 정리 큐**(10초 지연) → Cognito 삭제, **정리 Lambda 하나**가 두 테이블을 지움, 5번 실패하면 DLQ(14일)·경보 | CH-27, CH-29, CH-40 |
+| account `DELETE /me`, `/progress`, `/activity` | `/api/account`·`/api/progress`·`/api/activity`, 브라우저는 CloudFront `/api/*`를 거쳐 같은 출처로 부름 | CH-26 |
+| CloudFront: HTTPS·OAC·응답 헤더 정책, 403/404 → index.html | 같음 + **SPA 라우팅 함수**(확장자 없는 화면 주소만 index.html, 없는 파일은 404), `/api/*` 동작, 캐시 정책 3가지 | CH-14, CH-26 |
+| Route 53(선택)·ACM 인증서(us-east-1) | 쓰지 않음. CloudFront 기본 도메인(`*.cloudfront.net`) | 1단계 결정(`a31fb77`·`f7e3588`), 변경 이력 미기재 |
+| Cognito User Pool(가입·로그인·인증·재설정) | **Essentials**, 로그인 도메인(managed login, 인가 코드 + PKCE), **Google IdP**, Secrets Manager | CH-35, CH-36 |
+| GitHub Actions → S3 업로드·캐시 무효화·CDK 배포(권한 방식 미정) | **OIDC 역할**(이 저장소 main만, 변하지 않는 sub) → CDK 부트스트랩 역할, 보안·변경 관문 뒤 변경 세트 실행 | CH-31, CH-34, CH-41 |
+| (없음) | **고아 기록 정리**: Scheduler(프로젝트 전용 그룹, 매일 03:00) → OrphanSweepFn → 정리 큐 | CH-39, CH-42 |
+| CloudWatch: Lambda 로그·오류 알람 | 로그 14일, DLQ 경보, 고아 정리 오류 경보 | CH-39 |
+| activity Lambda → RecentView | 같음 + 탈퇴 표시 확인(LearningRecord의 표시 항목 하나만 GetItem) | DF-33 수정(`619e8cf`) |
