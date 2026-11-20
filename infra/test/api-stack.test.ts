@@ -104,6 +104,13 @@ describe("ApiStack", () => {
       .flatMap((p) => p.Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[]);
     expect(schedulerStatements.flatMap((s) => [s.Action].flat())).toEqual(["lambda:InvokeFunction"]);
     expect(JSON.stringify(schedulerStatements)).toContain("OrphanSweepFn");
+    // 신뢰: 이 프로젝트 전용 일정 그룹의 일정만(default 그룹 아님)
+    t.hasResourceProperties("AWS::Scheduler::ScheduleGroup", { Name: "visual-dictionary" });
+    t.hasResourceProperties("AWS::Scheduler::Schedule", { GroupName: Match.anyValue() });
+    const trust = Object.entries(t.findResources("AWS::IAM::Role")).find(([id]) => id.startsWith("SchedulerRole"))![1].Properties.AssumeRolePolicyDocument.Statement;
+    const sourceArn = JSON.stringify(trust.map((s: { Condition: { StringEquals: Record<string, unknown> } }) => s.Condition.StringEquals["aws:SourceArn"]));
+    expect(sourceArn).toContain("Schedules"); // 그룹 리소스의 Arn 참조
+    expect(sourceArn).not.toContain("schedule-group/default");
   });
 });
 

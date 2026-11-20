@@ -1,7 +1,7 @@
 // 학습 진행·회원 탈퇴 API(6단계, FR-PRG, FR-AUTH-06, FR-DEP-03, NFR-01). docs/03 2.5
 import { fileURLToPath } from "node:url";
 import { CfnOutput, Duration, RemovalPolicy, Stack, TimeZone, type StackProps } from "aws-cdk-lib";
-import { Schedule, ScheduleExpression, ScheduleTargetInput } from "aws-cdk-lib/aws-scheduler";
+import { Schedule, ScheduleExpression, ScheduleGroup, ScheduleTargetInput } from "aws-cdk-lib/aws-scheduler";
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import { HttpApi, HttpMethod, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
@@ -117,7 +117,10 @@ export class ApiStack extends Stack {
     recent.grant(sweep, "dynamodb:Scan");
     queue.grantSendMessages(sweep);
     sweep.addToRolePolicy(new PolicyStatement({ actions: ["cognito-idp:ListUsers"], resources: [props.userPool.userPoolArn] }));
+    // 이 프로젝트 전용 일정 그룹: Scheduler 역할의 신뢰 조건(aws:SourceArn)이 계정 전체 default 그룹이 아니라 이 그룹으로 좁혀진다
+    const scheduleGroup = new ScheduleGroup(this, "Schedules", { scheduleGroupName: "visual-dictionary", removalPolicy: RemovalPolicy.DESTROY });
     new Schedule(this, "OrphanSweepDaily", {
+      scheduleGroup,
       description: "Daily orphan record sweep: records of users deleted directly in Cognito go to the cleanup queue",
       schedule: ScheduleExpression.cron({ minute: "0", hour: "3", timeZone: TimeZone.ASIA_SEOUL }),
       target: new LambdaInvoke(sweep, { input: ScheduleTargetInput.fromObject({}), retryAttempts: 2 }),

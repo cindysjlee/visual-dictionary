@@ -155,14 +155,32 @@ for (const lg of find(apiRes, "AWS::Logs::LogGroup")) {
 // CI 안에서는 건너뛴다: CI 역할에는 Scheduler 읽기 권한이 없고 이 검사를 위해 넓히지 않는다
 if (process.env.CI) console.log("건너뜀  고아 정리 일정(CI 역할은 Scheduler를 읽지 않음)");
 else {
-  const scheduleName = find(apiRes, "AWS::Scheduler::Schedule")[0]?.PhysicalResourceId;
+  const GROUP = "visual-dictionary"; // 이 프로젝트 전용 일정 그룹(infra api-stack.ts)
+  const scheduleName = find(apiRes, "AWS::Scheduler::Schedule")[0]?.PhysicalResourceId?.split("|").pop();
   const schedule = scheduleName
-    ? aws<{ State: string; ScheduleExpression: string; ScheduleExpressionTimezone: string }>("scheduler", "get-schedule", "--name", scheduleName)
+    ? aws<{ State: string; ScheduleExpression: string; ScheduleExpressionTimezone: string; GroupName: string; Target: { RoleArn: string } }>(
+        "scheduler",
+        "get-schedule",
+        "--name",
+        scheduleName,
+        "--group-name",
+        GROUP,
+      )
     : undefined;
   check(
-    schedule?.State === "ENABLED" && schedule.ScheduleExpression === "cron(0 3 * * ? *)" && schedule.ScheduleExpressionTimezone === "Asia/Seoul",
-    `고아 정리 일정: ${schedule ? `${schedule.State}, ${schedule.ScheduleExpression} ${schedule.ScheduleExpressionTimezone}` : "없음"} (기대 매일 03:00 서울)`,
+    schedule?.State === "ENABLED" && schedule.ScheduleExpression === "cron(0 3 * * ? *)" && schedule.ScheduleExpressionTimezone === "Asia/Seoul" && schedule.GroupName === GROUP,
+    `고아 정리 일정: ${schedule ? `${schedule.State}, ${schedule.ScheduleExpression} ${schedule.ScheduleExpressionTimezone}, 그룹 ${schedule.GroupName}` : "없음"} (기대 매일 03:00 서울, 그룹 ${GROUP})`,
   );
+  // Scheduler 역할 신뢰: scheduler.amazonaws.com, 이 계정, 이 그룹의 일정만
+  if (schedule) {
+    type Trust = { Principal?: { Service?: string }; Condition?: { StringEquals?: Record<string, string> } };
+    const trust = aws<{ Role: { AssumeRolePolicyDocument: { Statement: Trust[] } } }>("iam", "get-role", "--role-name", schedule.Target.RoleArn.split("/").pop()!).Role.AssumeRolePolicyDocument.Statement;
+    check(
+      trust.length > 0 &&
+        trust.every((s) => s.Principal?.Service === "scheduler.amazonaws.com" && !!s.Condition?.StringEquals?.["aws:SourceArn"]?.endsWith(`:schedule-group/${GROUP}`)),
+      `Scheduler 역할 신뢰: 이 프로젝트 일정 그룹(${GROUP})의 일정만 (${trust.map((s) => s.Condition?.StringEquals?.["aws:SourceArn"]?.split(":").pop()).join(", ")})`,
+    );
+  }
 }
 
 // ---------- CloudFront ----------

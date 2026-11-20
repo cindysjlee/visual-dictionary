@@ -278,7 +278,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 2. 기록(탈퇴 표시 `#…` 제외)에는 있는데 Cognito에는 없는 sub를 기존 정리 큐에 `{userId: sub, username: sub}`로 넣는다. 지우는 일은 CleanupFn이 한다(`AdminGetUser`로 없음을 다시 확인, 실패하면 재시도·DLQ·경보).
 3. 탈퇴 표시만 남은 sub는 고아로 보지 않는다. CleanupFn은 어떤 경로로 불려도 `#…` 항목을 지우지 않는다(`cleanup.ts` `deletable()`, 두 테이블 같은 규칙). 표시는 TTL(2시간)이 지우고, 그때까지 예전 토큰의 저장을 막는다.
 4. 안전장치: Cognito 목록이 비었는데 기록이 있거나, 한 번에 고아가 20명(`MAX_ORPHANS_PER_RUN`)을 넘으면 아무것도 넣지 않고 오류로 끝낸다(경보 `OrphanSweepErrorsAlarm`). 대량 삭제는 사람이 확인한다.
-5. 권한: OrphanSweepFn은 두 테이블 `dynamodb:Scan`, 이 풀 `cognito-idp:ListUsers`, 정리 큐 `sqs:SendMessage`(+GetQueueAttributes·GetQueueUrl)만. 삭제 권한 없음. Scheduler 실행 역할은 이 함수 `lambda:InvokeFunction`만.
+5. 권한: OrphanSweepFn은 두 테이블 `dynamodb:Scan`, 이 풀 `cognito-idp:ListUsers`, 정리 큐 `sqs:SendMessage`(+GetQueueAttributes·GetQueueUrl)만. 삭제 권한 없음. Scheduler 실행 역할은 이 함수 `lambda:InvokeFunction`만이고, 신뢰 조건(`aws:SourceArn`)은 이 프로젝트 전용 일정 그룹 `visual-dictionary`의 일정만이다(계정 전체 `default` 그룹 아님).
 6. smoke:progress: 테스트 사용자 D가 기록·최근 본 용어를 남긴 뒤 Cognito에서 직접 지움 → 기록이 남는지 확인 → `aws lambda invoke`로 `{onlyUserIds: [D의 sub]}` 실행(운영의 다른 기록은 대상 아님) → 두 테이블 0건. 탈퇴한 A로도 실행해 A가 고아로 잡히지 않고 `#deleted`가 남아 예전 토큰 PUT이 계속 403인지 확인한다.
 
 함께 구글 사용자 토큰의 범위에서 `aws.cognito.signin.user.admin`을 뺐다(앱 클라이언트 OAuth 범위). 구글 사용자는 Cognito 사용자 API(`DeleteUser` 등)를 직접 부를 수 없다. 앱은 구글 사용자에게 그 API를 쓰지 않는다(사용자 정보는 ID 토큰 값, 로그아웃은 토큰 취소). 이메일 사용자의 SRP 토큰에는 Cognito가 이 범위를 늘 넣으므로 고아 정리가 여전히 필요하다.
