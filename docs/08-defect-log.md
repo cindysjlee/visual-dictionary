@@ -62,7 +62,7 @@
 | DF-42 | 11-20 | 검토(diff) | 화면만 바뀐 push도 변경 관문이 멈출 상황 | 파일 배포 리소스가 매번 조건부 교체로 표시 | 그 리소스의 조건부 교체만 허용 | `ci-gate-rules.test.ts`(확정 교체·삭제는 계속 멈춤) | `15b26c8` |
 | DF-43 | 11-21 | **배포**(CloudFormation) | Scheduler 일정 그룹 변경 배포가 NotFound로 실패·롤백 | 그룹 변경을 제자리 수정으로 처리 | 논리 ID를 바꿔 새로 만들고 예전 일정 삭제 | PR-10(변경 세트 확인 뒤 승인), `changeset:prepare`, check:aws(default 그룹 일정 0개) | `b6def1f`, `299fe97` |
 | DF-44 | 11-20 | 실행 출력 | `cdk diff --all`에 없는 옵션 경고 | diff는 기본이 전체 스택 | 옵션 제거 | `ci-gate.ts`가 diff 옵션을 고정(`diff --security-only`만, `--all` 없음). 손으로 치는 diff에는 방지책 없음 | `3068b1d` |
-| DF-45 | 11-21 | 실행 출력 | DEP0190 경고(셸로 인자 전달) | `shell: true` | 셸 없이 실행(`shell: false`), CDK·Playwright는 Node로 JS 진입점을 직접 실행 | `scripts/no-shell.test.ts`: scripts에 `shell: true`나 `exec`·`execSync`가 있으면 verify 실패(이때 남아 있던 `e2e-drafts.ts`도 셸 없이 고침) | `5efde5e`, 중간 점검 3차 커밋 |
+| DF-45 | 11-21 | 실행 출력 | DEP0190 경고(셸로 인자 전달) | `shell: true` | 셸 없이 실행(`shell: false`), CDK·Playwright는 Node로 JS 진입점을 직접 실행 | `scripts/no-shell.test.ts`: scripts에 `shell: true`나 `exec`·`execSync`가 있으면 verify 실패(이때 남아 있던 `e2e-drafts.ts`도 셸 없이 고침) | `5efde5e`, `4314ff3` |
 
 ## 3. 절차 결함(작업 규칙 위반)
 
