@@ -50,7 +50,7 @@ describe("AuthStack", () => {
     template.hasResourceProperties("AWS::Cognito::UserPoolClient", {
       AllowedOAuthFlowsUserPoolClient: true,
       AllowedOAuthFlows: ["code"],
-      AllowedOAuthScopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+      AllowedOAuthScopes: ["openid", "email", "profile"], // aws.cognito.signin.user.admin 없음(구글 토큰으로 Cognito 사용자 API 직접 호출 불가)
       CallbackURLs: ["https://d1y3rvak3nd08u.cloudfront.net/auth/callback"],
       LogoutURLs: ["https://d1y3rvak3nd08u.cloudfront.net/"],
       SupportedIdentityProviders: ["COGNITO", "Google"],

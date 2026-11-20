@@ -1,7 +1,9 @@
 // DynamoDB 저장소(LearningRecord: PK userId, SK termId). 탈퇴 표시는 같은 테이블의 termId "#deleted" 항목(TTL 속성 ttl)
 import { DynamoDBClient, TransactionCanceledException } from "@aws-sdk/client-dynamodb";
-import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { VIEW_TTL_DAYS, type ActivityRepo } from "./activity.ts";
+import { deletable } from "./cleanup.ts";
+import type { OwnedItem } from "./orphans.ts";
 import type { ProgressRecord, ProgressRepo } from "./progress.ts";
 
 export const MARKER = "#deleted";
@@ -27,6 +29,20 @@ async function queryAll(table: string, userId: string): Promise<Item[]> {
 }
 
 const isLiveMarker = (i: Item) => i.termId === MARKER && (i.ttl ?? 0) > nowSec();
+
+/** 고아 기록 정리용: 테이블 전체를 userId·termId만 읽는다(키만, 읽기 비용 최소) */
+export async function scanOwnedItems(table: string): Promise<OwnedItem[]> {
+  const items: OwnedItem[] = [];
+  let start: Record<string, unknown> | undefined;
+  do {
+    const out = await doc.send(
+      new ScanCommand({ TableName: table, ProjectionExpression: "#u, #t", ExpressionAttributeNames: { "#u": "userId", "#t": "termId" }, ExclusiveStartKey: start }),
+    );
+    items.push(...((out.Items ?? []) as OwnedItem[]));
+    start = out.LastEvaluatedKey;
+  } while (start);
+  return items;
+}
 
 export function dynamoProgressRepo(table: string): ProgressRepo {
   return {
@@ -119,13 +135,13 @@ export const unmarkWithdrawn = (table: string, userId: string) =>
   doc.send(new DeleteCommand({ TableName: table, Key: { userId, termId: MARKER } })).then(() => undefined);
 
 /** 학습 기록을 모두 지운다(탈퇴 표시는 남김) */
-export const deleteRecords = (table: string, userId: string) => deleteAll(table, userId, (termId) => !termId.startsWith("#"));
-/** 최근 본 용어를 모두 지운다 */
-export const deleteActivity = (table: string, userId: string) => deleteAll(table, userId, () => true);
+export const deleteRecords = (table: string, userId: string) => deleteAll(table, userId);
+/** 최근 본 용어를 모두 지운다(같은 규칙: # 항목은 남김) */
+export const deleteActivity = (table: string, userId: string) => deleteAll(table, userId);
 
-/** 그 사용자의 항목을 일괄 삭제. 처리 못 한 항목은 몇 번 다시 보내고, 그래도 남으면 던져서 큐가 재시도하게 한다 */
-async function deleteAll(table: string, userId: string, keep: (termId: string) => boolean): Promise<number> {
-  const keys = (await queryAll(table, userId)).filter((i) => keep(i.termId)).map((i) => ({ userId, termId: i.termId }));
+/** 그 사용자의 항목을 일괄 삭제(탈퇴 표시 제외, cleanup.ts deletable). 처리 못 한 항목은 몇 번 다시 보내고, 그래도 남으면 던져서 큐가 재시도하게 한다 */
+async function deleteAll(table: string, userId: string): Promise<number> {
+  const keys = (await queryAll(table, userId)).filter((i) => deletable(i.termId)).map((i) => ({ userId, termId: i.termId }));
   for (let k = 0; k < keys.length; k += 25) {
     let pending = keys.slice(k, k + 25).map((Key) => ({ DeleteRequest: { Key } }));
     for (let attempt = 0; pending.length && attempt < 5; attempt++) {

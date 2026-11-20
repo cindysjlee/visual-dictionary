@@ -1,6 +1,6 @@
 // 배포된 AWS 리소스 설정 확인: node scripts/check-aws.ts. 읽기 전용 명령(describe·get·list)만 쓴다(AWS CLI, 프로필 vd).
 // 콘솔에서 보던 항목을 기대값과 비교한다: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 런타임·역할 권한·로그 보존,
-// CloudFront 동작·함수·오류 페이지·CSP, Cognito 사용자 풀·앱 클라이언트, CI 배포 역할(신뢰 정책·권한). ARN은 계정 ID가 들어 있어 출력하지 않는다
+// CloudFront 동작·함수·오류 페이지·CSP, Cognito 사용자 풀·앱 클라이언트, CI 배포 역할(신뢰 정책·권한), 고아 정리 권한·일정·경보. ARN은 계정 ID가 들어 있어 출력하지 않는다
 import { execFileSync } from "node:child_process";
 import { CSP, LOGIN_DOMAIN_PREFIX, SITE_ORIGIN } from "../infra/lib/csp.ts";
 
@@ -104,9 +104,11 @@ check(dlq.MessageRetentionPeriod === String(14 * 24 * 3600), `DLQ 보관: ${Numb
 check(dlq.ApproximateNumberOfMessages === "0" && dlq.ApproximateNumberOfMessagesNotVisible === "0", `DLQ 메시지: ${dlq.ApproximateNumberOfMessages} (처리 중 ${dlq.ApproximateNumberOfMessagesNotVisible})`);
 
 // ---------- CloudWatch ----------
-const alarmName = find(apiRes, "AWS::CloudWatch::Alarm")[0]!.PhysicalResourceId;
-const alarm = aws<{ MetricAlarms: { StateValue: string }[] }>("cloudwatch", "describe-alarms", "--alarm-names", alarmName).MetricAlarms[0];
-check(alarm?.StateValue === "OK" || alarm?.StateValue === "INSUFFICIENT_DATA", `DLQ 경보 상태: ${alarm?.StateValue} (ALARM이 아니면 통과)`);
+for (const [prefix, label] of [["CleanupDlqAlarm", "DLQ 경보"], ["OrphanSweepErrorsAlarm", "고아 정리 오류 경보"]] as const) {
+  const alarmName = find(apiRes, "AWS::CloudWatch::Alarm", prefix)[0]?.PhysicalResourceId;
+  const alarm = alarmName ? aws<{ MetricAlarms: { StateValue: string }[] }>("cloudwatch", "describe-alarms", "--alarm-names", alarmName).MetricAlarms[0] : undefined;
+  check(alarm?.StateValue === "OK" || alarm?.StateValue === "INSUFFICIENT_DATA", `${label} 상태: ${alarm?.StateValue ?? "없음"} (ALARM이 아니면 통과)`);
+}
 
 // ---------- Lambda·IAM·로그 ----------
 /** 함수별 허용 권한(인프라 테스트와 같은 범위). required는 반드시 있어야 하는 것 */
@@ -121,6 +123,8 @@ const EXPECTED: Record<string, { required: string[]; allowed: string[] }> = {
     required: ["cognito-idp:AdminGetUser", "dynamodb:BatchWriteItem", "dynamodb:Query", "sqs:ReceiveMessage", "sqs:DeleteMessage"],
     allowed: ["sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
   },
+  // 고아 기록 정리: 읽기와 정리 큐 넣기만(삭제 없음)
+  OrphanSweepFn: { required: ["cognito-idp:ListUsers", "dynamodb:Scan", "sqs:SendMessage"], allowed: ["sqs:GetQueueAttributes", "sqs:GetQueueUrl"] },
 };
 for (const [prefix, expected] of Object.entries(EXPECTED)) {
   const fn = find(apiRes, "AWS::Lambda::Function", prefix)[0]!.PhysicalResourceId;
@@ -145,6 +149,20 @@ for (const lg of find(apiRes, "AWS::Logs::LogGroup")) {
   const groups = aws<{ logGroups: { logGroupName: string; retentionInDays?: number }[] }>("logs", "describe-log-groups", "--log-group-name-prefix", lg.PhysicalResourceId).logGroups;
   const g = groups.find((x) => x.logGroupName === lg.PhysicalResourceId);
   check(g?.retentionInDays === 14, `로그 보존 ${lg.LogicalResourceId.replace(/Logs.*/, "")}: ${g?.retentionInDays ?? "무기한"}일 (기대 14)`);
+}
+
+// ---------- 고아 기록 정리 일정(EventBridge Scheduler) ----------
+// CI 안에서는 건너뛴다: CI 역할에는 Scheduler 읽기 권한이 없고 이 검사를 위해 넓히지 않는다
+if (process.env.CI) console.log("건너뜀  고아 정리 일정(CI 역할은 Scheduler를 읽지 않음)");
+else {
+  const scheduleName = find(apiRes, "AWS::Scheduler::Schedule")[0]?.PhysicalResourceId;
+  const schedule = scheduleName
+    ? aws<{ State: string; ScheduleExpression: string; ScheduleExpressionTimezone: string }>("scheduler", "get-schedule", "--name", scheduleName)
+    : undefined;
+  check(
+    schedule?.State === "ENABLED" && schedule.ScheduleExpression === "cron(0 3 * * ? *)" && schedule.ScheduleExpressionTimezone === "Asia/Seoul",
+    `고아 정리 일정: ${schedule ? `${schedule.State}, ${schedule.ScheduleExpression} ${schedule.ScheduleExpressionTimezone}` : "없음"} (기대 매일 03:00 서울)`,
+  );
 }
 
 // ---------- CloudFront ----------
@@ -242,8 +260,8 @@ check(
   `앱 클라이언트 OAuth: 흐름 ${client.AllowedOAuthFlows?.join(",")}, 콜백 ${client.CallbackURLs?.join(",")}, 로그아웃 ${client.LogoutURLs?.join(",")}`,
 );
 check(
-  same(sorted(client.AllowedOAuthScopes ?? []), ["aws.cognito.signin.user.admin", "email", "openid", "profile"]),
-  `앱 클라이언트 OAuth 범위: ${sorted(client.AllowedOAuthScopes ?? []).join(", ")}`,
+  same(sorted(client.AllowedOAuthScopes ?? []), ["email", "openid", "profile"]),
+  `앱 클라이언트 OAuth 범위: ${sorted(client.AllowedOAuthScopes ?? []).join(", ")} (사용자 관리 범위 없음)`,
 );
 check(same(sorted(client.SupportedIdentityProviders ?? []), [...IDENTITY_PROVIDERS]), `로그인 수단: ${sorted(client.SupportedIdentityProviders ?? []).join(", ")}`);
 

@@ -14,6 +14,9 @@ export interface CleanupDeps {
 
 const job = z.strictObject({ userId: z.string().min(1).max(128), username: z.string().min(1).max(128) });
 
+/** 정리가 지워도 되는 항목인지. 탈퇴 표시(#…)는 어떤 경로(탈퇴·고아 정리)로 불려도 지우지 않는다: TTL(2시간)이 지운다 */
+export const deletable = (termId: string) => !termId.startsWith("#");
+
 export class UserStillExistsError extends Error {
   name = "UserStillExistsError";
 }

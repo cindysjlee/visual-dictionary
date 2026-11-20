@@ -68,13 +68,13 @@ describe("ApiStack", () => {
     t.hasResourceProperties("AWS::SQS::Queue", { RedrivePolicy: { maxReceiveCount: 5, deadLetterTargetArn: Match.anyValue() }, VisibilityTimeout: 180 });
     t.hasResourceProperties("AWS::SQS::Queue", { MessageRetentionPeriod: 14 * 24 * 3600 });
     t.hasResourceProperties("AWS::Lambda::EventSourceMapping", { BatchSize: 1, FunctionResponseTypes: ["ReportBatchItemFailures"] });
-    t.resourceCountIs("AWS::CloudWatch::Alarm", 1);
+    t.resourceCountIs("AWS::CloudWatch::Alarm", 2); // DLQ, 고아 정리 오류
   });
 
   it("Lambda: Node 22·ARM, 로그 14일", () => {
-    t.resourceCountIs("AWS::Lambda::Function", 4);
+    t.resourceCountIs("AWS::Lambda::Function", 5);
     t.allResourcesProperties("AWS::Lambda::Function", { Runtime: "nodejs22.x", Architectures: ["arm64"] });
-    t.resourceCountIs("AWS::Logs::LogGroup", 4);
+    t.resourceCountIs("AWS::Logs::LogGroup", 5);
     t.allResourcesProperties("AWS::Logs::LogGroup", { RetentionInDays: 14 });
   });
 
@@ -87,6 +87,23 @@ describe("ApiStack", () => {
     expect(actionsOf("CleanupFn")).not.toContain("cognito-idp:AdminDeleteUser");
     expect(actionsOf("ProgressFn")).not.toContain("dynamodb:DeleteItem");
     expect(actionsOf("ActivityFn")).toEqual(["dynamodb:ConditionCheckItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"]);
+  });
+
+  it("고아 기록 정리: 읽기(Scan·ListUsers)와 정리 큐 넣기만, 삭제 권한 없음, 매일 03:00(서울), Scheduler 역할은 이 함수 호출만", () => {
+    // Scan은 테이블마다 한 문장(두 테이블 ARN만)
+    expect([...new Set(actionsOf("OrphanSweepFn"))]).toEqual(["cognito-idp:ListUsers", "dynamodb:Scan", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]);
+    for (const a of actionsOf("OrphanSweepFn")) expect(a).not.toMatch(/Delete|BatchWrite|Put|Update|\*/);
+    t.hasResourceProperties("AWS::Scheduler::Schedule", {
+      ScheduleExpression: "cron(0 3 * * ? *)",
+      ScheduleExpressionTimezone: "Asia/Seoul",
+      State: "ENABLED",
+      Target: Match.objectLike({ Input: "{}" }),
+    });
+    const schedulerStatements = Object.values(t.findResources("AWS::IAM::Policy"))
+      .filter((p) => JSON.stringify(p.Properties.Roles).includes("SchedulerRole"))
+      .flatMap((p) => p.Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[]);
+    expect(schedulerStatements.flatMap((s) => [s.Action].flat())).toEqual(["lambda:InvokeFunction"]);
+    expect(JSON.stringify(schedulerStatements)).toContain("OrphanSweepFn");
   });
 });
 

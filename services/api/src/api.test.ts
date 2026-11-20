@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { reauthFresh, withdraw, type CleanupJob, type WithdrawDeps } from "./account.ts";
 import { getActivity, putActivity, RECENT_LIMIT, type ActivityRepo, type ViewRecord } from "./activity.ts";
-import { cleanup, UserStillExistsError } from "./cleanup.ts";
+import { cleanup, deletable, UserStillExistsError } from "./cleanup.ts";
+import { MAX_ORPHANS_PER_RUN, sweepOrphans, type OwnedItem, type SweepDeps } from "./orphans.ts";
 import { getProgress, putProgress, type ProgressRecord, type ProgressRepo } from "./progress.ts";
 
 const TERMS = new Set(["csrf", "xss", "tcp-handshake"]);
@@ -128,6 +129,103 @@ describe("탈퇴 재인증: 토큰 auth_time이 5분 안일 때만(모든 사용
   it("시계 차 1분을 넘는 미래 시각은 거부한다", () => {
     expect(reauthFresh(now + 30, now)).toBe(true);
     expect(reauthFresh(now + 61, now)).toBe(false);
+  });
+});
+
+/** 고아 정리 의존성: 메모리 테이블의 기록·최근 본 용어·탈퇴 표시를 실제 테이블처럼 (userId, termId)로 보여 준다. 호출 순서를 남긴다 */
+function sweepDeps(t: ReturnType<typeof memoryTable>, cognitoSubs: Set<string>) {
+  const calls: string[] = [];
+  const enqueued: CleanupJob[] = [];
+  const deps: SweepDeps = {
+    async scanItems() {
+      calls.push("scan");
+      const items: OwnedItem[] = [];
+      for (const [userId, m] of t.rows) for (const termId of m.keys()) items.push({ userId, termId });
+      for (const [userId, m] of t.views) for (const termId of m.keys()) items.push({ userId, termId });
+      for (const userId of t.withdrawn) items.push({ userId, termId: "#deleted" });
+      return items;
+    },
+    async listUserSubs() {
+      calls.push("list");
+      return cognitoSubs;
+    },
+    async enqueueCleanup(job) {
+      enqueued.push(job);
+    },
+  };
+  return { deps, calls, enqueued };
+}
+
+describe("고아 기록 정리: Cognito에 없는 sub의 기록만 정리 큐에", () => {
+  it("기록·최근 본 용어가 있는데 Cognito에 없는 sub만 넣고, 표를 먼저 읽은 뒤 사용자 목록을 읽는다", async () => {
+    const t = memoryTable();
+    await putProgress("A", "csrf", body(true), TERMS, t.repo);
+    await putActivity("GONE1", "xss", undefined, TERMS, t.activity);
+    await putProgress("GONE2", "xss", body(true), TERMS, t.repo);
+    const s = sweepDeps(t, new Set(["A", "B"]));
+    expect(await sweepOrphans(s.deps)).toEqual({ status: "done", orphans: ["GONE1", "GONE2"] });
+    expect(s.enqueued).toEqual([
+      { userId: "GONE1", username: "GONE1" },
+      { userId: "GONE2", username: "GONE2" },
+    ]);
+    expect(s.calls).toEqual(["scan", "list"]);
+  });
+
+  it("구글 사용자(사용자 이름이 sub와 다름)는 sub로 찾으므로 고아가 아니다", async () => {
+    const t = memoryTable();
+    await putProgress("google-sub", "csrf", body(true), TERMS, t.repo);
+    const s = sweepDeps(t, new Set(["google-sub"])); // Cognito 사용자 이름은 Google_… 이지만 목록은 sub
+    expect((await sweepOrphans(s.deps)).orphans).toEqual([]);
+  });
+
+  it("탈퇴 표시(#deleted)만 남은 sub는 고아로 보지 않는다", async () => {
+    const t = memoryTable();
+    t.withdrawn.add("W");
+    const s = sweepDeps(t, new Set(["A"]));
+    expect(await sweepOrphans(s.deps)).toEqual({ status: "done", orphans: [] });
+    expect(s.enqueued).toEqual([]);
+  });
+
+  it("onlyUserIds면 그 sub만 본다(smoke가 자기 테스트 사용자만)", async () => {
+    const t = memoryTable();
+    await putProgress("GONE1", "csrf", body(true), TERMS, t.repo);
+    await putProgress("GONE2", "csrf", body(true), TERMS, t.repo);
+    const s = sweepDeps(t, new Set(["A"]));
+    expect((await sweepOrphans(s.deps, ["GONE2"])).orphans).toEqual(["GONE2"]);
+    expect(s.enqueued.map((j) => j.userId)).toEqual(["GONE2"]);
+  });
+
+  it("안전장치: Cognito 목록이 비었는데 기록이 있으면, 또는 한 번에 20명을 넘으면 아무것도 넣지 않고 멈춘다", async () => {
+    const t = memoryTable();
+    await putProgress("X", "csrf", body(true), TERMS, t.repo);
+    const empty = sweepDeps(t, new Set());
+    expect(await sweepOrphans(empty.deps)).toMatchObject({ status: "aborted", reason: "no-users" });
+    expect(empty.enqueued).toEqual([]);
+
+    const many = memoryTable();
+    for (let i = 0; i <= MAX_ORPHANS_PER_RUN; i++) await putProgress(`G${i}`, "csrf", body(true), TERMS, many.repo);
+    const s = sweepDeps(many, new Set(["A"]));
+    expect(await sweepOrphans(s.deps)).toMatchObject({ status: "aborted", reason: "too-many" });
+    expect(s.enqueued).toEqual([]);
+  });
+
+  it("정리는 어떤 경로로도 탈퇴 표시(#…)를 지우지 않는다(deletable)", () => {
+    expect(deletable("#deleted")).toBe(false);
+    expect(deletable("csrf")).toBe(true);
+  });
+
+  it("탈퇴 직후 정리 작업과 고아 정리를 돌려도 #deleted가 남아, 예전 토큰의 PUT은 계속 403이고 기록이 생기지 않는다", async () => {
+    const t = memoryTable();
+    await putProgress("A", "csrf", body(true), TERMS, t.repo);
+    const w = withdrawDeps(t);
+    expect((await withdraw("A", "A", w.deps)).status).toBe(204);
+    await cleanup(JSON.stringify(w.queue[0]), w.cleanupDeps);
+    const s = sweepDeps(t, w.cognitoUsers); // A는 Cognito에서 지워졌고 남은 것은 탈퇴 표시뿐
+    expect(await sweepOrphans(s.deps)).toEqual({ status: "done", orphans: [] });
+    expect(t.withdrawn.has("A")).toBe(true);
+    expect((await putProgress("A", "xss", body(true), TERMS, t.repo)).status).toBe(403);
+    expect((await putActivity("A", "xss", undefined, TERMS, t.activity)).status).toBe(403);
+    expect(t.count("A") + t.viewCount("A")).toBe(0);
   });
 });
 

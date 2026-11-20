@@ -273,6 +273,26 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 
 **탈퇴 재인증은 서버가 강제한다(8단계).** 화면의 재확인만으로는 API를 직접 부르면 재확인 없이 탈퇴된다. 그래서 AccountFn은 이메일·구글 사용자 모두 액세스 토큰의 `auth_time`이 5분 이내일 때만 탈퇴를 처리하고, 아니면 403 `reauth-required`를 준다(`services/api/src/account.ts` `reauthFresh()`). 이메일 사용자는 위 비밀번호 재확인(다시 로그인)으로, 구글 사용자는 managed login의 `prompt=select_account`로 구글 계정 선택을 거친 재로그인으로 새 `auth_time`을 받는다. 화면은 `reauth-required`를 받으면 재확인 단계로 돌아간다. smoke:progress는 로그인한 지 5분이 넘은 토큰으로 탈퇴를 직접 불러 거부되는지 확인한다(이 검사 때문에 smoke가 약 5분 걸린다).
 
+**고아 기록 정리(8단계 뒤).** 사용자가 토큰으로 Cognito `DeleteUser`를 직접 부르면 탈퇴 API를 거치지 않아 기록이 남는다. Cognito에는 사용자 삭제 뒤 트리거가 없으므로 하루 한 번(EventBridge Scheduler, 매일 03:00 Asia/Seoul) `OrphanSweepFn`이 찾는다(`services/api/src/orphans.ts` `sweepOrphans()`).
+1. 두 테이블을 `userId`·`termId`만 scan한다. **그다음** Cognito `ListUsers`(`AttributesToGet: ["sub"]`, 60명씩)를 읽는다. 순서가 반대면 그 사이 가입해 기록을 남긴 사용자를 고아로 잘못 잡는다. 구글 사용자는 사용자 이름이 `Google_…`라 sub로 비교한다.
+2. 기록(탈퇴 표시 `#…` 제외)에는 있는데 Cognito에는 없는 sub를 기존 정리 큐에 `{userId: sub, username: sub}`로 넣는다. 지우는 일은 CleanupFn이 한다(`AdminGetUser`로 없음을 다시 확인, 실패하면 재시도·DLQ·경보).
+3. 탈퇴 표시만 남은 sub는 고아로 보지 않는다. CleanupFn은 어떤 경로로 불려도 `#…` 항목을 지우지 않는다(`cleanup.ts` `deletable()`, 두 테이블 같은 규칙). 표시는 TTL(2시간)이 지우고, 그때까지 예전 토큰의 저장을 막는다.
+4. 안전장치: Cognito 목록이 비었는데 기록이 있거나, 한 번에 고아가 20명(`MAX_ORPHANS_PER_RUN`)을 넘으면 아무것도 넣지 않고 오류로 끝낸다(경보 `OrphanSweepErrorsAlarm`). 대량 삭제는 사람이 확인한다.
+5. 권한: OrphanSweepFn은 두 테이블 `dynamodb:Scan`, 이 풀 `cognito-idp:ListUsers`, 정리 큐 `sqs:SendMessage`(+GetQueueAttributes·GetQueueUrl)만. 삭제 권한 없음. Scheduler 실행 역할은 이 함수 `lambda:InvokeFunction`만.
+6. smoke:progress: 테스트 사용자 D가 기록·최근 본 용어를 남긴 뒤 Cognito에서 직접 지움 → 기록이 남는지 확인 → `aws lambda invoke`로 `{onlyUserIds: [D의 sub]}` 실행(운영의 다른 기록은 대상 아님) → 두 테이블 0건. 탈퇴한 A로도 실행해 A가 고아로 잡히지 않고 `#deleted`가 남아 예전 토큰 PUT이 계속 403인지 확인한다.
+
+함께 구글 사용자 토큰의 범위에서 `aws.cognito.signin.user.admin`을 뺐다(앱 클라이언트 OAuth 범위). 구글 사용자는 Cognito 사용자 API(`DeleteUser` 등)를 직접 부를 수 없다. 앱은 구글 사용자에게 그 API를 쓰지 않는다(사용자 정보는 ID 토큰 값, 로그아웃은 토큰 취소). 이메일 사용자의 SRP 토큰에는 Cognito가 이 범위를 늘 넣으므로 고아 정리가 여전히 필요하다.
+
+| 비용 항목(고아 정리) | 예상 | 근거 |
+| --- | --- | --- |
+| EventBridge Scheduler | 0원 | 월 1,400만 회 무료(하루 1회) |
+| Lambda | 0원 | 월 약 30회·몇 초, 프리 티어 안 |
+| DynamoDB scan | 월 $0.01 미만 | 온디맨드 읽기 백만 단위당 $0.125(미국 동부 값, 서울 값은 요금 페이지에서 확인 못 함), 4KB당 0.5단위, 테이블이 몇 KB |
+| Cognito `ListUsers` | 0원 | 요청 요금 항목 없음. **MAU에 잡히지 않는다**(Cognito 할당량 문서 "Monthly active users": 관리자 상세 조회 범주에 `AdminGetUser`는 들고 `ListUsers`는 들지 않음). 요청 한도 초당 30회(늘릴 수 없음) |
+| CleanupFn의 `AdminGetUser` | 0원 | MAU 범주에 들지만, 고아는 이미 Cognito에 없는 사용자라 MAU가 늘지 않는다 |
+| CloudWatch 경보 1개 | 월 $0.10 | |
+| 합계 | 월 약 $0.10 | |
+
 **테스트.** 처리 로직은 저장소·큐·Cognito를 인터페이스로 받아 단위 테스트한다(탈퇴 실패 단계별 결과, 탈퇴 직후 예전 토큰 PUT 거부와 테이블 0건 포함). 인프라 테스트는 JWT 인가·요청 제한·테이블·DLQ·로그 보관·Lambda별 IAM 권한 범위를 본다. 화면은 테스트 빌드의 가짜 기록 API로 E2E(`@progress`)를 돌리고, 배포 후 `npm run smoke:progress`가 사용자 A·B로 권한(토큰 없음·변조·만료 시각 조작 401, 본문 userId로 남의 기록을 바꿀 수 없음, 남의 기록이 안 보임), 다른 브라우저에서 같은 진행률, 화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건을 확인한다. 서명이 맞는 진짜 만료 토큰은 1시간을 기다려야 해서 smoke에서 만들지 않는다(만료 검사는 API Gateway JWT 인가가 한다).
 
 **최근 본 용어(7단계, FR-PRG-06).** `GET /api/activity`(최신순 10개), `PUT /api/activity/{termId}`(본문 없음, 본 시각은 서버 시계, published 용어만). 로그인 상태로 상세 페이지를 열면 한 번 기록하고, 실패해도 화면은 그대로다. 저장은 `TransactWriteItems`로 LearningRecord의 탈퇴 표시를 ConditionCheck한 뒤 RecentView에 쓴다(두 테이블 트랜잭션, 표시가 있으면 403). `ActivityFn` 권한은 RecentView Query·PutItem과 LearningRecord ConditionCheckItem·GetItem뿐이다(GetItem은 목록 조회 때 탈퇴 표시 항목 하나만 읽는다. 학습 기록 Query 권한은 주지 않는다). 탈퇴 정리는 같은 큐·같은 정리 함수가 두 테이블을 모두 지운다(위 실패 표가 그대로 적용된다). 홈은 가장 최근 본 용어를 "이어서 볼 용어"로, 최근 3개를 진행률 카드에 보이고, 내 학습은 10개를 "오늘·어제·n일 전"과 보인다. 30일이 지나면 TTL로 사라진다.

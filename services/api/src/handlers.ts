@@ -1,12 +1,14 @@
 // Lambda 진입점 3개(infra/lib/api-stack.ts). 사용자 ID는 JWT 인가가 검증한 토큰의 sub에서만 읽는다(NFR-01).
 // 로그에는 경로·상태 코드·오류 이름만 남긴다. 토큰·이메일·요청 본문·사용자 ID는 남기지 않는다(로그 보관 14일)
-import { AdminDeleteUserCommand, AdminGetUserCommand, CognitoIdentityProviderClient, UserNotFoundException } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminDeleteUserCommand, AdminGetUserCommand, CognitoIdentityProviderClient, ListUsersCommand, UserNotFoundException } from "@aws-sdk/client-cognito-identity-provider";
+import { z } from "zod";
+import { sweepOrphans } from "./orphans.ts";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2, SQSBatchResponse, SQSEvent } from "aws-lambda";
 import { reauthFresh, withdraw } from "./account.ts";
 import { getActivity, putActivity } from "./activity.ts";
 import { cleanup } from "./cleanup.ts";
-import { deleteActivity, deleteRecords, dynamoActivityRepo, dynamoProgressRepo, markWithdrawn, unmarkWithdrawn } from "./dynamo.ts";
+import { deleteActivity, deleteRecords, dynamoActivityRepo, dynamoProgressRepo, markWithdrawn, scanOwnedItems, unmarkWithdrawn } from "./dynamo.ts";
 import { getProgress, putProgress, type ApiResult } from "./progress.ts";
 
 const env = (name: string) => process.env[name] ?? "";
@@ -109,4 +111,38 @@ export async function cleanupHandler(event: SQSEvent): Promise<SQSBatchResponse>
     }
   }
   return { batchItemFailures };
+}
+
+/** 고아 기록 정리(하루 한 번 Scheduler, smoke는 onlyUserIds로 자기 테스트 사용자만). 읽기와 정리 큐 넣기만 한다 */
+const sweepEvent = z.object({ onlyUserIds: z.array(z.string().min(1).max(128)).min(1).max(10).optional() }).strict();
+
+export async function orphanSweepHandler(event: unknown): Promise<{ status: string; orphans: number }> {
+  const { onlyUserIds } = sweepEvent.parse(event ?? {});
+  const result = await sweepOrphans(
+    {
+      scanItems: async () => [...(await scanOwnedItems(TABLE)), ...(await scanOwnedItems(ACTIVITY_TABLE))],
+      listUserSubs: async () => {
+        const subs = new Set<string>();
+        let token: string | undefined;
+        do {
+          // sub만 읽는다(이메일 등은 받지 않음). ListUsers는 MAU에 잡히지 않는다(Cognito 할당량 문서)
+          const out = await cognito.send(new ListUsersCommand({ UserPoolId: env("USER_POOL_ID"), AttributesToGet: ["sub"], Limit: 60, PaginationToken: token }));
+          for (const u of out.Users ?? []) {
+            const sub = u.Attributes?.find((a) => a.Name === "sub")?.Value;
+            if (sub) subs.add(sub);
+          }
+          token = out.PaginationToken;
+        } while (token);
+        return subs;
+      },
+      enqueueCleanup: async (job) => {
+        await sqs.send(new SendMessageCommand({ QueueUrl: env("QUEUE_URL"), MessageBody: JSON.stringify(job) }));
+      },
+    },
+    onlyUserIds,
+  );
+  // sub는 로그에 남기지 않는다(개수만)
+  log({ route: "orphan-sweep", status: result.status, orphans: result.orphans.length, ...(result.status === "aborted" ? { reason: result.reason } : {}) });
+  if (result.status === "aborted") throw new Error(`orphan sweep aborted: ${result.reason}`); // Lambda 오류 → 경보
+  return { status: result.status, orphans: result.orphans.length };
 }

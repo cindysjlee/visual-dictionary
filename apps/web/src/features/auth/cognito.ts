@@ -64,7 +64,7 @@ export async function cognitoAuthClient(): Promise<AuthClient> {
           email: true,
           oauth: {
             domain: oauthDomain,
-            scopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+            scopes: ["openid", "email", "profile"], // 앱 클라이언트 OAuth 범위와 같게(사용자 관리 범위 없음, infra auth-stack.ts)
             redirectSignIn: [`${location.origin}/auth/callback`],
             redirectSignOut: [`${location.origin}/`],
             responseType: "code",

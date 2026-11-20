@@ -70,7 +70,9 @@ export class AuthStack extends Stack {
       // 도메인이 생기면 그 기본값으로 토큰을 다른 사이트로 보내는 로그인 주소를 만들 수 있다
       oAuth: {
         flows: { authorizationCodeGrant: true },
-        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE, OAuthScope.COGNITO_ADMIN],
+        // aws.cognito.signin.user.admin은 주지 않는다: 구글 사용자 토큰으로 Cognito DeleteUser 등을 직접 부를 수 없게(앱은 구글 사용자에게 그 API를 쓰지 않음).
+        // 이메일 사용자(SRP) 토큰에는 Cognito가 늘 넣으므로, 직접 삭제로 남는 기록은 고아 정리가 맡는다(docs/03)
+        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
         callbackUrls: [OAUTH_CALLBACK],
         logoutUrls: [OAUTH_LOGOUT],
       },

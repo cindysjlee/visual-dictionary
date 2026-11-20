@@ -6,6 +6,9 @@
 // 토큰·비밀번호는 출력하지 않는다. 끝나면(실패해도) 남은 사용자를 지우고, 못 지우면 이름을 출력한다
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium, type Browser } from "@playwright/test";
 import { REAUTH_MAX_AGE_SECONDS } from "../services/api/src/account.ts";
 
@@ -30,11 +33,34 @@ const recordCount = (sub: string) => itemsOf(apiOutputs.TableName!, sub).filter(
 /** 그 사용자의 최근 본 용어 수(RecentView에는 표시가 없어 전부 센다) */
 const viewCount = (sub: string) => itemsOf(apiOutputs.ActivityTableName!, sub).length;
 
+/** 고아 기록 정리(OrphanSweepFn)를 그 sub 하나만 대상으로 실행한다(운영의 다른 기록은 건드리지 않음) */
+const sweepFnName = (
+  JSON.parse(cli(["cloudformation", "list-stack-resources", "--stack-name", "VisualDictionaryApi"])) as {
+    StackResourceSummaries: { LogicalResourceId: string; PhysicalResourceId: string; ResourceType: string }[];
+  }
+).StackResourceSummaries.find((r) => r.ResourceType === "AWS::Lambda::Function" && r.LogicalResourceId.startsWith("OrphanSweepFn"))?.PhysicalResourceId;
+function runSweep(sub: string): { status?: string; orphans?: number } {
+  if (!sweepFnName) throw new Error("OrphanSweepFn 없음");
+  const out = join(tmpdir(), `smoke-sweep-${runId}.json`);
+  const meta = JSON.parse(cli(["lambda", "invoke", "--function-name", sweepFnName, "--cli-binary-format", "raw-in-base64-out", "--payload", JSON.stringify({ onlyUserIds: [sub] }), out])) as {
+    FunctionError?: string;
+  };
+  const result = JSON.parse(readFileSync(out, "utf8")) as { status?: string; orphans?: number };
+  if (meta.FunctionError) throw new Error(`고아 정리 실패: ${JSON.stringify(result).slice(0, 200)}`);
+  return result;
+}
+
 const results: [boolean, string][] = [];
 const check = (ok: boolean, what: string) => results.push([ok, what]);
 const runId = `${Date.now()}-${randomBytes(3).toString("hex")}`;
 // C: 오래된 토큰 검사용(맨 처음 로그인해 두고, 5분이 지난 뒤 그 토큰으로 탈퇴를 시도한다. 기록은 쓰지 않는다)
-const users = { A: `smoke-progress-a-${runId}@example.com`, B: `smoke-progress-b-${runId}@example.com`, C: `smoke-progress-c-${runId}@example.com` };
+// D: 고아 기록 정리 검사용(기록을 남긴 뒤 Cognito에서 직접 지운다)
+const users = {
+  A: `smoke-progress-a-${runId}@example.com`,
+  B: `smoke-progress-b-${runId}@example.com`,
+  C: `smoke-progress-c-${runId}@example.com`,
+  D: `smoke-progress-d-${runId}@example.com`,
+};
 const labelOf = (email: string) => Object.entries(users).find(([, v]) => v === email)?.[0] ?? email;
 const password = `Prog${randomBytes(9).toString("base64url")}1a`;
 const created: string[] = [];
@@ -141,6 +167,24 @@ try {
     check(status < 500, `실제 토큰으로 ${route} → ${status}(5xx 아님)`);
   }
 
+  // 고아 기록 정리: D가 기록을 남긴 뒤 Cognito에서 직접 지운다(탈퇴 API를 거치지 않음) → 정리 작업(D만 대상) 뒤 두 테이블 0건
+  const d = await login(browser, users.D);
+  const subD = payloadOf(d.token).sub;
+  await d.context.close();
+  const dSaved = (await api("/api/progress/csrf", { method: "PUT", token: d.token, body: { read: true, source: "manual" } })).status;
+  const dViewed = (await api("/api/activity/csrf", { method: "PUT", token: d.token })).status;
+  cognito("admin-delete-user", "--username", users.D);
+  created.splice(created.indexOf(users.D), 1);
+  check(dSaved === 200 && dViewed === 200 && recordCount(subD) === 1 && viewCount(subD) === 1, `Cognito에서 직접 지운 D의 기록이 남음(고아): 학습 기록 ${recordCount(subD)}건, 최근 본 용어 ${viewCount(subD)}건`);
+  const sweptD = runSweep(subD);
+  check(sweptD.status === "done" && sweptD.orphans === 1, `고아 정리(D만 대상) → ${JSON.stringify(sweptD)}`);
+  let dLeft = recordCount(subD) + viewCount(subD);
+  for (let i = 0; i < 30 && dLeft > 0; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    dLeft = recordCount(subD) + viewCount(subD);
+  }
+  check(dLeft === 0, `고아 정리 후 D의 기록 ${dLeft}건(학습 기록·최근 본 용어)`);
+
   // 다른 브라우저(새 컨텍스트)에서 같은 진행률(완료 기준)
   const a2 = await login(browser, users.A);
   await a2.page.goto(`${base}/`);
@@ -187,6 +231,10 @@ try {
   }
   check(left === 0, `정리 후 테이블에 A 기록 ${left}건`);
   check(viewsLeft === 0, `정리 후 RecentView에 A 기록 ${viewsLeft}건`);
+  // 탈퇴 직후 고아 정리를 돌려도: A는 탈퇴 표시만 남아 고아로 잡히지 않고, #deleted는 남아 예전 토큰의 저장을 계속 막는다
+  const sweptA = runSweep(subA);
+  const markerLeft = itemsOf(apiOutputs.TableName!, subA).some((i) => i.termId.S === "#deleted");
+  check(sweptA.status === "done" && sweptA.orphans === 0 && markerLeft, `탈퇴 직후 고아 정리(A만 대상) → ${JSON.stringify(sweptA)}, 탈퇴 표시 남음: ${markerLeft}`);
   const again = await api("/api/progress/tcp-handshake", { method: "PUT", token: a.token, body: { read: true, source: "manual" } });
   check(again.status === 403 && recordCount(subA) === 0, `정리 뒤에도 예전 토큰 PUT → ${again.status}, 테이블 0건 유지`);
   const viewAgain = await api("/api/activity/tcp-handshake", { method: "PUT", token: a.token });

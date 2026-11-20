@@ -1,6 +1,8 @@
 // 학습 진행·회원 탈퇴 API(6단계, FR-PRG, FR-AUTH-06, FR-DEP-03, NFR-01). docs/03 2.5
 import { fileURLToPath } from "node:url";
-import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, Stack, TimeZone, type StackProps } from "aws-cdk-lib";
+import { Schedule, ScheduleExpression, ScheduleTargetInput } from "aws-cdk-lib/aws-scheduler";
+import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import { HttpApi, HttpMethod, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
@@ -106,6 +108,29 @@ export class ApiStack extends Stack {
     recent.grant(cleanup, "dynamodb:Query", "dynamodb:BatchWriteItem");
     cleanup.addToRolePolicy(new PolicyStatement({ actions: ["cognito-idp:AdminGetUser"], resources: [props.userPool.userPoolArn] }));
     cleanup.addEventSource(new SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }));
+
+    // 고아 기록 정리(하루 한 번): Cognito에서 직접 지운 사용자의 기록을 찾아 위 정리 큐에 넣는다. 읽기(Scan·ListUsers)와 큐 넣기만, 삭제 권한 없음(docs/03)
+    const sweep = fn("OrphanSweepFn", "orphanSweepHandler", Duration.minutes(1));
+    sweep.addEnvironment("USER_POOL_ID", props.userPool.userPoolId);
+    sweep.addEnvironment("QUEUE_URL", queue.queueUrl);
+    table.grant(sweep, "dynamodb:Scan");
+    recent.grant(sweep, "dynamodb:Scan");
+    queue.grantSendMessages(sweep);
+    sweep.addToRolePolicy(new PolicyStatement({ actions: ["cognito-idp:ListUsers"], resources: [props.userPool.userPoolArn] }));
+    new Schedule(this, "OrphanSweepDaily", {
+      description: "Daily orphan record sweep: records of users deleted directly in Cognito go to the cleanup queue",
+      schedule: ScheduleExpression.cron({ minute: "0", hour: "3", timeZone: TimeZone.ASIA_SEOUL }),
+      target: new LambdaInvoke(sweep, { input: ScheduleTargetInput.fromObject({}), retryAttempts: 2 }),
+    });
+    // 안전장치(목록 비어 있음·20명 초과)나 오류로 멈추면 Lambda 오류로 알린다
+    new Alarm(this, "OrphanSweepErrorsAlarm", {
+      alarmDescription: "Orphan record sweep failed or stopped by a safety check (docs/03 orphan cleanup)",
+      metric: sweep.metricErrors({ period: Duration.hours(1) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
 
     // HTTP API: 모든 경로에 JWT 인가(Cognito 발급자 + 웹 클라이언트). CloudFront /api/*에서 같은 출처로 부르므로 CORS 없음
     const authorizer = new HttpJwtAuthorizer("CognitoJwt", `https://cognito-idp.${this.region}.amazonaws.com/${props.userPool.userPoolId}`, {
