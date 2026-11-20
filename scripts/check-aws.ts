@@ -171,6 +171,9 @@ else {
     schedule?.State === "ENABLED" && schedule.ScheduleExpression === "cron(0 3 * * ? *)" && schedule.ScheduleExpressionTimezone === "Asia/Seoul" && schedule.GroupName === GROUP,
     `고아 정리 일정: ${schedule ? `${schedule.State}, ${schedule.ScheduleExpression} ${schedule.ScheduleExpressionTimezone}, 그룹 ${schedule.GroupName}` : "없음"} (기대 매일 03:00 서울, 그룹 ${GROUP})`,
   );
+  // 그룹을 옮긴 뒤 default 그룹에 이 프로젝트 일정이 남아 있지 않아야 한다(이중 실행 방지)
+  const leftovers = aws<{ Schedules: { Name: string }[] }>("scheduler", "list-schedules", "--group-name", "default", "--name-prefix", "VisualDictionary").Schedules;
+  check(leftovers.length === 0, `default 그룹의 이 프로젝트 일정: ${leftovers.length}개 (기대 0)`);
   // Scheduler 역할 신뢰: scheduler.amazonaws.com, 이 계정, 이 그룹의 일정만
   if (schedule) {
     type Trust = { Principal?: { Service?: string }; Condition?: { StringEquals?: Record<string, string> } };
