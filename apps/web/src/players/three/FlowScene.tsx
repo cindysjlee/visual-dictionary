@@ -94,6 +94,11 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
           tone: changed ? "attack" : "plain",
         });
       }
+      // 칸 선반 라벨: "SYN-RECEIVED 대기열 6/6". 가득 차면 공격색
+      if (a.slots) {
+        const n = s.occupied.get(id) ?? 0;
+        l.set(`slots-${id}`, model.shelfLabelPoint(id), { title: `${a.slots.label} ${n}/${a.slots.size}`, tone: n >= a.slots.size ? "attack" : "plain" }, !overview && !s.hidden.has(id));
+      }
       const gained = s.gained.get(id);
       l.set(`gain-${id}`, node.labelPoint.clone().add(new Vector3(0, 0.6, 0)), { title: `+${(gained ?? 0).toLocaleString("ko-KR")}원`, tone: "attack" }, gained !== undefined);
     }
@@ -179,6 +184,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         hold: holdMs(view, true),
         onDone: done,
         onBalance: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1), false, null),
+        onSlots: () => refreshLabels(sceneStateAt(term, state.defense, state.step + 1), false, null),
         screens: before.screens,
         trace,
       });

@@ -10,7 +10,7 @@ const KIND_BY_ROLE: Record<string, ActorKind> = { user: "person", attacker: "att
 
 /** 플레이어마다 쓸 수 있는 효과 어휘 (docs/04) */
 export const EFFECTS_BY_PLAYER: Record<PlayerType, readonly Effect["type"][]> = {
-  flow: ["appear", "flip", "rewrite", "store", "attach", "give", "run", "inspect", "transfer"],
+  flow: ["appear", "flip", "rewrite", "store", "attach", "give", "run", "inspect", "transfer", "occupy", "vacate", "opacity"],
   stack: ["locals", "returnValue"],
   lock: ["condition", "take", "cycle", "timeout", "stamp"],
 };
@@ -48,10 +48,10 @@ export const LOOK_KINDS: Record<Look, readonly ActorKind[]> = {
   scanner: ["resource"],
 };
 
-/** 화면판이 있는 행위자: 탭은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
+/** 화면판이 있는 행위자: 탭·겹친 화면(frame)은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
 export const hasPanel = (actor: Actor) => {
   const kind = kindOf(actor);
-  return kind === "tab" || ((kind === "server" || kind === "database") && actor.screen !== undefined);
+  return kind === "tab" || kind === "frame" || ((kind === "server" || kind === "database") && actor.screen !== undefined);
 };
 
 /** 모드로 고를 수 있는지: 방어는 차단 단계가 있을 때(그 단계에서 멈춤), 해결 방법은 대체 흐름이 있을 때(갈림 단계부터 끝까지) */
@@ -100,6 +100,7 @@ export type StepView = {
   camera?: { focus: string; distance?: "near" | "mid" | "far" };
   action: Step["action"];
   line?: number;
+  burst?: number;
 };
 
 export function stepView(term: Term, mode: Mode, index: number): StepView {
@@ -128,6 +129,7 @@ export function stepView(term: Term, mode: Mode, index: number): StepView {
     camera: step.camera,
     action: step.action,
     line: step.line,
+    burst: step.burst,
   };
 }
 
@@ -141,6 +143,7 @@ export function blockTarget(view: Pick<StepView, "to" | "effects">): string {
     if (e.type === "run" && e.refused) return e.target;
     if (e.type === "attach" && e.refused) return e.from;
     if (e.type === "give" && e.refused) return e.to;
+    if (e.type === "occupy" && e.refused) return e.target;
   }
   return view.to;
 }
@@ -156,6 +159,9 @@ function refsOf(e: Effect): [string, string][] {
     case "flip":
     case "rewrite":
     case "run":
+    case "occupy":
+    case "vacate":
+    case "opacity":
       return [["target", e.target]];
     case "store":
       return [["into", e.into]];
@@ -190,6 +196,12 @@ export function checkScene(term: Term): Issue[] {
   actors.forEach((a, i) => {
     if (a.look && !LOOK_KINDS[a.look].includes(kindOf(a))) {
       issues.push({ path: ["scenario", "actors", i, "look"], message: `look ${a.look}은(는) ${LOOK_KINDS[a.look].join("·")}에만 쓸 수 있습니다(지금 kind: ${kindOf(a)})` });
+    }
+    if (a.slots && !["server", "database"].includes(kindOf(a))) {
+      issues.push({ path: ["scenario", "actors", i, "slots"], message: `칸(slots)은 server·database에만 둘 수 있습니다(지금 kind: ${kindOf(a)})` });
+    }
+    if (kindOf(a) === "frame" && (!a.parent || (byId.has(a.parent) && kindOf(byId.get(a.parent)!) !== "tab"))) {
+      issues.push({ path: ["scenario", "actors", i, "parent"], message: "겹친 화면(frame)은 탭(tab) 안에 둡니다(parent가 tab)" });
     }
     if (a.mirrorScreen && !hasPanel(a)) {
       issues.push({ path: ["scenario", "actors", i, "mirrorScreen"], message: `${a.id}에는 화면판이 없어 mirrorScreen을 쓸 수 없습니다(탭, 또는 screen이 있는 server·database만)` });
@@ -236,9 +248,20 @@ export function checkScene(term: Term): Issue[] {
       if (e.type === "run" && target && kindOf(target) !== "tab") {
         issues.push({ path: [...path, "target"], message: `run은 tab에서만 실행됩니다: ${e.target}` });
       }
+      if ((e.type === "occupy" || e.type === "vacate") && target && !target.slots) {
+        issues.push({ path: [...path, "target"], message: `${e.target}에는 칸(slots)이 없습니다` });
+      }
+      if (e.type === "opacity" && target && kindOf(target) !== "frame") {
+        issues.push({ path: [...path, "target"], message: `opacity는 겹친 화면(frame)에만 씁니다: ${e.target}` });
+      }
     });
 
+  const checkBurst = (s: Step, path: (string | number)[]) => {
+    if (s.burst !== undefined && s.from === s.to) issues.push({ path: [...path, "burst"], message: "제자리 단계에는 burst를 쓸 수 없습니다" });
+  };
+  term.defenses.forEach((d, di) => d.steps?.forEach((s, si) => checkBurst(s, ["defenses", di, "steps", si])));
   steps.forEach((s, i) => {
+    checkBurst(s, ["scenario", "steps", i]);
     if (s.via && !byId.has(s.via)) issues.push({ path: ["scenario", "steps", i, "via"], message: `actors에 없는 행위자: ${s.via}` });
     if (s.camera && s.camera.focus !== "all" && !byId.has(s.camera.focus)) {
       issues.push({ path: ["scenario", "steps", i, "camera", "focus"], message: `actors에 없는 행위자: ${s.camera.focus}` });
@@ -278,6 +301,7 @@ export function checkScene(term: Term): Issue[] {
   };
   for (const mode of [null, ...term.defenses.map((_, i) => i)] as Mode[]) {
     const holdings = new Map<string, Set<Item>>();
+    const filled = new Map<string, number>(); // 칸(slots)이 찬 개수
     const holds = (id: string, it: Item) => holdings.get(id)?.has(it) ?? false;
     const add = (id: string, it: Item) => holdings.set(id, (holdings.get(id) ?? new Set<Item>()).add(it));
     for (let i = 0; i <= Math.min(lastStepIndex(term, mode), steps.length - 1); i++) {
@@ -297,6 +321,18 @@ export function checkScene(term: Term): Issue[] {
           if (!e.refused) add(e.to, e.item);
         }
         if (e.type === "transfer") add(e.to, e.item);
+        const size = (e.type === "occupy" || e.type === "vacate") && byId.get(e.target)?.slots?.size;
+        if (size && e.type === "occupy") {
+          const now = filled.get(e.target) ?? 0;
+          if (e.refused && now < size) report([...path, "refused"], `${i + 1}단계에 ${e.target}의 칸이 아직 ${size - now}개 비어 있어 거절할 수 없습니다`);
+          if (!e.refused && now + e.count > size) report([...path, "count"], `${i + 1}단계에 ${e.target}의 칸이 ${size - now}개만 남았습니다(채우려는 수 ${e.count})`);
+          if (!e.refused) filled.set(e.target, Math.min(size, now + e.count));
+        }
+        if (size && e.type === "vacate") {
+          const now = filled.get(e.target) ?? 0;
+          if (e.count > now) report([...path, "count"], `${i + 1}단계에 ${e.target}의 찬 칸은 ${now}개입니다(비우려는 수 ${e.count})`);
+          filled.set(e.target, Math.max(0, now - e.count));
+        }
         if (e.type === "run" && !holds(e.target, e.item)) {
           report([...path, "target"], `${i + 1}단계에서 ${e.target}에 실행할 ${ITEM_NAMES[e.item]}이(가) 없습니다`);
         }

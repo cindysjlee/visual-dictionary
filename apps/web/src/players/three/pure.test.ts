@@ -130,3 +130,35 @@ describe("Timeline", () => {
     expect(x).toBe(1);
   });
 });
+
+describe("흐름형 어휘의 결과 상태와 배치", () => {
+  const term = termSchema.parse({
+    ...csrf,
+    scenario: {
+      ...csrf.scenario,
+      actors: [
+        ...csrf.scenario.actors.map((a) => (a.id === "bank" ? { ...a, slots: { label: "대기열", size: 3 } } : a)),
+        { id: "bankFrame", name: "은행 화면", role: "server", kind: "frame", parent: "evilTab" },
+      ],
+      steps: csrf.scenario.steps.map((s, i) =>
+        i === 0 ? { ...s, effects: [{ type: "occupy", target: "bank", count: 2 }, { type: "opacity", target: "bankFrame", value: 0.05 }] } : i === 1 ? { ...s, effects: [...s.effects, { type: "vacate", target: "bank" }] } : s,
+      ),
+    },
+  });
+
+  it("칸 수와 겹친 화면의 투명도가 단계를 따라 바뀐다", () => {
+    expect(sceneStateAt(term, null, 0).occupied.get("bank")).toBeUndefined();
+    expect(sceneStateAt(term, null, 1).occupied.get("bank")).toBe(2);
+    expect(sceneStateAt(term, null, 1).opacity.get("bankFrame")).toBe(0.05);
+    expect(sceneStateAt(term, null, 2).occupied.get("bank")).toBe(1);
+  });
+
+  it("겹친 화면은 부모 탭 바로 앞(탭의 자식의 자식도 배치된다)", () => {
+    const p = layoutScene(term.scenario.actors);
+    const tab = p.get("evilTab")!.position;
+    const frame = p.get("bankFrame")!;
+    expect(frame.parent).toBe("evilTab");
+    expect(frame.position[0]).toBe(tab[0]);
+    expect(frame.position[2]).toBeCloseTo(tab[2] + 0.35);
+  });
+});

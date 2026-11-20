@@ -47,9 +47,13 @@ export type ActorNode = {
   gate?: { arm: Group; ring: Mesh; toneMats: MeshStandardMaterial[] };
   /** wifi look의 전파 고리. 봉투가 가까이 지날 때만 퍼진다(pulseRings) */
   rings?: Mesh[];
+  /** 칸 선반(slots): 상자마다 빈 칸·찬 칸 재질을 바꿔 끼운다 */
+  shelf?: { boxes: Mesh[]; filled: number; empty: MeshStandardMaterial; full: MeshStandardMaterial };
 };
 
 const v = (p: Vec3) => new Vector3(...p);
+/** 칸 선반의 x(행위자 그룹 기준): 섬 왼쪽 옆 */
+const SHELF_X = -2.6;
 
 export class SceneModel {
   readonly root = new Group();
@@ -61,6 +65,8 @@ export class SceneModel {
   readonly carry = new Map<Item, Object3D>();
   readonly flyers = new Map<Item, Object3D>();
   readonly coins: Object3D[] = [];
+  /** burst 단계에서 본 봉투 뒤를 따라 날아가는 봉투들 */
+  readonly ghosts: Group[] = [];
   readonly stamp: Mesh;
   readonly card: Mesh;
   private stampPaint = screenPainter();
@@ -80,6 +86,18 @@ export class SceneModel {
     for (const actor of term.scenario.actors) this.buildActor(actor);
     this.buildInternet();
     this.buildEnvelope();
+    for (let i = 0; i < 7; i++) {
+      const ghost = new Group();
+      ghost.add(new Mesh(new PlaneGeometry(0.9, 0.6), this.std("paper", { emissive: 0.15 })));
+      const flap = new Mesh(new ShapeGeometry(this.flapShape()), this.envMat);
+      flap.position.set(0, 0.3, 0.01);
+      ghost.add(flap);
+      ghost.scale.setScalar(0.8);
+      ghost.visible = false;
+      this.root.add(ghost);
+      this.billboards.push(ghost);
+      this.ghosts.push(ghost);
+    }
     for (const item of ["cookie", "token", "script", "data", "coin"] as Item[]) {
       const flyer = this.itemMesh(item);
       flyer.visible = false;
@@ -122,6 +140,7 @@ export class SceneModel {
     this.palette = palette;
     for (const b of this.bound) this.paint(b.mat, b.key, b.emissive);
     this.setEnvelopeTone(this.envTone);
+    for (const [id, node] of this.nodes) if (node.shelf) this.setOccupied(id, node.shelf.filled);
     for (const sg of this.signs) paintSign(sg.painter, sg.text, sg.tone, palette);
     this.repaintScreens(state);
   }
@@ -196,6 +215,13 @@ export class SceneModel {
         labelY = 1.05;
         break;
       }
+      case "frame": {
+        // 탭 안에 겹친 다른 사이트 화면(iframe): 탭보다 조금 작은 판이 탭 바로 앞에 선다. opacity로 투명해진다
+        node.panel = this.buildPanel(group, tone);
+        node.panel.pivot.scale.setScalar(0.86); // 그룹 크기는 applyState·appear가 쓰므로 판만 줄인다
+        labelAt = new Vector3(0, -1.15, 0.2);
+        break;
+      }
       case "cookieJar": {
         this.mesh(new CylinderGeometry(0.42, 0.42, 0.75, 32), this.std("paper", { opacity: 0.35 }), [0, 0.4, 0], group);
         this.mesh(new CylinderGeometry(0.46, 0.46, 0.1, 32), this.std("objectDim"), [0, 0.82, 0], group);
@@ -254,8 +280,18 @@ export class SceneModel {
         break;
       }
     }
+    if (actor.slots) node.shelf = this.buildShelf(group, actor.slots.size);
     node.labelPoint.copy(group.position).add(labelAt ?? new Vector3(0, labelY, 0));
     this.nodes.set(actor.id, node);
+    // 겹친 화면은 가림 자동 투명에서 뺀다: 투명도는 opacity 효과가 정한다(가림 처리가 덮어쓰면 안 됨)
+    if (placed.kind === "frame") {
+      group.traverse((o) => {
+        const k = this.occluders.indexOf(o as Mesh);
+        if (k >= 0) this.occluders.splice(k, 1);
+        o.userData.actor = actor.id;
+      });
+      return;
+    }
     // 가림 자동 투명은 모든 행위자 대상. 어느 행위자의 메시인지 적어 두어, 그 행위자를 보려는 시선에서는 자기 자신을 흐리지 않는다
     group.traverse((o) => {
       if (!(o instanceof Mesh)) return;
@@ -405,6 +441,54 @@ export class SceneModel {
     }
   }
 
+  /**
+   * 칸 선반: 섬 왼쪽 옆에 앞뒤로 늘어선 작은 상자 n개(앞에 두면 검문소에, 오른쪽은 화면판에 가린다).
+   * 빈 칸은 옅은 유리, 찬 칸은 공격색
+   */
+  private buildShelf(group: Group, size: number): NonNullable<ActorNode["shelf"]> {
+    const empty = this.std("paper", { opacity: 0.45, emissive: 0.05 });
+    const full = this.std("attack", { emissive: 0.6 });
+    const z = (i: number) => 0.4 + (i - (size - 1) / 2) * 0.5;
+    this.mesh(new BoxGeometry(0.55, 0.08, size * 0.5 + 0.2), this.std("objectDim"), [SHELF_X, 0.34, z((size - 1) / 2)], group);
+    const boxes = Array.from({ length: size }, (_, i) => this.mesh(new BoxGeometry(0.38, 0.38, 0.38), empty, [SHELF_X, 0.57, z(i)], group));
+    return { boxes, filled: 0, empty, full };
+  }
+
+  /** 칸 선반에서 앞에서부터 n칸을 찬 칸으로 */
+  setOccupied(id: string, n: number) {
+    const shelf = this.nodes.get(id)?.shelf;
+    if (!shelf) return;
+    shelf.filled = n;
+    shelf.boxes.forEach((b, i) => (b.material = i < n ? shelf.full : shelf.empty));
+  }
+
+  /** 칸 선반 라벨 자리: 선반 앞 끝 아래(위에 두면 상자를 덮는다) */
+  shelfLabelPoint(id: string) {
+    const node = this.nodes.get(id)!;
+    const size = node.shelf?.boxes.length ?? 1;
+    return node.group.position.clone().add(new Vector3(SHELF_X, -0.3, 0.4 + size * 0.25 + 0.7));
+  }
+
+  /** 겹친 화면(frame)의 지금 불투명도 */
+  opacityOf(id: string): number {
+    let v = 1;
+    this.nodes.get(id)?.group.traverse((o) => {
+      if (o instanceof Mesh) v = (o.material as MeshStandardMaterial).opacity;
+    });
+    return v;
+  }
+
+  /** 겹친 화면(frame)의 불투명도: 판의 모든 재질 */
+  setOpacity(id: string, value: number) {
+    this.nodes.get(id)?.group.traverse((o) => {
+      if (!(o instanceof Mesh)) return;
+      const mat = o.material as MeshStandardMaterial | MeshBasicMaterial;
+      mat.transparent = true;
+      mat.opacity = value;
+      mat.depthWrite = value > 0.95;
+    });
+  }
+
   /** wifi 전파 고리: active면 바깥으로 퍼지며 되풀이, 아니면 제자리(봉투가 멀거나 동작 줄이기) */
   pulseRings(id: string, time: number, active: boolean) {
     const rings = this.nodes.get(id)?.rings;
@@ -478,15 +562,19 @@ export class SceneModel {
   }
 
   /* ---------- 봉투와 물건 ---------- */
-  private buildEnvelope() {
-    const body = new Mesh(new PlaneGeometry(0.9, 0.6), this.std("paper", { emissive: 0.15 }));
-    this.envelope.add(body);
+  private flapShape() {
     const tri = new Shape();
     tri.moveTo(-0.45, 0);
     tri.lineTo(0.45, 0);
     tri.lineTo(0, -0.34);
     tri.closePath();
-    const flapMesh = new Mesh(new ShapeGeometry(tri), this.envMat);
+    return tri;
+  }
+
+  private buildEnvelope() {
+    const body = new Mesh(new PlaneGeometry(0.9, 0.6), this.std("paper", { emissive: 0.15 }));
+    this.envelope.add(body);
+    const flapMesh = new Mesh(new ShapeGeometry(this.flapShape()), this.envMat);
     flapMesh.position.z = 0.01;
     this.flap.position.y = 0.3;
     this.flap.add(flapMesh);
@@ -646,6 +734,11 @@ export class SceneModel {
         this.setGateTone(id, "neutral");
       }
     }
+    for (const [id, node] of this.nodes) {
+      if (node.shelf) this.setOccupied(id, state.occupied.get(id) ?? 0);
+      if (node.placed.kind === "frame") this.setOpacity(id, state.opacity.get(id) ?? 1);
+    }
+    for (const g of this.ghosts) g.visible = false;
     this.envelope.visible = false;
     this.envelope.userData.roll = 0;
     this.flap.rotation.x = 0;

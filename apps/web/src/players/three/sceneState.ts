@@ -12,6 +12,8 @@ export type SceneState = {
   ran: Set<string>; // 스크립트가 실행된 탭
   balances: Map<string, number>;
   gained: Map<string, number>; // 잔액 필드가 없는 쪽이 받은 돈
+  occupied: Map<string, number>; // 칸(slots)이 찬 개수
+  opacity: Map<string, number>; // 겹친 화면(frame)의 불투명도(없으면 1)
 };
 
 /** upTo = 이 단계 번호(0부터) 직전까지 적용. upTo = 단계 수면 마지막까지 */
@@ -28,6 +30,8 @@ export function sceneStateAt(term: Term, mode: Mode, upTo: number): SceneState {
     ran: new Set(),
     balances: new Map(actors.flatMap((a) => (a.balance === undefined ? [] : [[a.id, a.balance] as const]))),
     gained: new Map(),
+    occupied: new Map(),
+    opacity: new Map(),
   };
   const hold = (id: string, item: Item, label?: string) =>
     state.holdings.set(id, (state.holdings.get(id) ?? new Map()).set(item, label));
@@ -66,6 +70,17 @@ export function sceneStateAt(term: Term, mode: Mode, upTo: number): SceneState {
               else if (sign > 0) state.gained.set(id, (state.gained.get(id) ?? 0) + e.amount);
             }
           } else hold(e.to, e.item, e.label);
+          break;
+        case "occupy": {
+          const size = actors.find((a) => a.id === e.target)?.slots?.size ?? 0;
+          if (!e.refused) state.occupied.set(e.target, Math.min(size, (state.occupied.get(e.target) ?? 0) + e.count));
+          break;
+        }
+        case "vacate":
+          state.occupied.set(e.target, Math.max(0, (state.occupied.get(e.target) ?? 0) - e.count));
+          break;
+        case "opacity":
+          state.opacity.set(e.target, e.value);
           break;
         case "inspect":
           break;

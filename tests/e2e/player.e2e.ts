@@ -187,6 +187,7 @@ function expectedEvents(term: Term, mode: Mode, i: number): string[] {
   const gate = passesGate(term, v.from, v.to);
   const out = ["stepStart"];
   if (!self) out.push(`depart:${v.from}`);
+  if (!self && v.burst) out.push(`burst:${v.from}`);
   for (const e of v.effects) if (e.type === "attach") out.push(effectKey(e));
   if (via) out.push(`via:${via}`);
   for (const e of v.effects) if (e.type === "give") out.push(effectKey(e));

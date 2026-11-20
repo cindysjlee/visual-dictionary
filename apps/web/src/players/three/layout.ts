@@ -50,6 +50,8 @@ const anchorOf = (kind: ActorKind, [x, y, z]: Vec3): Vec3 => {
   switch (kind) {
     case "tab":
       return [x, y + 0.2, z + 0.5];
+    case "frame":
+      return [x, y + 0.15, z + 0.4];
     case "cookieJar":
       return [x, y + 0.55, z];
     case "browser":
@@ -81,8 +83,11 @@ export function layoutScene(actors: readonly Actor[]): Map<string, Placed> {
     });
   }
 
-  // 자식: 브라우저 안의 탭은 뒤쪽에 나란히, 보관함은 앞 가운데. 그 밖의 부모는 위로 쌓는다
-  for (const parent of [...placed.values()]) {
+  // 자식: 브라우저 안의 탭은 뒤쪽에 나란히, 보관함은 앞 가운데, 탭 안의 겹친 화면(frame)은 탭 바로 앞. 그 밖의 부모는 위로 쌓는다.
+  // 자식의 자식(탭 안의 frame)도 배치하도록, 배치한 자식을 차례에 덧붙인다
+  const queue = [...placed.values()];
+  for (let k = 0; k < queue.length; k++) {
+    const parent = queue[k]!;
     const children = actors.filter((a) => a.parent === parent.id);
     const [px, py, pz] = parent.position;
     const tabs = children.filter((c) => kindOf(c) === "tab");
@@ -94,8 +99,11 @@ export function layoutScene(actors: readonly Actor[]): Map<string, Placed> {
       let position: Vec3;
       if (parent.kind === "browser" && kind === "tab") position = [tabX[tabs.indexOf(child)]!, py + 1.55, pz - 0.3];
       else if (parent.kind === "browser" && kind === "cookieJar") position = [px, py + 0.25, pz + 0.85];
+      else if (parent.kind === "tab" && kind === "frame") position = [px, py + 0.05, pz + 0.35];
       else position = [px, py + 2.4 + 0.9 * stacked++, pz];
-      placed.set(child.id, { id: child.id, kind, zone: parent.zone, position, anchor: anchorOf(kind, position), parent: parent.id });
+      const p: Placed = { id: child.id, kind, zone: parent.zone, position, anchor: anchorOf(kind, position), parent: parent.id };
+      placed.set(child.id, p);
+      queue.push(p);
     }
   }
   return placed;

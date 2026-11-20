@@ -9,7 +9,7 @@ const id = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "소문자·숫자·하�
 const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
 
 /* ---------- 3D 장면 어휘 (docs/06, 모두 선택 항목) ---------- */
-export const ACTOR_KINDS = ["browser", "tab", "cookieJar", "server", "database", "network", "attacker", "person", "thread", "resource"] as const;
+export const ACTOR_KINDS = ["browser", "tab", "frame", "cookieJar", "server", "database", "network", "attacker", "person", "thread", "resource"] as const;
 export const ZONES = ["client", "between", "server", "internal", "outside"] as const;
 export const ITEMS = ["cookie", "token", "script", "data", "coin"] as const;
 /** 행위자 생김새(docs/06 2절 "생김새"). 없으면 kind의 기본 모양. 어느 kind에 쓸 수 있는지는 scene.ts의 LOOK_KINDS */
@@ -35,6 +35,11 @@ export const effectSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("attach"), item, from: text, label: text.optional(), note: text.optional(), ...refusal }),
   z.strictObject({ type: z.literal("give"), item, from: text, to: text, label: text.optional(), ...refusal }),
   z.strictObject({ type: z.literal("run"), item, target: text, ...refusal }),
+  // 칸(slots)이 있는 행위자의 칸을 채움(가득 차 있으면 refused로 거절)·비움. 예: SYN-RECEIVED 대기열, 연결 풀
+  z.strictObject({ type: z.literal("occupy"), target: text, count: z.int().min(1).default(1), label: text.optional(), ...refusal }),
+  z.strictObject({ type: z.literal("vacate"), target: text, count: z.int().min(1).default(1) }),
+  // 겹친 화면(frame)의 불투명도(0 = 완전히 투명, 1 = 그대로). 예: 클릭재킹의 투명 iframe
+  z.strictObject({ type: z.literal("opacity"), target: text, value: z.number().min(0).max(1) }),
   z.strictObject({
     type: z.literal("inspect"),
     at: text,
@@ -81,6 +86,8 @@ const actorSchema = z.strictObject({
   back: screenSchema.optional(),
   /** 화면판 내용을 늘 HTML 라벨로도 보여 준다(판 글씨가 작아도 상태가 읽히게). 화면판이 있는 행위자만 */
   mirrorScreen: z.boolean().default(false),
+  /** 서버·DB 앞에 놓인 칸 선반(occupy·vacate로 채우고 비움). 예: { label: "SYN-RECEIVED 대기열", size: 6 } */
+  slots: z.strictObject({ label: text, size: z.int().min(1).max(8) }).optional(),
 });
 
 const stepSchema = z.strictObject({
@@ -97,6 +104,7 @@ const stepSchema = z.strictObject({
   via: text.optional(),
   camera: z.strictObject({ focus: text, distance: z.enum(["near", "mid", "far"]).optional() }).optional(),
   line: z.int().min(1).optional(), // 스택형: 이 단계 뒤 맨 위 프레임이 실행 중인 코드 줄(scenario.code, 1부터)
+  burst: z.int().min(2).max(8).optional(), // 흐름형: 같은 봉투가 여러 개 연달아 날아감(보이는 개수, 실제 개수는 label에)
 });
 
 // 방어(kind: defense)는 blockedAtStep에서 차단되어 멈춘다. 해결 방법(kind: solution)은 branchAtStep부터 steps로 바꿔 끝까지 재생하는 대체 흐름이다

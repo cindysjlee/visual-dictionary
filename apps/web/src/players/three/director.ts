@@ -49,6 +49,8 @@ export type DirectorContext = {
   onBalance?: () => void;
   /** 테스트·개발 빌드의 장면 기록(trace.ts). 배포 빌드에서는 아무것도 하지 않는다 */
   trace?: Tracer;
+  /** 칸이 바뀐 뒤 선반 라벨(찬 칸 수)을 다시 그린다 */
+  onSlots?: () => void;
   /** 이 단계 직전의 화면판 내용(sceneState). 뒤집으면 라벨이 뒷면 내용으로 바뀐다 */
   screens?: SceneState["screens"];
 };
@@ -126,6 +128,7 @@ export function buildStep(ctx: DirectorContext): Timeline {
     } else frameShot();
     // 출발 샷이 목적지(숨은 대상이면 나타날 자리)를 처음부터 담는지 기록한다(테스트 빌드). 멀리 날아가는 동안 출발지만 보이면 안 된다
     if (!self) trace("depart", { actor: view.from, ...(TRACE ? { inShot: rig.covers([anchor(view.to), ...model.framePoints(view.to).slice(0, 8)]) } : {}) });
+    if (!self && view.burst) trace("burst", { actor: view.from });
   });
 
   // 봉투와 따로 날아가는 물건(토큰 발급·가로채기)은 첫 비행과 동시에
@@ -182,6 +185,25 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const legStart = tl.duration;
   if (self) tl.wait(900);
   else fly(firstLeg, via ? 1.2 : 1.6);
+  // burst: 같은 봉투가 본 봉투를 따라 조금씩 늦게 같은 길로 날아간다(보이는 개수, 실제 개수는 라벨)
+  if (!self && view.burst) {
+    const legMs = tl.duration - legStart;
+    const GAP = 140;
+    const total = legMs + (view.burst - 1) * GAP;
+    model.ghosts.slice(0, view.burst - 1).forEach((ghost, k) => {
+      const curve = arc(legFrom, firstLeg, 1.6 + 0.25 * (k + 1));
+      const delay = (k + 1) * GAP;
+      tl.with(
+        total,
+        (t) => {
+          const local = Math.min(1, Math.max(0, (t * total - delay) / legMs));
+          ghost.visible = local > 0 && local < 1;
+          ghost.position.copy(curve.getPoint(local));
+        },
+        linear,
+      );
+    });
+  }
   for (const g of gives) {
     const obj = model.flyers.get(g.item)!;
     const from = g.from === "packet" ? legFrom : anchor(g.from);
@@ -342,6 +364,48 @@ export function buildStep(ctx: DirectorContext): Timeline {
           if (!e.refused) tl.tween(600, (t) => g.scale.setScalar(1 + 0.08 * Math.sin(t * Math.PI * 3)));
           else tl.call(() => labels.set(NOTE, anchor(e.target).add(new Vector3(0, 1.2, 0)), { title: e.reason ?? "실행 안 됨", tone: "defense" }));
           tl.wait(600);
+          break;
+        }
+        case "occupy":
+        case "vacate": {
+          const shelf = node(e.target)!.shelf!;
+          const size = shelf.boxes.length;
+          const start = { n: 0 };
+          tl.call(() => {
+            start.n = shelf.filled;
+            rig.shot(model.shelfLabelPoint(e.target), "near");
+          });
+          if (e.type === "occupy" && e.refused) {
+            tl.call(() =>
+              labels.set(NOTE, model.shelfLabelPoint(e.target).add(new Vector3(-1.6, 1.6, -1.2)), {
+                title: `${e.reason ?? "칸이 가득 참"} → 거절`,
+                tone: view.tone === "attack" ? "attack" : "defense",
+              }),
+            );
+            tl.wait(900);
+            break;
+          }
+          tl.tween(
+            Math.min(1400, 250 * e.count),
+            (t) => {
+              const step = Math.round(e.count * t);
+              const n = e.type === "occupy" ? Math.min(size, start.n + step) : Math.max(0, start.n - step);
+              if (n !== shelf.filled) model.setOccupied(e.target, n);
+            },
+            linear,
+          );
+          tl.call(() => ctx.onSlots?.());
+          tl.wait(400);
+          break;
+        }
+        case "opacity": {
+          const start = { v: 1 };
+          tl.call(() => {
+            start.v = model.opacityOf(e.target);
+            rig.shot(anchor(e.target), "near");
+          });
+          tl.tween(900, (t) => model.setOpacity(e.target, start.v + (e.value - start.v) * t));
+          tl.wait(400);
           break;
         }
         case "transfer": {

@@ -5,10 +5,10 @@ import type { Mode } from "@app/content-schema/scene";
 export const TRACE = import.meta.env.MODE !== "production";
 
 /**
- * stepStart → depart(봉투 출발) → via(경유지 도착) → gate(검문소 도착) → arrive(목적지 도착) → return(왕복해 돌아옴)
+ * stepStart → depart(봉투 출발) → burst(같은 봉투 여러 개, 있을 때) → via(경유지 도착) → gate(검문소 도착) → arrive(목적지 도착) → return(왕복해 돌아옴)
  * → effect(효과 실행, 거부면 refused) → blocked(차단 도장) → stepEnd(연출과 대기가 끝남)
  */
-export type TraceKind = "stepStart" | "depart" | "via" | "gate" | "arrive" | "return" | "effect" | "blocked" | "stepEnd" | "ringsStart" | "ringsEnd" | "push" | "pop" | "run" | "acquire" | "wait" | "release";
+export type TraceKind = "stepStart" | "depart" | "burst" | "via" | "gate" | "arrive" | "return" | "effect" | "blocked" | "stepEnd" | "ringsStart" | "ringsEnd" | "push" | "pop" | "run" | "acquire" | "wait" | "release";
 /** inShot: depart에서 출발 샷이 목적지를 담는지. ringsStart/End: wifi 전파 고리가 퍼지기 시작·멈춤 */
 export type TraceEvent = { step: number; mode: Mode; kind: TraceKind; actor?: string; effect?: string; refused?: boolean; inShot?: boolean; t: number };
 /** 기록 하나 더하기. 같은 단계 안에서만 쓰므로 단계·모드는 미리 묶어 둔다 */

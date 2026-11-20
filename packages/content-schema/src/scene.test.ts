@@ -210,3 +210,45 @@ describe("해결 방법(대체 흐름)과 스택·점유형 규칙", () => {
     expect(issuesOf("deadlock", (t) => (t.scenario.steps[3].effects = [{ type: "condition", name: "circular-wait" }, { type: "cycle" }]))).toEqual([]);
   });
 });
+
+describe("흐름형 어휘: 칸(slots)·여러 개 보내기(burst)·겹친 화면(frame)", () => {
+  // CSRF 은행에 칸 3개를 두고 5단계(위조 송금)에서 채운다
+  const withSlots = (effects: unknown[], size = 3) => (t: any) => {
+    t.scenario.actors.find((a: any) => a.id === "bank").slots = { label: "대기열", size };
+    t.scenario.steps[0].effects = effects;
+  };
+
+  it("칸은 server·database에만, occupy·vacate는 칸이 있는 곳에만", () => {
+    expect(issuePaths((t) => (t.scenario.actors[0].slots = { label: "대기열", size: 2 }))).toEqual(["scenario.actors.0.slots: 칸(slots)은 server·database에만 둘 수 있습니다(지금 kind: browser)"]);
+    expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "occupy", target: "evil" }]))).toEqual(["scenario.steps.0.effects.0.target: evil에는 칸(slots)이 없습니다"]);
+    expect(issuePaths(withSlots([{ type: "occupy", target: "bank", count: 3 }, { type: "vacate", target: "bank", count: 1 }]))).toEqual([]);
+  });
+
+  it("칸 개수를 넘게 채우거나, 빈 칸이 있는데 거절하거나, 찬 것보다 많이 비우면 오류", () => {
+    expect(issuePaths(withSlots([{ type: "occupy", target: "bank", count: 4 }]))).toEqual(["scenario.steps.0.effects.0.count: 1단계에 bank의 칸이 3개만 남았습니다(채우려는 수 4)"]);
+    expect(issuePaths(withSlots([{ type: "occupy", target: "bank", refused: true }]))).toEqual(["scenario.steps.0.effects.0.refused: 1단계에 bank의 칸이 아직 3개 비어 있어 거절할 수 없습니다"]);
+    expect(issuePaths(withSlots([{ type: "occupy", target: "bank", count: 3 }, { type: "occupy", target: "bank", refused: true }]))).toEqual([]);
+    expect(issuePaths(withSlots([{ type: "vacate", target: "bank", count: 1 }]))).toEqual(["scenario.steps.0.effects.0.count: 1단계에 bank의 찬 칸은 0개입니다(비우려는 수 1)"]);
+  });
+
+  it("burst는 제자리 단계에 쓸 수 없고, 거절된 occupy는 칸 선반에 도장을 찍는다", () => {
+    expect(issuePaths((t) => Object.assign(t.scenario.steps[0], { to: "bankTab", burst: 3 }))).toEqual(["scenario.steps.0.burst: 제자리 단계에는 burst를 쓸 수 없습니다"]);
+    expect(issuePaths((t) => (t.scenario.steps[0].burst = 9))[0]).toMatch(/^scenario\.steps\.0\.burst:/);
+    expect(stepView(termSchema.parse({ ...raw(), scenario: { ...raw().scenario, steps: raw().scenario.steps.map((s: any, i: number) => (i === 0 ? { ...s, burst: 4 } : s)) } }), null, 0).burst).toBe(4);
+    expect(blockTarget({ to: "bank", effects: [{ type: "occupy", target: "shelfServer", count: 1, refused: true }] })).toBe("shelfServer");
+  });
+
+  it("겹친 화면은 탭 안에만, opacity는 겹친 화면에만. 화면판이 있어 rewrite할 수 있다", () => {
+    const frame = { id: "bankFrame", name: "은행 화면", role: "server", kind: "frame", parent: "evilTab" };
+    expect(issuePaths((t) => t.scenario.actors.push({ ...frame, parent: "browser" }))).toEqual(["scenario.actors.7.parent: 겹친 화면(frame)은 탭(tab) 안에 둡니다(parent가 tab)"]);
+    expect(issuePaths((t) => t.scenario.actors.push({ ...frame, parent: undefined }))).toEqual(["scenario.actors.7.parent: 겹친 화면(frame)은 탭(tab) 안에 둡니다(parent가 tab)"]);
+    expect(
+      issuePaths((t) => {
+        t.scenario.actors.push(frame);
+        t.scenario.steps[0].effects = [{ type: "opacity", target: "bankFrame", value: 0.05 }, { type: "rewrite", target: "bankFrame", screen: { lines: ["송금 확인"] } }];
+      }),
+    ).toEqual([]);
+    expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "opacity", target: "bankTab", value: 0.5 }]))).toEqual(["scenario.steps.0.effects.0.target: opacity는 겹친 화면(frame)에만 씁니다: bankTab"]);
+    expect(hasPanel({ ...frame, kind: "frame" } as any)).toBe(true);
+  });
+});
