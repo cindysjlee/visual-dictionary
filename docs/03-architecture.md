@@ -272,7 +272,7 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 2. `npx playwright install --with-deps chrome` → `npm run test:e2e`(workers 2)
 3. OIDC로 역할 맡기
 4. **보안 관문** `node scripts/ci-gate.ts security`: `cdk diff --all --security-only` 출력에 IAM 문장·IAM 정책·보안 그룹 변경 표가 하나라도 있으면 배포하지 않고 실패한다. 작업 요약에 이유와 diff(계정 ID는 가림)를 남기고, GitHub가 실패 알림을 보낸다. 그 변경은 로컬에서 보안 변경을 보여 주고 사용자 "승인"을 받은 뒤 배포한다. (`cdk diff --fail-on`은 공식 문서에 없어 쓰지 않는다. 기본 `--require-approval broadening`도 터미널 없는 환경에서 권한 확장 배포를 거부하지만, 스택 순서상 앞 스택이 먼저 배포될 수 있어 이 관문이 먼저 모든 스택을 검사한다.)
-5. **변경 관문** `node scripts/ci-gate.ts changes`: `cdk deploy --all --method=prepare-change-set --change-set-name ci-gate`로 변경 세트만 만들고, 각 스택의 변경 세트에 `Remove` 또는 `Replacement: True·Conditional`이 있으면 멈춘다(작업 요약에 스택·리소스·종류).
+5. **변경 관문** `node scripts/ci-gate.ts changes`: `cdk deploy --all --method=prepare-change-set --change-set-name ci-gate`로 변경 세트만 만들고, 각 스택의 변경 세트에 `Remove` 또는 `Replacement: True·Conditional`이 있으면 멈춘다(작업 요약에 스택·리소스·종류). `AWS::CDK::Metadata`(CDK 버전·통계만 담은 가상 리소스, 데이터 없음)는 로컬과 CI에서 값이 달라 매번 교체로 잡히므로 검사와 "바뀐 스택" 판단에서 뺀다.
 6. 배포: 변경이 있는 스택만 `cdk deploy … --exclusively --method=execute-change-set --change-set-name ci-gate`로 **관문에서 검사한 같은 변경 세트**를 실행한다.
 7. `npm run smoke:prod` → `npm run check:aws`
 

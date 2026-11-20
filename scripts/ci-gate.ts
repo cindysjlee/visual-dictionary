@@ -57,9 +57,11 @@ if (mode === "security") {
     const cs = JSON.parse(r.out) as { Status: string; StatusReason?: string; Changes: Change[] };
     if (cs.Status === "FAILED" && /didn't contain changes|No updates/i.test(cs.StatusReason ?? "")) continue;
     if (cs.Status !== "CREATE_COMPLETE") stop("변경 세트 상태 이상", `${stack}: ${cs.Status} ${cs.StatusReason ?? ""}`, r.out);
-    if (!cs.Changes.length) continue;
+    // AWS::CDK::Metadata는 CDK 버전·통계만 담은 가상 리소스(데이터 없음). 로컬과 CI에서 값이 달라 매번 "교체: Conditional"로 잡히므로 무시한다
+    const real = cs.Changes.filter(({ ResourceChange: c }) => c.ResourceType !== "AWS::CDK::Metadata");
+    if (!real.length) continue;
     changed.push(stack);
-    for (const { ResourceChange: c } of cs.Changes) {
+    for (const { ResourceChange: c } of real) {
       if (c.Action === "Remove" || c.Replacement === "True" || c.Replacement === "Conditional") {
         risky.push(`| ${stack} | ${c.LogicalResourceId} | ${c.ResourceType} | ${c.Action}${c.Replacement && c.Action === "Modify" ? ` (교체: ${c.Replacement})` : ""} |`);
       }
