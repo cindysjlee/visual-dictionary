@@ -1,6 +1,6 @@
 # 테스트 계획·결과 보고서
 
-기준 시점: 2026-11-21, 중간 점검 3차(2차: 탐색·상세·재설정 E2E, 360px, LCP·CLS, 공개 ID 검사 / 3차: 1920px, 기록 API 응답 시간, 셸 실행 금지 검사, E2E 전용 tsconfig). smoke:prod·smoke:auth·check:aws 수치는 2차 배포(`2f94d22`) 때 것이다. 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
+기준 시점: 2026-11-21, 중간 점검 4차(4차: 빈 구역 배치 단위 테스트, CI의 @perf는 측정만 / 2차: 탐색·상세·재설정 E2E, 360px, LCP·CLS, 공개 ID 검사 / 3차: 1920px, 기록 API 응답 시간, 셸 실행 금지 검사, E2E 전용 tsconfig). smoke:prod·smoke:auth·check:aws 수치는 2차 배포(`2f94d22`) 때 것이다. 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
 
 ## 1. 테스트 계획(언제 무엇을 돌리나)
 
@@ -19,7 +19,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 | 수준 | 대상과 목적 | 테스트 수 | 최근 결과 | 실행 시간 |
 | --- | --- | --- | --- | --- |
-| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 194(파일 18개) | 통과 194 / 실패 0 (11-21) | verify 전체 약 30~46초(빌드 포함) |
+| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 195(파일 18개) | 통과 195 / 실패 0 (11-21) | verify 전체 약 30~46초(빌드 포함) |
 | 인프라(CDK assertions) | S3·CloudFront·헤더·캐시, Cognito·OAuth, API·Lambda 권한·일정, CI 역할 신뢰·권한, 템플릿 비ASCII·메일 해시 | 32(파일 4개) | 통과 32 / 실패 0 (11-21) | verify에 포함 |
 | E2E(Playwright, 데스크톱 1440×900. `@narrow` 360×800, `@wide` 1920×1080) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px·1920px 레이아웃, LCP·CLS | 175(main 173 + 실제 속도 2) | 통과 175 / 실패 0 (11-21, 로컬) | 로컬 5.6분(workers 4), CI 약 9~14분(workers 2) |
 | smoke:prod | 운영 보안 헤더·CSP, SPA 라우팅·404, published 용어 상세·JSON, `/config.json`, 캐시 헤더 | 35 | 통과 35 / 실패 0 (11-21) | 2~3초 |
@@ -34,7 +34,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 | 영역 | 파일(테스트 수) |
 | --- | --- |
-| 화면·플레이어 | `auth.test.ts`(17), `recent.test.ts`(2), `summary.test.ts`(3), `engine.test.ts`(18), `simulate.test.ts`(28), `speedStore.test.ts`(2), `lockState.test.ts`(3), `three/pure.test.ts`(13), `stackState.test.ts`(3), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2) |
+| 화면·플레이어 | `auth.test.ts`(17), `recent.test.ts`(2), `summary.test.ts`(3), `engine.test.ts`(18), `simulate.test.ts`(28), `speedStore.test.ts`(2), `lockState.test.ts`(3), `three/pure.test.ts`(14, 빈 구역 배치 추가), `stackState.test.ts`(3), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2) |
 | 콘텐츠 스키마 | `index.test.ts`(15), `scene.test.ts`(24) |
 | 스크립트 | `validate-content.test.ts`(9, 공개 ID 검사 2개 추가), `no-shell.test.ts`(16: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `ci-gate-rules.test.ts`(2), `changeset-prepare.test.ts`(3) |
 | API | `api.test.ts`(32) |
@@ -66,6 +66,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 - 측정 조건: 네트워크를 Lighthouse 데스크톱 조건(왕복 40ms, 10Mbps)으로 늦추고, 로컬 테스트 빌드(`dist-e2e`)를 대상으로 E2E 병렬 실행(workers 4) 중에 잰다. CDN까지의 거리와 운영 캐시는 들어가지 않는다.
 - 테스트 빌드에는 장면 기록 코드가 있어 운영 묶음보다 조금 크다. 그래서 운영보다 불리한 쪽으로 잰다.
+- **어디서 실패로 보나**: LCP·CLS 기준 초과는 **로컬 배포 전 전체 E2E에서만 실패**다. CI(GitHub 러너)에서는 `@perf`가 측정값과 기준 이내 여부만 작업 요약(Job summary)에 남기고 실패로 보지 않는다(측정이 안 되는 경우, 즉 LCP 0만 실패). 이유: 러너는 GPU가 없고 공유 장비라 실행마다 성능 편차가 커서, 기준 초과가 화면 회귀가 아니라 러너 상태 때문일 수 있다. 같은 이유로 실제 속도 E2E 2개도 CI에서 돌리지 않는다.
 - 기록 API 응답 시간은 이 컴퓨터(서울 근처)에서 운영 CloudFront를 거쳐 잰 왕복 시간이다. 같은 사용자의 앞선 호출로 Lambda가 데워진 뒤에 재므로 첫 호출(콜드 스타트)은 포함하지 않는다.
 
 ## 3. 테스트가 잡은 결함(docs/08 연결)
@@ -101,7 +102,7 @@ GitHub Actions `deploy` 워크플로, 2026-11-20 ~ 21(UTC 기준 시작 시각).
 - **CI가 실제로 배포하는 경로**: 지금까지 모든 배포를 로컬에서 먼저 해서, CI의 "변경 세트 실행" 단계는 한 번도 실제로 돌지 않았다.
 - **smoke:auth:signup**: 8단계(구글 로그인, 인증 코드 변경) 뒤에는 다시 돌리지 않았다. CLAUDE.md는 인증 코드를 바꿔 배포했을 때 돌리게 되어 있다.
 - **성능 측정 범위**: LCP·CLS는 운영 CDN이 아니라 로컬 테스트 빌드 기준이고, 기록 API 응답 시간은 Lambda 콜드 스타트를 뺀 값이다.
-- **CI의 새 E2E**: 2차에 넣은 37개는 CI 44795013341에서 통과했다(GPU 없는 러너의 `@perf` 포함). 3차의 `@wide` 14개는 이번 push부터 CI에서 돈다.
+- **CI의 새 E2E**: 2차의 37개는 CI 44795013341, 3차의 `@wide` 14개는 CI 44801749175에서 통과했다. 4차부터 CI의 `@perf`는 측정만 하고 판정하지 않는다(2절).
 - **실제 메일·구글 경로**: 가입·재설정 메일과 구글 로그인은 사람이 직접 확인했고 자동 테스트는 가짜 구현 위에서만 돈다.
 - **고아 정리 일정의 실제 실행**: 매일 03:00 Scheduler 실행은 아직 결과를 확인하지 않았다(smoke는 함수를 직접 실행해 확인).
 - **실제 속도 E2E 2개**: GPU가 없는 CI에서는 돌지 않고 로컬 전체 E2E에서만 돈다.

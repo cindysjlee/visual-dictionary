@@ -55,6 +55,14 @@ describe("layoutScene", () => {
     expect(p.get("db")!.position[2]).toBeCloseTo(-14.5);
     expect(p.get("jar")!.zone).toBe("client");
   });
+
+  it("빈 구역은 자리를 만들지 않는다(DF-09: spread(0)이 위치 하나를 돌려주면 없는 행위자를 배치하려다 실패)", () => {
+    // 서버·바깥만 있고 사용자·길목·사내망 구역은 비어 있다
+    const actors = csrf.scenario.actors.filter((a) => a.id === "bank" || a.id === "attacker");
+    const p = layoutScene(actors);
+    expect([...p.keys()].sort()).toEqual(["attacker", "bank"]);
+    for (const { position } of p.values()) expect(position.every(Number.isFinite)).toBe(true);
+  });
 });
 
 describe("sceneStateAt", () => {

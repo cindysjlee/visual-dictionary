@@ -1,5 +1,6 @@
 // 성능(NFR-02, @perf): 홈·상세 첫 화면의 LCP·CLS를 잰다. 기준과 근거는 docs/10 "성능 기준".
 // 네트워크는 Lighthouse 데스크톱 조건(왕복 40ms, 10Mbps)으로 늦춘다. 대상은 로컬 테스트 빌드(dist-e2e)라 CDN 거리는 들어가지 않는다
+import { appendFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const tag = { tag: "@perf" };
@@ -31,18 +32,27 @@ async function measure(page: Page, path: string, ready: (page: Page) => Promise<
   );
 }
 
-test("홈 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {
-  const { lcp, cls } = await measure(page, "/", async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible()));
-  console.log(`${test.info().title}: LCP ${Math.round(lcp)}ms, CLS ${cls.toFixed(3)}`);
-  expect(lcp).toBeGreaterThan(0);
+/**
+ * 로컬(배포 전 전체 E2E)에서는 기준을 넘으면 실패한다. CI(GitHub 러너)는 GPU가 없고 성능 편차가 커서
+ * 측정값과 기준 이내 여부만 작업 요약(GITHUB_STEP_SUMMARY)에 남기고 실패로 보지 않는다(docs/10 "성능 기준")
+ */
+function judge(name: string, { lcp, cls }: { lcp: number; cls: number }) {
+  const within = lcp <= LCP_MS && cls <= CLS;
+  const line = `${name}: LCP ${Math.round(lcp)}ms, CLS ${cls.toFixed(3)} (기준 LCP ≤ ${LCP_MS}ms, CLS ≤ ${CLS}: ${within ? "이내" : "초과"})`;
+  console.log(line);
+  expect(lcp, "LCP가 측정되어야 한다").toBeGreaterThan(0);
+  if (process.env.CI) {
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `- 성능 측정(@perf, 실패로 보지 않음) ${line}\n`);
+    return;
+  }
   expect(lcp).toBeLessThanOrEqual(LCP_MS);
   expect(cls).toBeLessThanOrEqual(CLS);
+}
+
+test("홈 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {
+  judge("홈", await measure(page, "/", async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible())));
 });
 
 test("상세(CSRF) 첫 화면: 플레이어까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {
-  const { lcp, cls } = await measure(page, "/terms/csrf", async (p) => void (await expect(p.locator(".caption-text")).toBeVisible()));
-  console.log(`${test.info().title}: LCP ${Math.round(lcp)}ms, CLS ${cls.toFixed(3)}`);
-  expect(lcp).toBeGreaterThan(0);
-  expect(lcp).toBeLessThanOrEqual(LCP_MS);
-  expect(cls).toBeLessThanOrEqual(CLS);
+  judge("상세(CSRF)", await measure(page, "/terms/csrf", async (p) => void (await expect(p.locator(".caption-text")).toBeVisible())));
 });
