@@ -20,7 +20,7 @@
 | DF-06 | 11-18(개발 중) | 사람(2단계 구현 중 chrome-devtools 화면 확인) | 차단 도장 글자가 흐리게 보임 | 톤 매핑 적용 | `toneMapped: false` | 자동 방지책 없음. 사람 화면 확인(look 갤러리) | `dcd5cac` |
 | DF-07 | 11-18(개발 중) | 콘솔 경고 | PCFSoftShadowMap 경고 | 그림자 설정 | `shadows="percentage"` | 없음(E2E는 콘솔 오류만 검사하고 경고는 제외, `player.e2e.ts`) | `dcd5cac` |
 | DF-08 | 11-18 | 측정(번들 크기) | 홈 묶음에 Framer Motion이 들어감 | Player를 정적으로 import | Player 지연 로딩 | `check:bundle`(홈 묶음에 three·가짜 구현 없음, gzip 120KB 이하) | `90afe2c` |
-| DF-09 | 11-18(개발 중) | 2단계 구현 중 | 배치 함수 `spread(0)`이 위치 하나를 돌려줌 | 경계값 처리 | 0이면 빈 배열 | `pure.test.ts` "빈 구역은 자리를 만들지 않는다"(11-21 추가). 결함을 되살리면(`n <= 1`이면 가운데 하나) 테스트 파일이 실패하는 것을 확인 | `dcd5cac`, 중간 점검 4차 커밋 |
+| DF-09 | 11-18(개발 중) | 2단계 구현 중 | 배치 함수 `spread(0)`이 위치 하나를 돌려줌 | 경계값 처리 | 0이면 빈 배열 | `pure.test.ts` "빈 구역은 자리를 만들지 않는다"(11-21 추가). 결함을 되살리면(`n <= 1`이면 가운데 하나) 테스트 파일이 실패하는 것을 확인 | `dcd5cac`, `5f0fe3f` |
 | DF-10 | 11-18(개발 중) | 타입 검사 | `labels.ts`가 생성자 매개변수 속성을 씀(`erasableSyntaxOnly` 위반) | Node 타입 지우기와 맞지 않는 문법 | 일반 필드로 | CLAUDE.md "Node 실행 스크립트에 enum·namespace·생성자 매개변수 속성 금지" | `dcd5cac` |
 | DF-11 | 11-18 | 측정(Lighthouse·성능 기록) | CLS 0.11 | 로딩 중 상세·플레이어 카드 자리가 없음 | 스켈레톤으로 자리 확보(CLS 0.00) | `perf.e2e.ts`(상세 CLS ≤ 0.1, 11-21 추가) | `90afe2c` |
 | DF-12 | 11-19 | 사람(배포 사이트) | 배포 직후 상세 페이지에 3D 대신 2D가 뜸 | 새 배포가 옛 해시 청크를 지워 이미 열린 페이지의 동적 import 실패 | 옛 청크 유지(prune false), 캐시 정책, 청크 실패 시 1회 새로고침 | `reloadOnStaleChunk.test.ts`, infra 캐시 테스트, smoke:prod 캐시 헤더 | `f861fea` (CH-14) |
