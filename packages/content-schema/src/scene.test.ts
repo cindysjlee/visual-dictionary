@@ -298,3 +298,56 @@ describe("스택형 어휘: 스택 한도·overflow·고친 코드 판", () => {
     expect(issuePaths((t) => (t.scenario.stackLimit = 3))).toEqual(["scenario.stackLimit: stackLimit은 스택형에만 씁니다"]);
   });
 });
+
+describe("점유형 어휘: 공유 값(access·read·write)", () => {
+  const st = (action: string, from: string, effects: unknown[] = [], title = `${from} ${action}`) => ({ action, from, to: "balance", title, label: title, caption: title, effects });
+  const race = () => ({
+    id: "race-test",
+    name: "경쟁",
+    category: "os",
+    summary: "s",
+    description: "d",
+    status: "draft",
+    scenario: {
+      playerType: "lock",
+      actors: [
+        { id: "a", name: "A", role: "process" },
+        { id: "b", name: "B", role: "process" },
+        { id: "balance", name: "잔액", role: "resource", look: "memory", value: "100" },
+      ],
+      steps: [st("access", "a", [{ type: "read", value: "100" }]), st("access", "b", [{ type: "read", value: "100" }]), st("access", "a", [{ type: "write", value: "150", note: "100 + 50" }]), st("access", "b", [{ type: "write", value: "150" }, { type: "stamp", label: "갱신 손실" }])],
+    },
+    defenses: [
+      {
+        name: "락",
+        kind: "solution",
+        description: "락",
+        branchAtStep: 1,
+        steps: [st("acquire", "a"), st("access", "a", [{ type: "read", value: "100" }]), st("wait", "b"), st("access", "a", [{ type: "write", value: "150" }]), st("release", "a"), st("acquire", "b"), st("access", "b", [{ type: "read", value: "150" }]), st("access", "b", [{ type: "write", value: "200" }]), st("release", "b")],
+      },
+    ],
+    references: [{ title: "r", url: "https://example.com" }],
+  });
+  const issues = (mutate: (t: any) => void = () => {}) => {
+    const t = race();
+    mutate(t);
+    const r = termSchema.safeParse(t);
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  };
+
+  it("락 없는 읽기·쓰기(access)와 락으로 묶은 대체 흐름이 통과한다", () => {
+    expect(issues()).toEqual([]);
+  });
+
+  it("다른 스레드가 쥔 자원에 access하면 오류(wait를 써야 함)", () => {
+    expect(issues((t) => (t.defenses[0].steps[2] = st("access", "b", [{ type: "read", value: "100" }])))).toEqual([
+      "defenses.0.steps.2.to: balance는 a가 잡고 있어 access할 수 없습니다(wait를 쓰세요)",
+    ]);
+  });
+
+  it("read·write는 access 단계에만, 값(value)이 있는 자원에만. value는 자원에만", () => {
+    expect(issues((t) => (t.defenses[0].steps[0].effects = [{ type: "read", value: "100" }]))).toEqual(["defenses.0.steps.0.effects.0.type: read는 access 단계에만 씁니다"]);
+    expect(issues((t) => delete t.scenario.actors[2].value)[0]).toBe("scenario.steps.0.effects.0.type: balance에 공유 값(value)이 없어 read할 수 없습니다");
+    expect(issues((t) => (t.scenario.actors[0].value = "1"))).toEqual(["scenario.actors.0.value: 공유 값(value)은 자원(resource)에만 둡니다(지금 kind: thread)"]);
+  });
+});

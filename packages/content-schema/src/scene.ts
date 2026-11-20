@@ -12,7 +12,7 @@ const KIND_BY_ROLE: Record<string, ActorKind> = { user: "person", attacker: "att
 export const EFFECTS_BY_PLAYER: Record<PlayerType, readonly Effect["type"][]> = {
   flow: ["appear", "flip", "rewrite", "store", "attach", "give", "run", "inspect", "transfer", "occupy", "vacate", "opacity"],
   stack: ["locals", "returnValue", "overflow", "stamp"],
-  lock: ["condition", "take", "cycle", "timeout", "stamp"],
+  lock: ["condition", "take", "cycle", "timeout", "stamp", "read", "write"],
 };
 const ZONE_BY_ROLE: Record<string, Zone> = { attacker: "outside", server: "server", database: "server" };
 
@@ -46,6 +46,7 @@ export const LOOK_KINDS: Record<Look, readonly ActorKind[]> = {
   laptop: ["server"],
   printer: ["resource"],
   scanner: ["resource"],
+  memory: ["resource"],
 };
 
 /** 화면판이 있는 행위자: 탭·겹친 화면(frame)은 항상, 서버·DB는 screen이 있을 때. rewrite·flip은 여기에만 쓸 수 있다 */
@@ -179,6 +180,8 @@ function refsOf(e: Effect): [string, string][] {
       return [["from", e.from]];
     case "returnValue":
     case "overflow":
+    case "read":
+    case "write":
     case "condition":
     case "cycle":
     case "timeout":
@@ -197,6 +200,9 @@ export function checkScene(term: Term): Issue[] {
   actors.forEach((a, i) => {
     if (a.look && !LOOK_KINDS[a.look].includes(kindOf(a))) {
       issues.push({ path: ["scenario", "actors", i, "look"], message: `look ${a.look}은(는) ${LOOK_KINDS[a.look].join("·")}에만 쓸 수 있습니다(지금 kind: ${kindOf(a)})` });
+    }
+    if (a.value !== undefined && kindOf(a) !== "resource") {
+      issues.push({ path: ["scenario", "actors", i, "value"], message: `공유 값(value)은 자원(resource)에만 둡니다(지금 kind: ${kindOf(a)})` });
     }
     if (a.slots && !["server", "database"].includes(kindOf(a))) {
       issues.push({ path: ["scenario", "actors", i, "slots"], message: `칸(slots)은 server·database에만 둘 수 있습니다(지금 kind: ${kindOf(a)})` });
@@ -414,6 +420,13 @@ function checkMachine(term: Term): Issue[] {
         if (s.action === "acquire" && held !== undefined && held !== s.from) report([...path, "to"], `${s.to}는 ${held}가 잡고 있어 acquire할 수 없습니다(wait를 쓰세요)`);
         if (s.action === "wait" && (held === undefined || held === s.from)) report([...path, "to"], `${s.to}를 다른 스레드가 잡고 있지 않아 기다릴 필요가 없습니다`);
         if (s.action === "release" && held !== s.from) report([...path, "to"], `${s.from}는 ${s.to}를 잡고 있지 않습니다`);
+        if (s.action === "access" && held !== undefined && held !== s.from) report([...path, "to"], `${s.to}는 ${held}가 잡고 있어 access할 수 없습니다(wait를 쓰세요)`);
+        s.effects.forEach((e, j) => {
+          if ((e.type === "read" || e.type === "write") && s.action !== "access") report([...path, "effects", j, "type"], `${e.type}는 access 단계에만 씁니다`);
+          if ((e.type === "read" || e.type === "write") && term.scenario.actors.find((a) => a.id === s.to)?.value === undefined) {
+            report([...path, "effects", j, "type"], `${s.to}에 공유 값(value)이 없어 ${e.type}할 수 없습니다`);
+          }
+        });
         if (s.action === "acquire") owner.set(s.to, s.from);
         if (s.action === "release") owner.delete(s.to);
         s.effects.forEach((e, j) => {

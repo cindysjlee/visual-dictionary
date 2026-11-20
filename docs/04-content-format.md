@@ -64,7 +64,7 @@
 | --- | --- | --- | --- |
 | `flow` | `send` | 보내는 쪽 → 받는 쪽 | 행위자 사이를 메시지가 화살표를 따라 이동 |
 | `stack` | `push`, `pop`, `run` | push: 호출한 함수 → 호출된 함수(첫 push는 `from` = `to`로 진입점) / pop: 끝난 함수 → 돌아갈 함수 / run: 맨 위 함수가 제자리에서 실행(`from` = `to`) | 스택에 프레임이 쌓이고 빠짐, `label`은 호출식·반환값 |
-| `lock` | `acquire`, `wait`, `release` | 스레드 → 자원 | acquire: 손에 듦·자물쇠 잠김 / wait: 대기선에 섬 / release: 내려놓음 |
+| `lock` | `acquire`, `wait`, `release`, `access` | 스레드 → 자원 | acquire: 손에 듦·자물쇠 잠김 / wait: 대기선에 섬 / release: 내려놓음 / access: 락 없이 자원의 값을 읽거나 씀(자물쇠는 그대로, 공유 값 `read`·`write`와 함께) |
 
 권장 `role` 값: `user`, `attacker`, `server`, `database`(flow) / `function`(stack) / `process`, `resource`(lock). `kind`가 없으면 `role`로 정한다(`process` → `thread`, `resource` → `resource`).
 
@@ -78,9 +78,11 @@
 
 ## 점유형 필드와 효과 (`playerType: "lock"`)
 
-- 행위자: 스레드(`kind: "thread"`), 자원(`kind: "resource"`, look `printer`·`scanner`).
+- 행위자: 스레드(`kind: "thread"`), 자원(`kind: "resource"`, look `printer`·`scanner`·`memory`). 자원에 `value`(공유 값, 예: `"100"`)를 두면 값판에 보인다.
+- 공유 값 효과(access 단계에만): `read { value }`(자원의 값을 읽어 스레드 손의 메모 카드에 적음), `write { value, note? }`(카드의 값을 자원에 씀, `note`는 계산식 예: `100 + 50`). 내려놓으면(release) 메모를 치운다.
 - 효과: `condition { name, broken? }`(데드락 네 조건 `mutual-exclusion`·`hold-and-wait`·`no-preemption`·`circular-wait` 중 하나를 "교착 조건" 패널에 "성립"으로 켬. 해결 방법이 그 조건을 깨면 `broken: true`로 "깨짐"), `take { from, refused?, reason? }`(다른 스레드가 쥔 자원을 빼앗으려 함. 비선점이면 `refused`), `cycle`(대기 관계가 고리를 이룸: 바닥 고리, 위에서 보는 샷), `timeout`(기다리다 포기: 모래시계가 다 됨. 보통 `release`와 함께), `stamp { label, tone }`(도장. 예: 교착).
-- 검증: acquire는 아무도 안 쥔 자원, wait는 다른 스레드가 쥔 자원, release는 자기가 쥔 자원. 기본 흐름·해결 방법마다 단계를 따라가며 확인한다.
+- 검증: acquire는 아무도 안 쥔 자원, wait는 다른 스레드가 쥔 자원, release는 자기가 쥔 자원, access는 아무도 안 쥐었거나 자기가 쥔 자원(남이 쥐었으면 wait). `read`·`write`는 access 단계에만, `value`가 있는 자원에만. `value`는 자원에만. 기본 흐름·해결 방법마다 단계를 따라가며 확인한다.
+- "교착 조건" 패널은 `condition` 효과를 쓰는 용어에만 보인다.
 
 ## 방어 모드 동작
 

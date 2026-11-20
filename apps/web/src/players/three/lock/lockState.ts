@@ -17,10 +17,21 @@ export type LockState = {
   cycle: boolean; // 대기 고리가 보이는지
   /** 이 상태를 만든 마지막 단계의 도장(그 단계 결과로만 보인다) */
   stamp?: { label: string; tone: "attack" | "defense" };
+  /** 자원의 공유 값(write로 바뀐다) */
+  values: Map<string, string>;
+  /** 스레드 손의 메모 카드: 마지막으로 읽은 값 또는 쓴 값 */
+  memos: Map<string, { kind: "read" | "write"; value: string; note?: string }>;
 };
 
 export function lockStateAt(term: Term, mode: Mode, upTo: number): LockState {
-  const s: LockState = { owner: new Map(), waiting: new Map(), conditions: new Map(), cycle: false };
+  const s: LockState = {
+    owner: new Map(),
+    waiting: new Map(),
+    conditions: new Map(),
+    cycle: false,
+    values: new Map(term.scenario.actors.flatMap((a) => (a.value === undefined ? [] : [[a.id, a.value] as const]))),
+    memos: new Map(),
+  };
   const last = lastStepIndex(term, mode);
   for (let i = 0; i < Math.min(upTo, last + 1); i++) {
     const v = stepView(term, mode, i);
@@ -33,6 +44,7 @@ export function lockStateAt(term: Term, mode: Mode, upTo: number): LockState {
     } else if (v.action === "release") {
       s.owner.delete(v.to);
       s.cycle = false;
+      s.memos.delete(v.from); // 작업을 마치고 내려놓으면 메모도 치운다
     }
     for (const e of v.effects) {
       if (e.type === "condition") s.conditions.set(e.name, e.broken ? "broken" : "met");
@@ -40,6 +52,11 @@ export function lockStateAt(term: Term, mode: Mode, upTo: number): LockState {
       if (e.type === "timeout") s.waiting.delete(v.from); // 기다리기를 포기한다
       if (e.type === "take" && !e.refused) s.owner.set(v.to, v.from);
       if (e.type === "stamp") s.stamp = { label: e.label, tone: e.tone };
+      if (e.type === "read") s.memos.set(v.from, { kind: "read", value: e.value });
+      if (e.type === "write") {
+        s.values.set(v.to, e.value);
+        s.memos.set(v.from, { kind: "write", value: e.value, note: e.note });
+      }
     }
   }
   return s;

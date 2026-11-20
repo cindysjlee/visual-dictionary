@@ -13,7 +13,7 @@ export const ACTOR_KINDS = ["browser", "tab", "frame", "cookieJar", "server", "d
 export const ZONES = ["client", "between", "server", "internal", "outside"] as const;
 export const ITEMS = ["cookie", "token", "script", "data", "coin"] as const;
 /** 행위자 생김새(docs/06 2절 "생김새"). 없으면 kind의 기본 모양. 어느 kind에 쓸 수 있는지는 scene.ts의 LOOK_KINDS */
-export const LOOKS = ["bank", "web", "shop", "community", "database", "cloud-metadata", "wifi", "laptop", "printer", "scanner"] as const;
+export const LOOKS = ["bank", "web", "shop", "community", "database", "cloud-metadata", "wifi", "laptop", "printer", "scanner", "memory"] as const;
 /** 데드락의 네 조건(점유형 condition 효과). 장면의 "교착 조건" 패널에 한 칸씩 켜진다 */
 export const DEADLOCK_CONDITIONS = ["mutual-exclusion", "hold-and-wait", "no-preemption", "circular-wait"] as const;
 
@@ -61,6 +61,9 @@ export const effectSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("cycle") }), // 대기 관계가 고리를 이룸(바닥 고리, 위에서 보는 샷)
   z.strictObject({ type: z.literal("timeout") }), // 기다리다 포기(모래시계가 다 됨). 보통 release 단계에 붙는다
   z.strictObject({ type: z.literal("stamp"), label: text, tone: z.enum(["attack", "defense"]).default("attack") }),
+  // 점유형 공유 값: access 단계에서 스레드가 자원의 값을 읽어 손의 메모 카드에 적거나(read), 카드의 값을 자원에 쓴다(write, note는 계산식)
+  z.strictObject({ type: z.literal("read"), value: text }),
+  z.strictObject({ type: z.literal("write"), value: text, note: text.optional() }),
   z.strictObject({
     type: z.literal("transfer"),
     item: z.enum(["coin", "data"]),
@@ -84,6 +87,8 @@ const actorSchema = z.strictObject({
   tone: z.enum(["attack", "neutral"]).optional(),
   gate: z.boolean().default(false),
   balance: z.int().nonnegative().optional(),
+  /** 점유형 자원의 공유 값(값판에 보인다). write로 바뀐다. 예: "100" */
+  value: text.optional(),
   screen: screenSchema.optional(),
   back: screenSchema.optional(),
   /** 화면판 내용을 늘 HTML 라벨로도 보여 준다(판 글씨가 작아도 상태가 읽히게). 화면판이 있는 행위자만 */
@@ -93,7 +98,7 @@ const actorSchema = z.strictObject({
 });
 
 const stepSchema = z.strictObject({
-  action: z.enum(["send", "push", "pop", "run", "acquire", "wait", "release"]),
+  action: z.enum(["send", "push", "pop", "run", "acquire", "wait", "release", "access"]),
   from: text,
   to: text,
   title: text,

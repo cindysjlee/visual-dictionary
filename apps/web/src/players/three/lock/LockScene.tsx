@@ -50,6 +50,8 @@ class LockModel {
   readonly resources = new Map<string, Node & { pedestal: Vector3; shackle: Mesh }>();
   readonly ring: Mesh;
   readonly stamp: Mesh;
+  /** 공유 값을 읽고 쓸 때 자원과 스레드 사이를 날아가는 메모 카드 */
+  readonly chit: Mesh;
   readonly billboards: Object3D[] = [];
   private waitLines = new Map<string, Line>();
   private stampPaint = screenPainter();
@@ -86,7 +88,12 @@ class LockModel {
       const shackle = this.mesh(new TorusGeometry(0.12, 0.035, 8, 16, Math.PI), "gold", [0, 0.66, 0.72], ped, 0.2);
       this.root.add(ped);
       const g = new Group();
-      if (a.look === "scanner") {
+      if (a.look === "memory") {
+        // 공유 메모리 칸: 칩(납작 상자 + 양옆 핀) 위에 값판. 값은 HTML 라벨로 크게 보인다
+        this.mesh(new BoxGeometry(1.4, 0.3, 1.0), "object", [0, 0.15, 0], g);
+        for (let k = 0; k < 4; k++) for (const side of [-1, 1]) this.mesh(new BoxGeometry(0.16, 0.05, 0.08), "gold", [side * 0.78, 0.15, -0.36 + k * 0.24], g, 0.2);
+        this.mesh(new BoxGeometry(1.1, 0.5, 0.06), "paper", [0, 0.6, 0.2], g, 0.1);
+      } else if (a.look === "scanner") {
         this.mesh(new BoxGeometry(1.5, 0.28, 1.0), "object", [0, 0.14, 0], g);
         this.mesh(new BoxGeometry(1.2, 0.03, 0.7), "neutral", [0, 0.29, 0], g, 0.6);
         const lid = this.mesh(new BoxGeometry(1.5, 0.08, 1.0), "objectDim", [0, 0.55, -0.4], g);
@@ -107,9 +114,14 @@ class LockModel {
     this.stamp = new Mesh(new PlaneGeometry(3.6, 1.65), new MeshBasicMaterial({ map: this.stampPaint.texture, transparent: true, depthTest: false, toneMapped: false }));
     this.stamp.renderOrder = 10;
     this.stamp.visible = false;
-    this.stamp.position.set(0, 3.6, 0.4);
+    // 가운데 자원이 있으면(자원이 하나) 도장이 그 자원을 가리지 않게 더 높이 둔다
+    const centered = [...this.resources.values()].some((r) => Math.abs(r.pedestal.x) < 1.5);
+    this.stamp.position.set(0, centered ? 5.4 : 3.6, centered ? -1.2 : 0.4);
     this.root.add(this.stamp);
     this.billboards.push(this.stamp);
+    this.chit = this.mesh(new BoxGeometry(0.5, 0.34, 0.04), "gold", [0, 0, 0], this.root, 0.5);
+    this.chit.visible = false;
+    this.billboards.push(this.chit);
   }
 
   private mesh(geo: BufferGeometry, key: keyof Palette, at: [number, number, number], parent: Object3D, emissive = 0) {
@@ -162,6 +174,7 @@ class LockModel {
       line.computeLineDistances();
       line.visible = true;
     }
+    this.chit.visible = false;
     this.ring.visible = state.cycle;
     this.ring.scale.setScalar(1);
     this.stamp.visible = withStamp && Boolean(state.stamp);
@@ -240,14 +253,32 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
     };
   }, [model, scene, labelRoot]);
 
-  /** 이름표와 "교착 조건" 패널 */
+  /** "교착 조건" 패널은 조건 효과를 쓰는 용어(데드락)에만 */
+  const usesConditions = useMemo(
+    () => [...term.scenario.steps, ...term.defenses.flatMap((d) => [...(d.steps ?? []), ...d.overrides])].some((s) => s.effects?.some((e) => e.type === "condition")),
+    [term],
+  );
+  /** 이름표, 공유 값판, 스레드 손의 메모 카드, "교착 조건" 패널 */
   const refreshLabels = (s: LockState, overview = false) => {
     const l = labels.current!;
     for (const a of term.scenario.actors) {
       const n = model.threads.get(a.id) ?? model.resources.get(a.id);
       if (n) l.set(`actor-${a.id}`, n.label, { title: a.name, tone: "plain" });
+      const value = s.values.get(a.id);
+      const r = model.resources.get(a.id);
+      if (value !== undefined && r) l.set(`value-${a.id}`, r.group.position.clone().add(new Vector3(0, 0.15, 1.0)), { title: value, tone: "neutral" }, !overview);
+      const t = model.threads.get(a.id);
+      const memo = s.memos.get(a.id);
+      if (t) {
+        const toward = t.home.x > 0 ? -1 : 1;
+        l.set(`memo-${a.id}`, t.home.clone().add(new Vector3(toward * 1.7, 2.3, 0.7)), {
+          title: memo ? `${memo.kind === "read" ? "읽은 값" : "쓴 값"} ${memo.value}` : "",
+          sub: memo?.note,
+          tone: "plain",
+        }, Boolean(memo) && !overview);
+      }
     }
-    l.pin("checks", { title: "교착 조건", rows: conditionRows(s) }, !overview);
+    if (usesConditions) l.pin("checks", { title: "교착 조건", rows: conditionRows(s) }, !overview);
   };
 
   const framePoints = (ids: string[]) =>
@@ -264,6 +295,7 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
   const everyonePoints = () => {
     const pts = framePoints(term.scenario.actors.map((a) => a.id));
     if (model.ring.visible) pts.push(new Vector3(-4.8, 0, 0.2), new Vector3(4.8, 0, 0.2), new Vector3(0, 0, 4.9), new Vector3(0, 0, -4.5));
+    if (model.stamp.visible) pts.push(model.stamp.position.clone().add(new Vector3(-1.9, 0.9, 0)), model.stamp.position.clone().add(new Vector3(1.9, -0.9, 0)));
     return pts;
   };
 
@@ -305,7 +337,7 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
         model.apply(after);
         shown.current = after;
         refreshLabels(after);
-        trace(view.action as "acquire" | "wait" | "release", { actor: view.from });
+        trace(view.action as "acquire" | "wait" | "release" | "access", { actor: view.from });
         for (const e of view.effects) trace("effect", { effect: e.type, actor: effectActor(e), refused: "refused" in e ? e.refused : false });
         // 연출 끝 샷과 같게: 고리는 위에서, 도장이 있으면 모두가 들어오는 샷(도장이 위 조건 패널까지 올라가지 않게)
         if (cycle) rig.frame(everyonePoints(), TOP_VIEW);
@@ -328,7 +360,7 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
         model.apply(after, false);
         shown.current = after;
         refreshLabels(before); // 조건 칸은 효과 순서대로 켠다
-        trace(view.action as "acquire" | "wait" | "release", { actor: view.from });
+        trace(view.action as "acquire" | "wait" | "release" | "access", { actor: view.from });
       });
       const t0 = model.threads.get(view.from)?.home;
       for (const e of view.effects) {
@@ -353,6 +385,22 @@ function LockRoot({ term, state, view, reducedMotion, freeView, onStepDone, stag
           });
           tl.tween(700, (t) => hg?.rotation.set(0, 0, t * Math.PI));
           tl.call(() => hg && (hg.visible = false));
+        } else if ((e.type === "read" || e.type === "write") && t0) {
+          // 메모 카드가 자원 → 손(읽기) 또는 손 → 자원(쓰기)으로 날아간 뒤 값판·메모가 바뀐다
+          const toward = t0.x > 0 ? -1 : 1;
+          const hand = t0.clone().add(new Vector3(toward * 1.7, 2.0, 0.7));
+          const res = model.resources.get(view.to)!.group.position.clone().add(new Vector3(0, 0.7, 0.4));
+          const [a, b] = e.type === "read" ? [res, hand] : [hand, res];
+          tl.call(() => {
+            model.chit.visible = true;
+            rig.frame(framePoints(involved));
+          });
+          tl.tween(700, (t) => model.chit.position.copy(a).lerp(b, t).setY(a.y + (b.y - a.y) * t + Math.sin(t * Math.PI) * 0.9));
+          tl.call(() => {
+            model.chit.visible = false;
+            refreshLabels(lockStateAt(term, state.defense, state.step + 1));
+          });
+          tl.wait(400);
         } else if (e.type === "stamp") {
           tl.call(() => model.showStamp(e.label, e.tone));
           tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);

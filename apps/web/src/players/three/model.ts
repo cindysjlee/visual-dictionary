@@ -437,6 +437,7 @@ export class SceneModel {
       }
       case "printer":
       case "scanner":
+      case "memory":
         return 2.4; // 점유형(LockScene)이 따로 그린다. 흐름형에서는 쓰지 않는다
     }
   }

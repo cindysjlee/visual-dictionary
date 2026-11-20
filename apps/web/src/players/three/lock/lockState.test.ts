@@ -37,3 +37,46 @@ describe("lockStateAt (데드락)", () => {
     expect(s.conditions.get("hold-and-wait")).toBe("broken");
   });
 });
+
+describe("lockStateAt (공유 값)", () => {
+  const st = (action: string, from: string, effects: unknown[] = []) => ({ action, from, to: "balance", title: "t", label: "l", caption: "c", effects });
+  const race = termSchema.parse({
+    id: "race-test",
+    name: "경쟁",
+    category: "os",
+    summary: "s",
+    description: "d",
+    status: "draft",
+    scenario: {
+      playerType: "lock",
+      actors: [
+        { id: "a", name: "A", role: "process" },
+        { id: "b", name: "B", role: "process" },
+        { id: "balance", name: "잔액", role: "resource", look: "memory", value: "100" },
+      ],
+      steps: [
+        st("access", "a", [{ type: "read", value: "100" }]),
+        st("access", "b", [{ type: "read", value: "100" }]),
+        st("access", "a", [{ type: "write", value: "150", note: "100 + 50" }]),
+        st("access", "b", [{ type: "write", value: "150" }]),
+        st("acquire", "a"),
+        st("release", "a"),
+      ],
+    },
+    references: [{ title: "r", url: "https://example.com" }],
+  });
+
+  it("두 스레드가 같은 값을 읽고, 쓰면 값판이 바뀌며 손의 메모는 쓴 값이 된다", () => {
+    expect(lockStateAt(race, null, 0).values.get("balance")).toBe("100");
+    const read = lockStateAt(race, null, 2);
+    expect([read.memos.get("a"), read.memos.get("b")]).toEqual([{ kind: "read", value: "100" }, { kind: "read", value: "100" }]);
+    const lost = lockStateAt(race, null, 4);
+    expect(lost.values.get("balance")).toBe("150");
+    expect(lost.memos.get("a")).toEqual({ kind: "write", value: "150", note: "100 + 50" });
+  });
+
+  it("access는 자물쇠를 잠그지 않고, 내려놓으면 메모를 치운다", () => {
+    expect(lockStateAt(race, null, 4).owner.size).toBe(0);
+    expect(lockStateAt(race, null, 6).memos.has("a")).toBe(false);
+  });
+});
