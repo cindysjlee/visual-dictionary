@@ -72,7 +72,9 @@
 
 - `scenario.code: { title?, lines[] }`: 코드 판(C·Java 문법에 가까운 의사코드 하나로 통일). `steps[].line`: 이 단계 뒤 맨 위 프레임이 실행 중인 줄(1부터). push할 때 호출한 쪽의 줄이 새 프레임의 **반환 주소**(돌아갈 곳)가 된다.
 - 효과: `locals { target?, vars: [{ name, value }] }`(맨 위 프레임, 또는 `target` 함수의 맨 위 프레임 서랍의 지역 변수 칸을 정하거나 바꿈), `returnValue { value, into? }`(pop 단계에서 반환값이 호출한 프레임의 칸 `into`로 전달됨).
-- 검증: push는 맨 위 함수가 부르고, pop은 맨 위 함수가 바로 아래 함수로 돌아가며, run은 맨 위 함수만. `returnValue`는 pop 단계에만. `line`은 코드 판 줄 수 이하.
+- `scenario.stackLimit`(1~12): 유리 기둥 그 높이에 "스택 한도" 선을 긋는다(프레임 칸 수). 효과 `overflow`: 한도를 넘는 push에 붙이면 그 프레임이 선 위로 솟아 공격색이 되고 선이 깜빡인다. `stamp { label, tone }`(도장)도 스택형에서 쓸 수 있다(예: `StackOverflowError`).
+- `defenses[].code`(해결 방법만): 갈림 단계부터 코드 판이 이 코드(고친 코드)로 바뀐다. 대체 흐름의 `line`은 이 코드 기준이다. 판 높이는 가장 긴 코드에 맞춘다.
+- 검증: push는 맨 위 함수가 부르고, pop은 맨 위 함수가 바로 아래 함수로 돌아가며, run은 맨 위 함수만. `returnValue`는 pop 단계에만. `line`은 그 단계에 보이는 코드 판 줄 수 이하. 한도를 넘는 push에는 `overflow`가 있어야 하고, `overflow`는 한도를 넘는 push에만, 그 모드의 마지막 단계에만(프로그램이 멈춤) 쓴다. `stackLimit`은 스택형에만, `defenses[].code`는 스택형 해결 방법(대체 흐름 있음)에만.
 
 ## 점유형 필드와 효과 (`playerType: "lock"`)
 

@@ -51,6 +51,8 @@ export const effectSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("locals"), target: text.optional(), vars: z.array(z.strictObject({ name: text, value: text })).min(1) }),
   // pop 단계: 반환값이 호출한 프레임으로 전달된다. into는 받는 칸(변수 이름 또는 식의 빈칸 표시)
   z.strictObject({ type: z.literal("returnValue"), value: text, into: text.optional() }),
+  // 스택 한도(scenario.stackLimit)를 넘는 push: 프레임이 한도선을 뚫고 선이 공격색으로 깜빡인다. 그 모드의 마지막 단계
+  z.strictObject({ type: z.literal("overflow") }),
   /* 점유형(lock) */
   // 조건 패널 한 칸: 성립(기본) 또는 해결 방법이 그 조건을 깸(broken)
   z.strictObject({ type: z.literal("condition"), name: z.enum(DEADLOCK_CONDITIONS), broken: z.boolean().default(false) }),
@@ -108,6 +110,8 @@ const stepSchema = z.strictObject({
 });
 
 // 방어(kind: defense)는 blockedAtStep에서 차단되어 멈춘다. 해결 방법(kind: solution)은 branchAtStep부터 steps로 바꿔 끝까지 재생하는 대체 흐름이다
+const codeSchema = z.strictObject({ title: text.optional(), lines: z.array(z.string()).min(1) });
+
 const defenseSchema = z.strictObject({
   name: text,
   kind: z.enum(["defense", "solution"]),
@@ -118,6 +122,7 @@ const defenseSchema = z.strictObject({
   blockedTitle: text.optional(),
   blockedLabel: text.optional(), // 차단 표시 글자(도장·2D 대체 화면). 예: "403 · 토큰 없음"
   blockedCaption: text.optional(),
+  code: codeSchema.optional(), // 스택형 해결 방법: 갈림 단계부터 코드 판이 이 코드로 바뀐다(고친 코드)
   overrides: z
     .array(
       z.strictObject({
@@ -144,7 +149,8 @@ export const termSchema = z
       playerType: z.enum(["flow", "stack", "lock"]),
       actors: z.array(actorSchema).min(1),
       steps: z.array(stepSchema).min(1),
-      code: z.strictObject({ title: text.optional(), lines: z.array(z.string()).min(1) }).optional(), // 스택형 코드 판
+      code: codeSchema.optional(), // 스택형 코드 판
+      stackLimit: z.int().min(1).max(12).optional(), // 스택형: 기둥에 긋는 "스택 한도" 선(프레임 칸 수). 넘는 push에는 overflow
     }),
     defenses: z.array(defenseSchema).default([]),
     references: z.array(z.strictObject({ title: text, url: z.url() })).min(1),

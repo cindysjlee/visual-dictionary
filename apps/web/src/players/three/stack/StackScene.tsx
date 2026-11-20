@@ -27,7 +27,8 @@ import { CameraRig } from "../camera.ts";
 import { useFreeView } from "../freeView.ts";
 import { LabelLayer } from "../labels.ts";
 import { SceneCanvas, SceneLights, type SceneFrame } from "../SceneCanvas.tsx";
-import { canvasPainter, paintCode, paintFrame, paintSign, signPainter, type Painter } from "../textures.ts";
+import { billboardRect } from "../billboard.ts";
+import { canvasPainter, paintCode, paintFrame, paintSign, paintStamp, screenPainter, signPainter, type Painter } from "../textures.ts";
 import { Timeline, easeOut } from "../timeline.ts";
 import { exposeProbe, traceSpeed, tracerFor } from "../trace.ts";
 import { usePalette, type Palette } from "../tokens.ts";
@@ -39,25 +40,32 @@ const BOARD = { x: -3.7, w: 5.4, lineH: 0.52, pad: 0.95 };
 /** 거의 정면(약 20° 위)에서 본다: 세로로 쌓이는 높이가 곧 호출 깊이라 위에서 내려다보면 겹친다 */
 const VIEW = new Vector3(0, 0.36, 1);
 
-type FrameNode = { group: Group; body: Mesh; plate: Painter; tag: Painter; string: Line };
+type FrameNode = { group: Group; body: Mesh; plate: Painter; tag: Painter; string: Line; bodyMat: MeshStandardMaterial };
 
 class StackModel {
   readonly root = new Group();
   readonly board: Mesh;
   readonly ball: Mesh;
   readonly boardHeight: number;
+  readonly stamp: Mesh;
+  /** 스택 한도선(scenario.stackLimit이 있을 때). 넘으면 공격색으로 깜빡인다 */
+  readonly limitLine?: Mesh;
+  private limitMat?: MeshStandardMaterial;
+  private overMat: MeshStandardMaterial;
+  private stampPaint = screenPainter();
   private boardPaint: Painter;
   private frames = new Map<number, FrameNode>();
   private mats: { mat: MeshStandardMaterial | LineBasicMaterial; key: keyof Palette; emissive?: number }[] = [];
   private term: Term;
   private palette: Palette;
-  private state: StackState = { frames: [] };
+  private state: StackState = { frames: [], overflowed: false };
 
   constructor(term: Term, palette: Palette) {
     this.term = term;
     this.palette = palette;
-    const lines = term.scenario.code?.lines ?? [];
-    this.boardHeight = BOARD.pad + lines.length * BOARD.lineH + 0.4;
+    // 해결 방법이 코드 판을 바꾸면(고친 코드) 가장 긴 코드에 판 높이를 맞춘다
+    const longest = Math.max(term.scenario.code?.lines.length ?? 0, ...term.defenses.map((d) => d.code?.lines.length ?? 0));
+    this.boardHeight = BOARD.pad + longest * BOARD.lineH + 0.4;
     this.boardPaint = canvasPainter(1024, Math.round((1024 * this.boardHeight) / BOARD.w));
     this.board = new Mesh(new PlaneGeometry(BOARD.w, this.boardHeight), new MeshBasicMaterial({ map: this.boardPaint.texture, transparent: true, toneMapped: false }));
     this.board.position.set(BOARD.x, 0.2 + this.boardHeight / 2, 0);
@@ -66,9 +74,23 @@ class StackModel {
     const base = new Mesh(new BoxGeometry(FRAME.w + 0.6, 0.16, FRAME.d + 0.6), this.std("objectDim"));
     base.position.set(STACK_X, 0.08, 0);
     this.root.add(base);
-    const glass = new Mesh(new BoxGeometry(FRAME.w + 0.3, 7.2, FRAME.d + 0.3), this.std("paper", 0, 0.08));
-    glass.position.set(STACK_X, 0.16 + 3.6, 0);
+    // 기둥 높이 = 스택 메모리. 한도가 있으면 그 높이에 한도선을 긋고, 넘는 프레임은 기둥 밖으로 솟는다
+    const limit = term.scenario.stackLimit;
+    const glassH = limit ? this.limitY(limit) - 0.16 : 7.2;
+    const glass = new Mesh(new BoxGeometry(FRAME.w + 0.3, glassH, FRAME.d + 0.3), this.std("paper", 0, 0.08));
+    glass.position.set(STACK_X, 0.16 + glassH / 2, 0);
     this.root.add(glass);
+    if (limit) {
+      this.limitMat = this.std("attack", 0.5);
+      this.limitLine = new Mesh(new BoxGeometry(FRAME.w + 0.9, 0.08, FRAME.d + 0.9), this.limitMat);
+      this.limitLine.position.set(STACK_X, this.limitY(limit), 0);
+      this.root.add(this.limitLine);
+    }
+    this.overMat = this.std("attack", 0.35);
+    this.stamp = new Mesh(new PlaneGeometry(3.6, 1.65), new MeshBasicMaterial({ map: this.stampPaint.texture, transparent: true, depthTest: false, toneMapped: false }));
+    this.stamp.renderOrder = 10;
+    this.stamp.visible = false;
+    this.root.add(this.stamp);
     this.ball = new Mesh(new SphereGeometry(0.24, 24, 16), this.std("gold", 0.6));
     this.ball.visible = false;
     this.root.add(this.ball);
@@ -87,6 +109,21 @@ class StackModel {
   }
 
   frameY = (depth: number) => 0.16 + FRAME.h / 2 + depth * (FRAME.h + FRAME.gap);
+  /** 한도선 높이: limit칸이 쌓인 바로 위 */
+  limitY = (limit: number) => 0.16 + limit * (FRAME.h + FRAME.gap) - FRAME.gap / 2;
+  /** 한도선 라벨 자리(기둥 오른쪽) */
+  limitLabelPoint = () => new Vector3(STACK_X + FRAME.w / 2 + 1.3, this.limitY(this.term.scenario.stackLimit ?? 0), FRAME.d / 2);
+  /** 한도선 깜빡임: on이면 밝게 */
+  flashLimit(on: boolean) {
+    if (this.limitMat) this.limitMat.emissive = new Color(this.palette.attack).multiplyScalar(on ? 1.4 : 0.5);
+  }
+  showStamp(label: string, tone: "attack" | "defense") {
+    paintStamp(this.stampPaint, label, this.palette, tone);
+    const top = Math.max(0, this.state.frames.length - 1);
+    // 맨 위 프레임 바로 위(프레임 앞에 두면 한도를 넘은 프레임을 가린다)
+    this.stamp.position.set(STACK_X, this.frameY(top) + FRAME.h / 2 + 1.0, FRAME.d / 2 + 0.6);
+    this.stamp.visible = true;
+  }
   /** 코드 판에서 그 줄의 높이(월드 y) */
   lineY = (line: number) => this.board.position.y + this.boardHeight / 2 - BOARD.pad - (line - 0.5) * BOARD.lineH;
   /** 프레임 앞면 판의 가운데(반환값 구슬이 닿는 곳) */
@@ -101,7 +138,8 @@ class StackModel {
   private makeFrame(depth: number): FrameNode {
     const group = new Group();
     const fnIndex = this.term.scenario.actors.findIndex((a) => a.id === this.state.frames[depth]?.fn);
-    const body = new Mesh(new BoxGeometry(FRAME.w, FRAME.h, FRAME.d), this.std(fnIndex % 2 ? "object" : "objectDim"));
+    const bodyMat = this.std(fnIndex % 2 ? "object" : "objectDim");
+    const body = new Mesh(new BoxGeometry(FRAME.w, FRAME.h, FRAME.d), bodyMat);
     body.castShadow = true;
     group.add(body);
     const plate = canvasPainter(1024, 300);
@@ -119,7 +157,7 @@ class StackModel {
     const string = new Line(new BufferGeometry(), lineMat);
     this.root.add(string);
     this.root.add(group);
-    return { group, body, plate, tag, string };
+    return { group, body, plate, tag, string, bodyMat };
   }
 
   /** 결과 상태를 그대로 반영한다(프레임 만들기·지우기, 판·꼬리표·실·코드 판 다시 그리기) */
@@ -137,6 +175,8 @@ class StackModel {
       node.group.scale.setScalar(1);
       node.group.visible = true;
       const running = depth === state.frames.length - 1;
+      // 한도를 넘은 맨 위 프레임은 공격색
+      node.body.material = state.overflowed && running ? this.overMat : node.bodyMat;
       paintFrame(node.plate, f.call, f.locals, running, this.palette);
       const back = f.returnTo ? `↩ ${this.fnName(f.returnTo.fn)} ${f.returnTo.line ?? "?"}행` : "↩ 프로그램 끝";
       paintSign(node.tag, back, "neutral", this.palette);
@@ -146,8 +186,12 @@ class StackModel {
       node.string.visible = Boolean(f.returnTo?.line);
     });
     const returnLines = new Set(state.frames.flatMap((f) => (f.returnTo?.line ? [f.returnTo.line] : [])));
-    paintCode(this.boardPaint, this.term.scenario.code?.title, this.term.scenario.code?.lines ?? [], state.line, returnLines, this.palette);
+    paintCode(this.boardPaint, state.code?.title, state.code?.lines ?? [], state.line, returnLines, this.palette);
     this.ball.visible = false;
+    this.flashLimit(state.overflowed);
+    if (state.stamp) this.showStamp(state.stamp.label, state.stamp.tone);
+    else this.stamp.visible = false;
+    this.stamp.scale.set(1, 1, 1);
   }
 
   setPalette(palette: Palette) {
@@ -166,6 +210,9 @@ class StackModel {
     ];
     const top = Math.max(this.depth, 1) + extraDepth;
     pts.push(new Vector3(STACK_X + FRAME.w / 2, this.frameY(top - 1) + FRAME.h / 2 + 0.3, FRAME.d / 2));
+    // 한도선과 그 라벨, 도장도 화면에 담는다
+    if (this.limitLine) pts.push(this.limitLabelPoint().add(new Vector3(1.2, 0.4, 0)));
+    if (this.stamp.visible) pts.push(this.stamp.position.clone().add(new Vector3(-1.9, 0.9, 0)), this.stamp.position.clone().add(new Vector3(1.9, -0.9, 0)));
     return pts;
   }
 
@@ -240,6 +287,7 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     const before = stackStateAt(term, state.defense, state.step);
     const after = stackStateAt(term, state.defense, state.step + 1);
     labels.current!.show("ret", false);
+    if (term.scenario.stackLimit) labels.current!.set("limit", model.limitLabelPoint(), { title: `스택 한도 · ${term.scenario.stackLimit}칸`, tone: "attack" });
     rig.setAspect(size.width / Math.max(1, size.height));
 
     if (!state.started) {
@@ -281,10 +329,20 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         g.position.y = y + 2.6;
       });
       tl.tween(700, (t) => (g.position.y = y + 2.6 * (1 - t)), easeOut);
+      tl.call(() => trace("push", { actor }));
+      // 한도를 넘음: 한도선이 세 번 깜빡이고 도장(있으면)이 찍힌다
+      if (after.overflowed) {
+        for (let k = 0; k < 3; k++) tl.call(() => model.flashLimit(true)).wait(180).call(() => model.flashLimit(false)).wait(140);
+      }
       tl.call(() => {
-        trace("push", { actor });
+        model.flashLimit(after.overflowed);
         traceOthers();
+        if (after.stamp) {
+          model.showStamp(after.stamp.label, after.stamp.tone);
+          rig.frame(model.shotPoints());
+        }
       });
+      if (after.stamp) tl.tween(320, (t) => model.stamp.scale.set(2.4 - 1.4 * t, 2.4 - 1.4 * t, 1), easeOut);
       tl.wait(holdMs(view, true));
     } else if (view.action === "pop") {
       model.apply(before);
@@ -302,6 +360,7 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
       });
       if (value !== undefined) {
         tl.call(() => {
+          model.stamp.visible = false;
           model.ball.visible = true;
           labels.current!.set("ret", model.ball.position, { title: `return ${value}`, tone: "neutral" });
         });
@@ -374,6 +433,7 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         width: size.width,
         height: size.height,
         rects: model.screenRects(camera as PerspectiveCamera, size.width, size.height),
+        stamp: model.stamp.visible ? billboardRect(model.stamp, camera, size.width, size.height) : undefined,
         parents: {},
       })),
     [model, rig, camera, size],
@@ -388,7 +448,7 @@ function StackRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
     let settled = true;
     if (!freeView) settled = rig.apply(camera as PerspectiveCamera, dt * traceSpeed(), jump.current); // 테스트 배속은 카메라에도(배포 빌드는 1)
     jump.current = false;
-    labels.current?.update(camera, size.width, size.height);
+    labels.current?.update(camera, size.width, size.height, model.stamp.visible ? [billboardRect(model.stamp, camera, size.width, size.height)] : []);
     if (!running && settled && !freeView) {
       idle.current += dt;
       if (idle.current > 0.8 && visible) setFrameloop("demand");

@@ -1,6 +1,6 @@
 // 스택형 결과 상태(순수): upTo 단계 직전까지 push·pop·run과 locals·returnValue를 적용한 콜 스택. 단계를 넘기거나 동작 줄이기일 때 바로 적용한다 (docs/04 스택형)
 import type { Term } from "@app/content-schema";
-import { lastStepIndex, stepView, type Mode } from "@app/content-schema/scene";
+import { codeAt, lastStepIndex, stepView, type Mode } from "@app/content-schema/scene";
 
 export type Frame = {
   /** 스택 안에서의 자리(0 = 맨 아래). 같은 함수가 여러 번 쌓여도 자리로 구분한다 */
@@ -18,6 +18,11 @@ export type StackState = {
   line?: number;
   /** 바로 직전 pop에서 전달된 반환값(받은 칸 표시용) */
   lastReturn?: { value: string; into?: string; depth: number };
+  /** 지금 보이는 코드 판(해결 방법이면 갈림 단계부터 고친 코드) */
+  code?: { title?: string; lines: string[] };
+  /** 스택 한도를 넘었다(overflow) */
+  overflowed: boolean;
+  stamp?: { label: string; tone: "attack" | "defense" };
 };
 
 const setLocals = (frame: Frame | undefined, vars: { name: string; value: string }[]) => {
@@ -31,11 +36,12 @@ const setLocals = (frame: Frame | undefined, vars: { name: string; value: string
 
 /** upTo = 이 단계 번호(0부터) 직전까지 적용. upTo = 단계 수면 마지막까지 */
 export function stackStateAt(term: Term, mode: Mode, upTo: number): StackState {
-  const state: StackState = { frames: [] };
+  const state: StackState = { frames: [], code: codeAt(term, mode, 0), overflowed: false };
   const last = lastStepIndex(term, mode);
   for (let i = 0; i < Math.min(upTo, last + 1); i++) {
     const v = stepView(term, mode, i);
     const top = state.frames.at(-1);
+    state.code = codeAt(term, mode, i);
     state.lastReturn = undefined;
     if (v.action === "push") {
       state.frames.push({
@@ -49,6 +55,8 @@ export function stackStateAt(term: Term, mode: Mode, upTo: number): StackState {
       state.frames.pop();
     }
     for (const e of v.effects) {
+      if (e.type === "overflow") state.overflowed = true;
+      if (e.type === "stamp") state.stamp = { label: e.label, tone: e.tone };
       if (e.type === "returnValue") state.lastReturn = { value: e.value, into: e.into, depth: state.frames.length - 1 };
       if (e.type === "locals") {
         const target = e.target ? [...state.frames].reverse().find((f) => f.fn === e.target) : state.frames.at(-1);

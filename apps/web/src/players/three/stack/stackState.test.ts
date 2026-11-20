@@ -32,3 +32,32 @@ describe("stackStateAt (콜 스택)", () => {
     expect(s.lastReturn).toBeUndefined();
   });
 });
+
+describe("stackStateAt (스택 한도·고친 코드 판)", () => {
+  const raw = JSON.parse(readFileSync(new URL("../../../../../../content/terms/call-stack.json", import.meta.url), "utf8"));
+  const over = termSchema.parse({
+    ...raw,
+    scenario: {
+      ...raw.scenario,
+      stackLimit: 4,
+      steps: [
+        ...raw.scenario.steps.slice(0, 4),
+        { action: "push", from: "factorial", to: "factorial", title: "factorial(0)", label: "factorial(0)", caption: "넘침", effects: [{ type: "overflow" }, { type: "stamp", label: "StackOverflowError" }] },
+      ],
+    },
+    defenses: [{ name: "고침", kind: "solution", description: "고침", branchAtStep: 5, code: { lines: ["고친 코드"] }, steps: raw.scenario.steps.slice(4).map((s: { line?: number }) => ({ ...s, line: 1 })) }],
+  });
+
+  it("한도를 넘으면 overflowed와 도장, 그 전에는 없다", () => {
+    expect(stackStateAt(over, null, 4).overflowed).toBe(false);
+    expect(stackStateAt(over, null, 4).stamp).toBeUndefined();
+    expect(stackStateAt(over, null, 5)).toMatchObject({ overflowed: true, stamp: { label: "StackOverflowError", tone: "attack" } });
+    expect(stackStateAt(over, null, 5).frames).toHaveLength(5);
+  });
+
+  it("해결 방법은 갈림 단계부터 고친 코드 판을 보인다", () => {
+    expect(stackStateAt(over, 0, 4).code).toEqual(over.scenario.code);
+    expect(stackStateAt(over, 0, 5).code?.lines).toEqual(["고친 코드"]);
+    expect(stackStateAt(over, 0, 5).overflowed).toBe(false);
+  });
+});

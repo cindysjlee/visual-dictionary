@@ -11,7 +11,7 @@ const KIND_BY_ROLE: Record<string, ActorKind> = { user: "person", attacker: "att
 /** 플레이어마다 쓸 수 있는 효과 어휘 (docs/04) */
 export const EFFECTS_BY_PLAYER: Record<PlayerType, readonly Effect["type"][]> = {
   flow: ["appear", "flip", "rewrite", "store", "attach", "give", "run", "inspect", "transfer", "occupy", "vacate", "opacity"],
-  stack: ["locals", "returnValue"],
+  stack: ["locals", "returnValue", "overflow", "stamp"],
   lock: ["condition", "take", "cycle", "timeout", "stamp"],
 };
 const ZONE_BY_ROLE: Record<string, Zone> = { attacker: "outside", server: "server", database: "server" };
@@ -178,6 +178,7 @@ function refsOf(e: Effect): [string, string][] {
     case "take":
       return [["from", e.from]];
     case "returnValue":
+    case "overflow":
     case "condition":
     case "cycle":
     case "timeout":
@@ -344,6 +345,13 @@ export function checkScene(term: Term): Issue[] {
   return issues;
 }
 
+/** 이 모드의 index번째 단계에서 보이는 코드 판: 해결 방법에 code가 있으면 갈림 단계부터 그 코드(고친 코드) */
+export function codeAt(term: Term, mode: Mode, index: number) {
+  const d = mode === null ? undefined : term.defenses[mode];
+  if (d?.code && d.branchAtStep !== undefined && index >= d.branchAtStep - 1) return d.code;
+  return term.scenario.code;
+}
+
 /** 단계 위치(모드마다 기본 흐름·override·대체 흐름 중 어디에 적혔는지) */
 function stepPath(term: Term, mode: Mode, i: number): (string | number)[] {
   const d = mode === null ? undefined : term.defenses[mode]!;
@@ -357,9 +365,15 @@ function stepPath(term: Term, mode: Mode, i: number): (string | number)[] {
  * 점유: acquire는 아무도 안 잡은 자원, wait는 다른 스레드가 잡은 자원, release는 자기가 잡은 자원
  */
 function checkMachine(term: Term): Issue[] {
-  const { playerType, code } = term.scenario;
-  if (playerType === "flow") return [];
+  const { playerType, stackLimit } = term.scenario;
   const issues: Issue[] = [];
+  term.defenses.forEach((d, di) => {
+    if (d.code && (playerType !== "stack" || d.kind !== "solution" || !d.steps)) {
+      issues.push({ path: ["defenses", di, "code"], message: "code(고친 코드 판)는 스택형 해결 방법(대체 흐름이 있는 solution)에만 씁니다" });
+    }
+  });
+  if (stackLimit !== undefined && playerType !== "stack") issues.push({ path: ["scenario", "stackLimit"], message: "stackLimit은 스택형에만 씁니다" });
+  if (playerType === "flow") return issues;
   const reported = new Set<string>();
   const report = (path: (string | number)[], message: string) => {
     const key = path.join(".");
@@ -374,6 +388,7 @@ function checkMachine(term: Term): Issue[] {
       const path = stepPath(term, mode, i);
       if (playerType === "stack") {
         const top = stack.at(-1);
+        const code = codeAt(term, mode, i);
         if (s.line !== undefined && code && s.line > code.lines.length) report([...path, "line"], `코드 판에 ${s.line}행이 없습니다(${code.lines.length}행)`);
         if (s.action === "push") {
           if (top === undefined ? s.from !== s.to : s.from !== top) report([...path, "from"], top === undefined ? "첫 push는 진입점이라 from과 to가 같아야 합니다" : `push는 맨 위 함수(${top})가 부릅니다`);
@@ -383,9 +398,17 @@ function checkMachine(term: Term): Issue[] {
           else if (stack.length > 1 && s.to !== stack.at(-2)) report([...path, "to"], `돌아갈 곳은 바로 아래 함수(${stack.at(-2)})입니다`);
           stack.pop();
         } else if (s.action === "run" && (s.from !== top || s.to !== top)) report([...path, "from"], `run은 맨 위 함수(${top ?? "없음"})가 제자리에서 실행합니다`);
+        const overflow = s.effects.findIndex((e) => e.type === "overflow");
         s.effects.forEach((e, j) => {
           if (e.type === "returnValue" && s.action !== "pop") report([...path, "effects", j, "type"], "returnValue는 pop 단계에만 씁니다");
         });
+        const over = stackLimit !== undefined && s.action === "push" && stack.length > stackLimit;
+        if (overflow >= 0) {
+          const at = [...path, "effects", overflow, "type"];
+          if (stackLimit === undefined) report(at, "overflow에는 scenario.stackLimit(스택 한도)이 필요합니다");
+          else if (!over) report(at, `overflow는 스택 한도(${stackLimit})를 넘는 push에만 씁니다(지금 깊이 ${stack.length})`);
+          else if (i !== lastStepIndex(term, mode)) report(at, "overflow 뒤에는 단계가 없어야 합니다(프로그램이 멈춤)");
+        } else if (over) report([...path, "effects"], `스택 한도(${stackLimit})를 넘는 push에는 overflow 효과가 필요합니다`);
       } else {
         const held = owner.get(s.to);
         if (s.action === "acquire" && held !== undefined && held !== s.from) report([...path, "to"], `${s.to}는 ${held}가 잡고 있어 acquire할 수 없습니다(wait를 쓰세요)`);

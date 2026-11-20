@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema, type Term } from "./index.ts";
-import { blockTarget, defenseCounts, modeDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
+import { blockTarget, codeAt, defenseCounts, modeDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
 
 const raw = () => JSON.parse(readFileSync(new URL("../../../content/terms/csrf.json", import.meta.url), "utf8"));
 const csrf: Term = termSchema.parse(raw());
@@ -250,5 +250,51 @@ describe("흐름형 어휘: 칸(slots)·여러 개 보내기(burst)·겹친 화�
     ).toEqual([]);
     expect(issuePaths((t) => (t.scenario.steps[0].effects = [{ type: "opacity", target: "bankTab", value: 0.5 }]))).toEqual(["scenario.steps.0.effects.0.target: opacity는 겹친 화면(frame)에만 씁니다: bankTab"]);
     expect(hasPanel({ ...frame, kind: "frame" } as any)).toBe(true);
+  });
+});
+
+describe("스택형 어휘: 스택 한도·overflow·고친 코드 판", () => {
+  const callStack = () => JSON.parse(readFileSync(new URL("../../../content/terms/call-stack.json", import.meta.url), "utf8"));
+  /** 콜 스택을 바꿔 한도 4칸, 5단계 factorial(0)이 한도를 넘고, 해결 방법은 5단계부터 고친 코드로 반환해 내려온다 */
+  const overflowTerm = () => {
+    const t = callStack();
+    const pops = t.scenario.steps.slice(4);
+    t.scenario.stackLimit = 4;
+    t.scenario.steps = [
+      ...t.scenario.steps.slice(0, 4),
+      { action: "push", from: "factorial", to: "factorial", title: "factorial(0) 호출", label: "factorial(0)", caption: "한도를 넘음", danger: true, effects: [{ type: "overflow" }, { type: "stamp", label: "StackOverflowError" }] },
+    ];
+    t.defenses = [{ name: "기저 조건", kind: "solution", description: "멈출 조건", branchAtStep: 5, code: { lines: [...t.scenario.code.lines, "// 고침"] }, steps: pops }];
+    return t;
+  };
+  const issues = (mutate: (t: any) => void = () => {}) => {
+    const t = overflowTerm();
+    mutate(t);
+    const r = termSchema.safeParse(t);
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  };
+
+  it("한도를 넘는 push에 overflow를 쓰면 통과, 해결 방법은 갈림 단계부터 고친 코드 판", () => {
+    expect(issues()).toEqual([]);
+    const t = termSchema.parse(overflowTerm());
+    expect(codeAt(t, null, 4)).toBe(t.scenario.code);
+    expect(codeAt(t, 0, 3)).toBe(t.scenario.code);
+    expect(codeAt(t, 0, 4)!.lines.at(-1)).toBe("// 고침");
+  });
+
+  it("한도를 넘는데 overflow가 없거나, 한도 안에서 overflow, 한도 없이 overflow, overflow 뒤에 단계가 있으면 오류", () => {
+    expect(issues((t) => (t.scenario.steps[4].effects = []))).toEqual(["scenario.steps.4.effects: 스택 한도(4)를 넘는 push에는 overflow 효과가 필요합니다"]);
+    expect(issues((t) => (t.scenario.stackLimit = 5))).toEqual(["scenario.steps.4.effects.0.type: overflow는 스택 한도(5)를 넘는 push에만 씁니다(지금 깊이 5)"]);
+    expect(issues((t) => delete t.scenario.stackLimit)).toEqual(["scenario.steps.4.effects.0.type: overflow에는 scenario.stackLimit(스택 한도)이 필요합니다"]);
+    expect(issues((t) => t.scenario.steps.push({ action: "run", from: "factorial", to: "factorial", title: "더", label: "x", caption: "x" }))).toContain(
+      "scenario.steps.4.effects.0.type: overflow 뒤에는 단계가 없어야 합니다(프로그램이 멈춤)",
+    );
+  });
+
+  it("고친 코드 판은 스택형 해결 방법에만, stackLimit은 스택형에만", () => {
+    expect(issues((t) => Object.assign(t.defenses[0], { kind: "defense", blockedAtStep: 5, blockedLabel: "x", blockedCaption: "x", branchAtStep: undefined, steps: undefined }))).toContain(
+      "defenses.0.code: code(고친 코드 판)는 스택형 해결 방법(대체 흐름이 있는 solution)에만 씁니다",
+    );
+    expect(issuePaths((t) => (t.scenario.stackLimit = 3))).toEqual(["scenario.stackLimit: stackLimit은 스택형에만 씁니다"]);
   });
 });
