@@ -77,6 +77,6 @@ export class CiStack extends Stack {
       new PolicyStatement({ sid: "ReadUserPool", actions: ["cognito-idp:DescribeUserPool", "cognito-idp:DescribeUserPoolClient"], resources: [arn("cognito-idp", "userpool/*")] }),
     );
 
-    new CfnOutput(this, "DeployRoleArn", { value: role.roleArn, description: "GitHub 저장소 Secret AWS_DEPLOY_ROLE_ARN에 넣는다(저장소 파일에는 적지 않음)" });
+    new CfnOutput(this, "DeployRoleArn", { value: role.roleArn, description: "Put into GitHub secret AWS_DEPLOY_ROLE_ARN (never in repository files)" }); // AWS 리소스 설명은 영어(CLAUDE.md)
   }
 }

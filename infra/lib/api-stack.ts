@@ -58,7 +58,8 @@ export class ApiStack extends Stack {
       enforceSSL: true,
     });
     new Alarm(this, "CleanupDlqAlarm", {
-      alarmDescription: "탈퇴 정리 실패가 DLQ에 쌓임(기록 삭제가 안 된 사용자가 있음, docs/03 탈퇴 실패 표)",
+      // 탈퇴 정리 실패가 DLQ에 쌓임(기록이 안 지워진 사용자가 있음). AWS 리소스 설명은 영어(CLAUDE.md)
+      alarmDescription: "Withdrawal cleanup failures in DLQ: some users' records were not deleted (docs/03 withdrawal failure table)",
       metric: dlq.metricApproximateNumberOfMessagesVisible({ period: Duration.minutes(5) }),
       threshold: 1,
       evaluationPeriods: 1,

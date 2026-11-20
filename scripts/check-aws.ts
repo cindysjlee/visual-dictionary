@@ -248,10 +248,11 @@ if (ciRes) {
   );
   check(
     same(Object.keys(t?.Condition ?? {}), ["StringEquals"]) &&
-      same(t!.Condition!.StringEquals, {
-        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": `repo:${repo}:ref:refs/heads/main`,
-      }),
+      // IAM이 돌려주는 조건 키 순서는 호출마다 다를 수 있어 정렬해서 비교한다
+      same(Object.entries(t!.Condition!.StringEquals!).sort(), [
+        ["token.actions.githubusercontent.com:aud", "sts.amazonaws.com"],
+        ["token.actions.githubusercontent.com:sub", `repo:${repo}:ref:refs/heads/main`],
+      ]),
     `CI 역할 조건: StringEquals만, aud = sts.amazonaws.com, sub = repo:${repo}:ref:refs/heads/main (와일드카드 없음)`,
   );
   check(role.MaxSessionDuration <= 3600, `CI 역할 최대 세션: ${role.MaxSessionDuration}초 (기대 3600 이하)`);

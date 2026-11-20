@@ -66,7 +66,7 @@ export class WebStack extends Stack {
     const spaRouter = new CfFunction(this, "SpaRouter", {
       code: FunctionCode.fromInline(SPA_ROUTER_CODE),
       runtime: FunctionRuntime.JS_2_0,
-      comment: "확장자 없는 화면 주소만 /index.html로",
+      comment: "SPA routing: only extensionless page paths to /index.html", // 확장자 없는 화면 주소만 index.html로. AWS 리소스 설명은 영어(CLAUDE.md)
     });
 
     const distribution = new Distribution(this, "SiteDistribution", {
