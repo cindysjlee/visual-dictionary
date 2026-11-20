@@ -3,7 +3,7 @@
 import { AdminDeleteUserCommand, AdminGetUserCommand, CognitoIdentityProviderClient, UserNotFoundException } from "@aws-sdk/client-cognito-identity-provider";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2, SQSBatchResponse, SQSEvent } from "aws-lambda";
-import { withdraw } from "./account.ts";
+import { reauthFresh, withdraw } from "./account.ts";
 import { getActivity, putActivity } from "./activity.ts";
 import { cleanup } from "./cleanup.ts";
 import { deleteActivity, deleteRecords, dynamoActivityRepo, dynamoProgressRepo, markWithdrawn, unmarkWithdrawn } from "./dynamo.ts";
@@ -68,6 +68,8 @@ export async function accountHandler(event: APIGatewayProxyEventV2WithJWTAuthori
   // 이메일 로그인 풀에서 Cognito 사용자 이름은 sub와 같다(액세스 토큰의 username)
   const username = String(claims.username ?? sub);
   if (!sub) return respond(route, { status: 401, body: { error: "no-subject" } });
+  // 화면의 재확인만 믿지 않는다: API를 직접 불러도 최근 5분 안에 인증한 토큰이어야 한다
+  if (!reauthFresh(claims.auth_time, Math.floor(Date.now() / 1000))) return respond(route, { status: 403, body: { error: "reauth-required" } });
   const result = await withdraw(sub, username, {
     markWithdrawn: (u) => markWithdrawn(TABLE, u),
     unmarkWithdrawn: (u) => unmarkWithdrawn(TABLE, u),

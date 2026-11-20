@@ -17,7 +17,8 @@ export interface ProgressApi {
 
 /** 기록 API 오류. name: NotSignedIn(토큰 없음), Withdrawn(탈퇴한 계정, 403), ProgressFailed(그 밖) */
 export class ProgressError extends Error {
-  override readonly name: "NotSignedIn" | "Withdrawn" | "ProgressFailed";
+  /** ReauthRequired: 탈퇴 API가 거부함(재확인한 지 5분이 지남) */
+  override readonly name: "NotSignedIn" | "Withdrawn" | "ReauthRequired" | "ProgressFailed";
   readonly status: number;
   constructor(name: ProgressError["name"], status = 0) {
     super(name);

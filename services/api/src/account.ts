@@ -14,6 +14,15 @@ export interface WithdrawDeps {
 
 export type CleanupJob = { userId: string; username: string };
 
+/** 탈퇴는 최근 5분 안에 인증한 토큰만 받는다(이메일: 비밀번호 재확인 뒤 다시 로그인, 구글: 계정 선택을 거친 재로그인) */
+export const REAUTH_MAX_AGE_SECONDS = 5 * 60;
+
+/** 토큰의 auth_time(초, JWT 인가가 문자열로 줄 수 있음)이 지금부터 5분 안인지. 없거나 미래(시계 차 1분 넘게)면 거부 */
+export function reauthFresh(authTime: unknown, nowSeconds: number): boolean {
+  const t = Number(authTime);
+  return Number.isFinite(t) && t > 0 && nowSeconds - t <= REAUTH_MAX_AGE_SECONDS && t - nowSeconds <= 60;
+}
+
 export async function withdraw(userId: string, username: string, deps: WithdrawDeps): Promise<ApiResult> {
   try {
     await deps.markWithdrawn(userId);

@@ -1,7 +1,24 @@
-// 회원 인증: Cognito 사용자 풀(Lite) + 웹 앱 클라이언트. FR-AUTH-02·03·05, NFR-01 (docs/03 인증)
+// 회원 인증: Cognito 사용자 풀(Essentials) + 웹 앱 클라이언트 + 로그인 도메인. FR-AUTH-02·03·05·07, NFR-01 (docs/03 인증)
 import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
-import { AccountRecovery, FeaturePlan, Mfa, UserPool, UserPoolClient, UserPoolEmail, VerificationEmailStyle } from "aws-cdk-lib/aws-cognito";
+import {
+  AccountRecovery,
+  CfnManagedLoginBranding,
+  FeaturePlan,
+  ManagedLoginVersion,
+  Mfa,
+  OAuthScope,
+  UserPool,
+  UserPoolClient,
+  UserPoolClientIdentityProvider,
+  UserPoolEmail,
+  VerificationEmailStyle,
+} from "aws-cdk-lib/aws-cognito";
 import type { Construct } from "constructs";
+import { LOGIN_DOMAIN_PREFIX, LOGIN_ORIGIN, SITE_ORIGIN } from "./csp.ts";
+
+/** OAuth 콜백·로그아웃 주소(8단계 구글 로그인). 개발 서버는 가짜 인증이라 localhost는 등록하지 않는다 */
+export const OAUTH_CALLBACK = `${SITE_ORIGIN}/auth/callback`;
+export const OAUTH_LOGOUT = `${SITE_ORIGIN}/`;
 
 /** 토큰 유효 시간: 액세스·ID 1시간, 리프레시 30일(브라우저를 닫았다 열어도 로그인 유지, FR-AUTH-03) */
 export const TOKEN_VALIDITY = { access: Duration.hours(1), id: Duration.hours(1), refresh: Duration.days(30) };
@@ -14,8 +31,8 @@ export class AuthStack extends Stack {
     super(scope, id, props);
 
     this.userPool = new UserPool(this, "UserPool", {
-      // Lite: 비밀번호 로그인·이메일 코드만 쓴다. CDK 기본은 Essentials라서 명시한다(둘 다 월 1만 MAU 무료)
-      featurePlan: FeaturePlan.LITE,
+      // Essentials(8단계): managed login에서만 prompt(탈퇴 재확인 때 구글 계정 선택 강제)를 쓸 수 있다. Lite와 같이 월 1만 MAU 무료(docs/03)
+      featurePlan: FeaturePlan.ESSENTIALS,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
@@ -45,8 +62,30 @@ export class AuthStack extends Stack {
       accessTokenValidity: TOKEN_VALIDITY.access,
       idTokenValidity: TOKEN_VALIDITY.id,
       refreshTokenValidity: TOKEN_VALIDITY.refresh,
+      // OAuth(로그인 도메인)는 인가 코드 + PKCE만. CDK 기본(implicit + https://example.com 콜백)을 쓰지 않는다:
+      // 도메인이 생기면 그 기본값으로 토큰을 다른 사이트로 보내는 로그인 주소를 만들 수 있다
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE, OAuthScope.COGNITO_ADMIN],
+        callbackUrls: [OAUTH_CALLBACK],
+        logoutUrls: [OAUTH_LOGOUT],
+      },
+      // 구글은 8a 후반(Google 콘솔·Secrets Manager 준비 뒤)에 추가한다
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
     });
 
+    // 로그인 도메인: managed login(Essentials). 화면은 Cognito 기본 모양(브랜딩)을 쓰고, 앱은 identity_provider=Google로 구글 화면에 바로 보낸다
+    this.userPool.addDomain("LoginDomain", {
+      cognitoDomain: { domainPrefix: LOGIN_DOMAIN_PREFIX },
+      managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+    });
+    new CfnManagedLoginBranding(this, "LoginBranding", {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.client.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
+    new CfnOutput(this, "LoginDomain", { value: LOGIN_ORIGIN });
     new CfnOutput(this, "UserPoolId", { value: this.userPool.userPoolId });
     new CfnOutput(this, "UserPoolClientId", { value: this.client.userPoolClientId });
   }

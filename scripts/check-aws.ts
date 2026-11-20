@@ -2,7 +2,12 @@
 // 콘솔에서 보던 항목을 기대값과 비교한다: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 런타임·역할 권한·로그 보존,
 // CloudFront 동작·함수·오류 페이지·CSP, Cognito 사용자 풀·앱 클라이언트, CI 배포 역할(신뢰 정책·권한). ARN은 계정 ID가 들어 있어 출력하지 않는다
 import { execFileSync } from "node:child_process";
-import { CSP } from "../infra/lib/csp.ts";
+import { CSP, LOGIN_DOMAIN_PREFIX, SITE_ORIGIN } from "../infra/lib/csp.ts";
+
+const OAUTH_CALLBACK = `${SITE_ORIGIN}/auth/callback`;
+const OAUTH_LOGOUT = `${SITE_ORIGIN}/`;
+/** 앱 클라이언트의 로그인 수단. 구글 IdP를 붙이면 "Google"을 더한다(8a 후반) */
+const IDENTITY_PROVIDERS = ["COGNITO"] as const;
 
 const REGION = "ap-northeast-2";
 // CI(GitHub Actions)는 OIDC로 받은 환경 자격 증명을 쓴다. 로컬은 프로필 vd
@@ -186,6 +191,7 @@ check(headers.ContentSecurityPolicy?.ContentSecurityPolicy === CSP, "응답 헤�
 // ---------- Cognito ----------
 type Pool = {
   UserPoolTier?: string;
+  Domain?: string;
   DeletionProtection?: string;
   MfaConfiguration?: string;
   UsernameAttributes?: string[];
@@ -196,7 +202,8 @@ type Pool = {
 };
 const pool = aws<{ UserPool: Pool }>("cognito-idp", "describe-user-pool", "--user-pool-id", auth.UserPoolId!).UserPool;
 const pw = pool.Policies.PasswordPolicy;
-check(pool.UserPoolTier === "LITE", `사용자 풀 등급: ${pool.UserPoolTier}`);
+check(pool.UserPoolTier === "ESSENTIALS", `사용자 풀 등급: ${pool.UserPoolTier} (기대 ESSENTIALS: managed login의 prompt)`);
+check(pool.Domain === LOGIN_DOMAIN_PREFIX, `로그인 도메인 접두어: ${pool.Domain} (기대 ${LOGIN_DOMAIN_PREFIX})`);
 check(pool.DeletionProtection === "ACTIVE", `사용자 풀 삭제 보호: ${pool.DeletionProtection}`);
 check(pool.MfaConfiguration === "OFF", `MFA: ${pool.MfaConfiguration}`);
 check(same(pool.UsernameAttributes, ["email"]) && same(pool.AutoVerifiedAttributes, ["email"]), "이메일 로그인·이메일 자동 인증");
@@ -216,6 +223,11 @@ const client = aws<{
     IdTokenValidity?: number;
     RefreshTokenValidity?: number;
     TokenValidityUnits?: Record<string, string>;
+    AllowedOAuthFlows?: string[];
+    AllowedOAuthScopes?: string[];
+    CallbackURLs?: string[];
+    LogoutURLs?: string[];
+    SupportedIdentityProviders?: string[];
   };
 }>("cognito-idp", "describe-user-pool-client", "--user-pool-id", auth.UserPoolId!, "--client-id", auth.UserPoolClientId!).UserPoolClient;
 check(same(sorted(client.ExplicitAuthFlows), ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_SRP_AUTH"]), `앱 클라이언트 인증 흐름: ${sorted(client.ExplicitAuthFlows).join(", ")}`);
@@ -224,6 +236,16 @@ check(
   client.AccessTokenValidity === 60 && client.IdTokenValidity === 60 && client.RefreshTokenValidity === 43200 && client.TokenValidityUnits?.RefreshToken === "minutes",
   `토큰 유효 시간(분): 액세스 ${client.AccessTokenValidity}, ID ${client.IdTokenValidity}, 리프레시 ${client.RefreshTokenValidity} (기대 60/60/43200=30일)`,
 );
+// OAuth: 인가 코드만(implicit 없음), 콜백·로그아웃은 이 사이트 주소만(CDK 기본 https://example.com 없음)
+check(
+  same(client.AllowedOAuthFlows, ["code"]) && same(client.CallbackURLs, [OAUTH_CALLBACK]) && same(client.LogoutURLs, [OAUTH_LOGOUT]),
+  `앱 클라이언트 OAuth: 흐름 ${client.AllowedOAuthFlows?.join(",")}, 콜백 ${client.CallbackURLs?.join(",")}, 로그아웃 ${client.LogoutURLs?.join(",")}`,
+);
+check(
+  same(sorted(client.AllowedOAuthScopes ?? []), ["aws.cognito.signin.user.admin", "email", "openid", "profile"]),
+  `앱 클라이언트 OAuth 범위: ${sorted(client.AllowedOAuthScopes ?? []).join(", ")}`,
+);
+check(same(sorted(client.SupportedIdentityProviders ?? []), [...IDENTITY_PROVIDERS]), `로그인 수단: ${sorted(client.SupportedIdentityProviders ?? []).join(", ")}`);
 
 // ---------- CI 배포 역할(GitHub OIDC, docs/03 2.6) ----------
 // CI 안에서는 건너뛴다: CI 역할은 자기 역할을 읽는 권한(iam:GetRole)이 없고, 이 검사를 위해 넓히지 않는다

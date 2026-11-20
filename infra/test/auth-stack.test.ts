@@ -10,10 +10,10 @@ const MAIL_HASH = "f2255d47a3673793ce8a6e38b2e1b849a1dd299c406f6638fdbd191363d6d
 const template = Template.fromStack(new AuthStack(new App(), "Test", { env: { region: "ap-northeast-2" } }));
 
 describe("AuthStack", () => {
-  it("사용자 풀: Lite, 이메일 로그인·자동 인증, 8자+숫자, 이메일 복구, MFA 없음", () => {
+  it("사용자 풀: Essentials, 이메일 로그인·자동 인증, 8자+숫자, 이메일 복구, MFA 없음", () => {
     template.resourceCountIs("AWS::Cognito::UserPool", 1);
     template.hasResourceProperties("AWS::Cognito::UserPool", {
-      UserPoolTier: "LITE",
+      UserPoolTier: "ESSENTIALS",
       UsernameAttributes: ["email"],
       AutoVerifiedAttributes: ["email"],
       AdminCreateUserConfig: { AllowAdminCreateUserOnly: false },
@@ -44,6 +44,23 @@ describe("AuthStack", () => {
       RefreshTokenValidity: 43200,
       TokenValidityUnits: { AccessToken: "minutes", IdToken: "minutes", RefreshToken: "minutes" },
     });
+  });
+
+  it("OAuth: 인가 코드만(implicit·example.com 없음), 콜백·로그아웃은 이 사이트, 로그인 수단은 아직 COGNITO만", () => {
+    template.hasResourceProperties("AWS::Cognito::UserPoolClient", {
+      AllowedOAuthFlowsUserPoolClient: true,
+      AllowedOAuthFlows: ["code"],
+      AllowedOAuthScopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"],
+      CallbackURLs: ["https://d1y3rvak3nd08u.cloudfront.net/auth/callback"],
+      LogoutURLs: ["https://d1y3rvak3nd08u.cloudfront.net/"],
+      SupportedIdentityProviders: ["COGNITO"],
+    });
+    expect(JSON.stringify(template.toJSON())).not.toContain("example.com");
+  });
+
+  it("로그인 도메인: 접두어 visual-dictionary-auth, managed login(버전 2), Cognito 기본 브랜딩", () => {
+    template.hasResourceProperties("AWS::Cognito::UserPoolDomain", { Domain: "visual-dictionary-auth", ManagedLoginVersion: 2 });
+    template.hasResourceProperties("AWS::Cognito::ManagedLoginBranding", { UseCognitoProvidedValues: true });
   });
 
   // 사용자가 받는 인증 메일만 한글이다. cdk diff는 이 때문에 Auth에 "비ASCII 생략 1건"을 계속 내지만, CI 관문(보안: IAM 표, 변경: 실제 변경 세트)은 이를 실패로 보지 않는다.

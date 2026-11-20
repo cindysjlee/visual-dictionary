@@ -8,6 +8,7 @@ import { Field } from "../auth/AuthForm.tsx";
 import { authMessage } from "../auth/errors.ts";
 import { loginPath } from "../auth/safeNext.ts";
 import { auth, useAuth } from "../auth/store.ts";
+import { ProgressError } from "./api.ts";
 import { ProgressSummary } from "./ProgressSummary.tsx";
 import { daysAgoLabel, recentTerms } from "./recent.ts";
 import { isRead, progress, useProgress, useRecent } from "./store.ts";
@@ -65,8 +66,15 @@ function Withdraw({ leave }: { leave: () => void }) {
       leave();
       void navigate("/", { replace: true, state: { notice: "탈퇴했어요. 계정과 학습 기록이 모두 삭제됐어요." } });
       await auth.signOutAfterWithdraw();
-    } catch {
+    } catch (err) {
       dialog.current?.close();
+      if (err instanceof ProgressError && err.name === "ReauthRequired") {
+        // 서버는 최근 5분 안에 인증한 토큰만 받는다: 재확인부터 다시
+        setVerified(false);
+        setPassword("");
+        setError("비밀번호를 확인한 지 5분이 지났어요. 다시 확인한 뒤 탈퇴해 주세요.");
+        return;
+      }
       setError("탈퇴하지 못했어요. 계정과 기록은 그대로예요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBusy(false);

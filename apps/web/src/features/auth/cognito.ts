@@ -81,8 +81,15 @@ export async function cognitoAuthClient(): Promise<AuthClient> {
     },
     async verifyPassword(password) {
       // 로그인한 채로 비밀번호만 확인하는 API가 없어, 같은 비밀번호로 바꾸기(ChangePassword)로 Cognito가 확인하게 한다.
-      // 비밀번호를 우리 API로 보내지 않는다. Lite 풀은 비밀번호 재사용 금지가 없어 같은 값으로 바뀐다(docs/03)
+      // 비밀번호를 우리 API로 보내지 않는다. 비밀번호 재사용 금지를 켜지 않아 같은 값으로 바뀐다(docs/03). 틀리면 여기서 실패하고 로그인은 그대로다
       await updatePassword({ oldPassword: password, newPassword: password });
+      // 탈퇴 API는 최근 5분 안에 인증한 토큰(auth_time)만 받는다. ChangePassword는 새 토큰을 주지 않으므로 다시 로그인한다.
+      // Amplify는 로그인된 채로 signIn을 막아 로컬 로그아웃 뒤 같은 비밀번호로 로그인한다(화면 상태는 store가 따로 들고 있어 그대로)
+      const email = (await fetchAuthSession()).tokens?.idToken?.payload.email;
+      if (typeof email !== "string") throw authError("NotAuthorizedException");
+      await signOut();
+      const { nextStep } = await signIn({ username: email, password });
+      if (nextStep.signInStep !== "DONE") throw authError("UnsupportedSignInStep");
     },
   };
 }

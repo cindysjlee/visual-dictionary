@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withdraw, type CleanupJob, type WithdrawDeps } from "./account.ts";
+import { reauthFresh, withdraw, type CleanupJob, type WithdrawDeps } from "./account.ts";
 import { getActivity, putActivity, RECENT_LIMIT, type ActivityRepo, type ViewRecord } from "./activity.ts";
 import { cleanup, UserStillExistsError } from "./cleanup.ts";
 import { getProgress, putProgress, type ProgressRecord, type ProgressRepo } from "./progress.ts";
@@ -114,6 +114,22 @@ function withdrawDeps(t: ReturnType<typeof memoryTable>, fail: Partial<Record<"m
   };
   return { deps, queue, cognitoUsers, cleanupDeps };
 }
+
+describe("탈퇴 재인증: 토큰 auth_time이 5분 안일 때만(모든 사용자)", () => {
+  const now = 1_800_000_000;
+  it("5분 안이면 받고, 5분을 넘거나 없거나 형식이 틀리면 거부한다", () => {
+    expect(reauthFresh(now - 10, now)).toBe(true);
+    expect(reauthFresh(String(now - 300), now)).toBe(true); // JWT 인가는 클레임을 문자열로 줄 수 있다
+    expect(reauthFresh(now - 301, now)).toBe(false);
+    expect(reauthFresh(undefined, now)).toBe(false);
+    expect(reauthFresh("abc", now)).toBe(false);
+    expect(reauthFresh(0, now)).toBe(false);
+  });
+  it("시계 차 1분을 넘는 미래 시각은 거부한다", () => {
+    expect(reauthFresh(now + 30, now)).toBe(true);
+    expect(reauthFresh(now + 61, now)).toBe(false);
+  });
+});
 
 describe("회원 탈퇴: 큐에 넣은 뒤에만 Cognito 삭제, 실패 단계별 결과", () => {
   it("성공: 표시 → 큐 → Cognito 삭제 → 정리 후 기록 없음, 탈퇴 직후 예전 토큰으로 PUT은 거부되고 테이블에 기록이 생기지 않는다", async () => {

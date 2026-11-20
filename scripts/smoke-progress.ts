@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { chromium, type Browser } from "@playwright/test";
+import { REAUTH_MAX_AGE_SECONDS } from "../services/api/src/account.ts";
 
 const base = (process.argv[2] ?? process.env.SITE_URL ?? "https://d1y3rvak3nd08u.cloudfront.net").replace(/\/$/, "");
 const profile = process.env.AWS_PROFILE ?? "vd";
@@ -32,7 +33,9 @@ const viewCount = (sub: string) => itemsOf(apiOutputs.ActivityTableName!, sub).l
 const results: [boolean, string][] = [];
 const check = (ok: boolean, what: string) => results.push([ok, what]);
 const runId = `${Date.now()}-${randomBytes(3).toString("hex")}`;
-const users = { A: `smoke-progress-a-${runId}@example.com`, B: `smoke-progress-b-${runId}@example.com` };
+// C: 오래된 토큰 검사용(맨 처음 로그인해 두고, 5분이 지난 뒤 그 토큰으로 탈퇴를 시도한다. 기록은 쓰지 않는다)
+const users = { A: `smoke-progress-a-${runId}@example.com`, B: `smoke-progress-b-${runId}@example.com`, C: `smoke-progress-c-${runId}@example.com` };
+const labelOf = (email: string) => Object.entries(users).find(([, v]) => v === email)?.[0] ?? email;
 const password = `Prog${randomBytes(9).toString("base64url")}1a`;
 const created: string[] = [];
 
@@ -84,9 +87,12 @@ try {
     created.push(email);
     cognito("admin-set-user-password", "--username", email, "--password", password, "--permanent");
   }
-  check(true, "테스트 사용자 A·B 생성(메일 없음)");
+  check(true, "테스트 사용자 A·B·C 생성(메일 없음)");
 
   browser = await chromium.launch({ channel: "chrome" });
+  const c = await login(browser, users.C);
+  const cLoginAt = Date.now();
+  await c.context.close();
   const a = await login(browser, users.A);
   const b = await login(browser, users.B);
   const subA = payloadOf(a.token).sub;
@@ -185,6 +191,22 @@ try {
   check(again.status === 403 && recordCount(subA) === 0, `정리 뒤에도 예전 토큰 PUT → ${again.status}, 테이블 0건 유지`);
   const viewAgain = await api("/api/activity/tcp-handshake", { method: "PUT", token: a.token });
   check(viewAgain.status === 403 && viewCount(subA) === 0, `정리 뒤에도 예전 토큰 최근 본 용어 PUT → ${viewAgain.status}, RecentView 0건 유지`);
+
+  // 탈퇴 재인증(서버): 로그인한 지 5분이 넘은 토큰으로 API를 직접 불러 탈퇴 → 거부, 계정은 남는다
+  const waitMs = cLoginAt + (REAUTH_MAX_AGE_SECONDS + 20) * 1000 - Date.now();
+  if (waitMs > 0) {
+    console.log(`오래된 토큰 검사: C가 로그인한 지 ${REAUTH_MAX_AGE_SECONDS + 20}초가 되도록 ${Math.ceil(waitMs / 1000)}초 기다립니다`);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  const staleRes = await api("/api/account", { method: "DELETE", token: c.token });
+  const staleError = ((await staleRes.json().catch(() => ({}))) as { error?: string }).error;
+  let cStillExists = true;
+  try {
+    cognito("admin-get-user", "--username", users.C);
+  } catch {
+    cStillExists = false;
+  }
+  check(staleRes.status === 403 && staleError === "reauth-required" && cStillExists, `5분 넘은 토큰으로 DELETE /api/account → ${staleRes.status} ${staleError ?? ""}(거부), 계정 남음: ${cStillExists}`);
 } catch (e) {
   check(false, `진행 중 실패: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
 } finally {
@@ -192,7 +214,7 @@ try {
   for (const email of [...created]) {
     try {
       cognito("admin-delete-user", "--username", email);
-      check(true, `테스트 사용자 삭제: ${email === users.A ? "A" : "B"}`);
+      check(true, `테스트 사용자 삭제: ${labelOf(email)}`);
     } catch (e) {
       check(false, `테스트 사용자 삭제 실패 → 남은 사용자: ${email} (콘솔: Cognito → 사용자 풀 → 사용자 관리 → 사용자) ${e instanceof Error ? e.message.split("\n")[0] : ""}`);
     }

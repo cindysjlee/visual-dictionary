@@ -16,7 +16,10 @@ async function call(method: "GET" | "PUT" | "DELETE", path: string, body?: unkno
   } catch {
     throw new ProgressError("ProgressFailed");
   }
-  if (res.status === 403) throw new ProgressError("Withdrawn", 403);
+  if (res.status === 403) {
+    const error = ((await res.json().catch(() => ({}))) as { error?: string }).error;
+    throw new ProgressError(error === "reauth-required" ? "ReauthRequired" : "Withdrawn", 403);
+  }
   if (!res.ok) throw new ProgressError(res.status === 401 ? "NotSignedIn" : "ProgressFailed", res.status);
   return res.status === 204 ? undefined : res.json();
 }
