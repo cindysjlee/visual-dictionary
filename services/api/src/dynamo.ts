@@ -1,6 +1,6 @@
 // DynamoDB 저장소(LearningRecord: PK userId, SK termId). 탈퇴 표시는 같은 테이블의 termId "#deleted" 항목(TTL 속성 ttl)
 import { DynamoDBClient, TransactionCanceledException } from "@aws-sdk/client-dynamodb";
-import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, PutCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { VIEW_TTL_DAYS, type ActivityRepo } from "./activity.ts";
 import type { ProgressRecord, ProgressRepo } from "./progress.ts";
 
@@ -83,9 +83,13 @@ const isWithdrawnCancel = (e: unknown) => e instanceof TransactionCanceledExcept
 export function dynamoActivityRepo(activityTable: string, progressTable: string): ActivityRepo {
   return {
     async list(userId) {
-      const [views, progress] = await Promise.all([queryAll(activityTable, userId), queryAll(progressTable, userId)]);
+      // 학습 기록 전체가 아니라 탈퇴 표시 하나만 읽는다(ActivityFn 권한은 GetItem만)
+      const [views, marker] = await Promise.all([
+        queryAll(activityTable, userId),
+        doc.send(new GetCommand({ TableName: progressTable, Key: { userId, termId: MARKER } })).then((r) => r.Item as Item | undefined),
+      ]);
       return {
-        withdrawn: progress.some(isLiveMarker),
+        withdrawn: !!marker && isLiveMarker(marker),
         views: views.filter((i) => (i.ttl ?? 0) > nowSec()).map((i) => ({ termId: i.termId, viewedAt: i.viewedAt ?? "" })),
       };
     },

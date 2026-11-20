@@ -8,8 +8,8 @@ const GITHUB_OIDC = "token.actions.githubusercontent.com";
 /** CDK 부트스트랩 한정자(기본값). 부트스트랩 역할 이름에 들어간다 */
 const QUALIFIER = "hnb659fds";
 
-/** githubRepo: "소유자/저장소". 저장소 파일에 적지 않고 배포할 때 CDK context(-c githubRepo=…)로 넣는다 */
-export type CiStackProps = StackProps & { githubRepo: string };
+/** githubRepo: "소유자/저장소". 저장소 파일에 적지 않고 배포할 때 CDK context(-c githubRepo=…)로 넣는다. apiId: 배포 확인(check:aws)이 읽는 이 프로젝트 HTTP API */
+export type CiStackProps = StackProps & { githubRepo: string; apiId: string };
 
 export class CiStack extends Stack {
   constructor(scope: Construct, id: string, props: CiStackProps) {
@@ -49,7 +49,9 @@ export class CiStack extends Stack {
         resources: [arn("cloudformation", "stack/VisualDictionary*/*")],
       }),
     );
-    role.addToPolicy(new PolicyStatement({ sid: "ReadApi", actions: ["apigateway:GET"], resources: [`arn:${this.partition}:apigateway:${this.region}::/apis/*`] }));
+    // 이 프로젝트 API만(라우트·인가·스테이지는 하위 경로)
+    const apiArn = `arn:${this.partition}:apigateway:${this.region}::/apis/${props.apiId}`;
+    role.addToPolicy(new PolicyStatement({ sid: "ReadApi", actions: ["apigateway:GET"], resources: [apiArn, `${apiArn}/*`] }));
     role.addToPolicy(
       new PolicyStatement({ sid: "ReadTables", actions: ["dynamodb:DescribeTable", "dynamodb:DescribeTimeToLive"], resources: [arn("dynamodb", "table/VisualDictionaryApi-*")] }),
     );

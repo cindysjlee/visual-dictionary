@@ -90,7 +90,7 @@ export class ApiStack extends Stack {
     const activity = fn("ActivityFn", "activityHandler");
     activity.addEnvironment("TERM_IDS", props.termIds.join(","));
     recent.grant(activity, "dynamodb:Query", "dynamodb:PutItem");
-    table.grant(activity, "dynamodb:ConditionCheckItem");
+    table.grant(activity, "dynamodb:ConditionCheckItem", "dynamodb:GetItem"); // GetItem: 목록 조회 때 탈퇴 표시 하나만 읽는다
 
     const account = fn("AccountFn", "accountHandler");
     account.addEnvironment("QUEUE_URL", queue.queueUrl);

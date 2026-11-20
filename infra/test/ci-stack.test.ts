@@ -3,7 +3,7 @@ import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import { CiStack } from "../lib/ci-stack.ts";
 
-const t = Template.fromStack(new CiStack(new App(), "Ci", { env: { region: "ap-northeast-2" }, githubRepo: "example-owner/visual-dictionary" }));
+const t = Template.fromStack(new CiStack(new App(), "Ci", { env: { region: "ap-northeast-2" }, githubRepo: "example-owner/visual-dictionary", apiId: "abc123" }));
 const statements = () =>
   Object.values(t.findResources("AWS::IAM::Policy")).flatMap(
     (p) => p.Properties.PolicyDocument.Statement as { Sid: string; Effect: string; Action: string | string[]; Resource: unknown }[],
@@ -41,8 +41,16 @@ describe("CiStack(GitHub OIDC 배포 역할)", () => {
     expect(all.every((s) => s.Effect === "Allow")).toBe(true);
   });
 
+  it("apigateway:GET은 이 프로젝트 API(와 하위 경로)만", () => {
+    const read = statements().find((s) => s.Sid === "ReadApi")!;
+    const res = JSON.stringify(read.Resource);
+    expect(res).toContain("/apis/abc123");
+    expect(res).toContain("/apis/abc123/*");
+    expect(res).not.toContain("/apis/*");
+  });
+
   it("저장소 형식이 아니면 만들지 않는다", () => {
-    expect(() => new CiStack(new App(), "Bad", { githubRepo: "no-slash" })).toThrow();
+    expect(() => new CiStack(new App(), "Bad", { githubRepo: "no-slash", apiId: "abc123" })).toThrow();
   });
 
   it("출력: 역할 ARN(저장소 파일에 적지 않고 GitHub Secret으로)", () => {

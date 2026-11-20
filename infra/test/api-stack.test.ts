@@ -85,6 +85,6 @@ describe("ApiStack", () => {
     );
     expect(actionsOf("CleanupFn")).not.toContain("cognito-idp:AdminDeleteUser");
     expect(actionsOf("ProgressFn")).not.toContain("dynamodb:DeleteItem");
-    expect(actionsOf("ActivityFn")).toEqual(["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"]);
+    expect(actionsOf("ActivityFn")).toEqual(["dynamodb:ConditionCheckItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"]);
   });
 });

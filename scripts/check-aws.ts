@@ -107,7 +107,7 @@ check(alarm?.StateValue === "OK" || alarm?.StateValue === "INSUFFICIENT_DATA", `
 /** 함수별 허용 권한(인프라 테스트와 같은 범위). required는 반드시 있어야 하는 것 */
 const EXPECTED: Record<string, { required: string[]; allowed: string[] }> = {
   ProgressFn: { required: ["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"], allowed: [] },
-  ActivityFn: { required: ["dynamodb:ConditionCheckItem", "dynamodb:PutItem", "dynamodb:Query"], allowed: [] },
+  ActivityFn: { required: ["dynamodb:ConditionCheckItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"], allowed: [] },
   AccountFn: {
     required: ["cognito-idp:AdminDeleteUser", "dynamodb:DeleteItem", "dynamodb:PutItem", "sqs:SendMessage"],
     allowed: ["sqs:GetQueueAttributes", "sqs:GetQueueUrl"],

@@ -2,6 +2,7 @@
 // 사용자 A·B를 관리자 명령(AWS CLI, 프로필 vd)으로 만든다: 예약 도메인 example.com, 실행마다 다른 이름, 메일 보내지 않음(SUPPRESS).
 // 확인: 토큰 없음·변조·만료 시각 조작 → 401, A 토큰으로 본문에 B의 userId를 넣어도 B 기록 그대로, B의 GET에 A 기록 없음,
 // 다른 브라우저(새 컨텍스트)에서 같은 진행률, 화면에서 탈퇴(비밀번호 재확인) → Cognito에서 삭제 → 예전 토큰 PUT 거부 → 정리 후 테이블에 A 기록 0건.
+// 최근 본 용어(/api/activity, RecentView)도 같은 토큰·분리·탈퇴 검사를 한다.
 // 토큰·비밀번호는 출력하지 않는다. 끝나면(실패해도) 남은 사용자를 지우고, 못 지우면 이름을 출력한다
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -14,14 +15,19 @@ const config = (await (await fetch(`${base}/config.json`)).json()) as { region: 
 const cli = (args: string[]) =>
   execFileSync("aws", [...args, "--region", config.region, "--profile", profile, "--output", "json"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 const cognito = (...args: string[]) => cli(["cognito-idp", ...args, "--user-pool-id", config.userPoolId]);
-const tableName = (JSON.parse(cli(["cloudformation", "describe-stacks", "--stack-name", "VisualDictionaryApi"])) as { Stacks: { Outputs: { OutputKey: string; OutputValue: string }[] }[] }).Stacks[0]!.Outputs.find(
-  (o) => o.OutputKey === "TableName",
-)!.OutputValue;
-/** 그 사용자의 학습 기록 수(탈퇴 표시 "#deleted" 제외) */
-const recordCount = (sub: string) =>
-  (JSON.parse(cli(["dynamodb", "query", "--table-name", tableName, "--key-condition-expression", "userId = :u", "--expression-attribute-values", JSON.stringify({ ":u": { S: sub } })])) as {
+const apiOutputs = Object.fromEntries(
+  (JSON.parse(cli(["cloudformation", "describe-stacks", "--stack-name", "VisualDictionaryApi"])) as { Stacks: { Outputs: { OutputKey: string; OutputValue: string }[] }[] }).Stacks[0]!.Outputs.map(
+    (o) => [o.OutputKey, o.OutputValue],
+  ),
+);
+const itemsOf = (table: string, sub: string) =>
+  (JSON.parse(cli(["dynamodb", "query", "--table-name", table, "--key-condition-expression", "userId = :u", "--expression-attribute-values", JSON.stringify({ ":u": { S: sub } })])) as {
     Items: { termId: { S: string } }[];
-  }).Items.filter((i) => !i.termId.S.startsWith("#")).length;
+  }).Items;
+/** 그 사용자의 학습 기록 수(탈퇴 표시 "#deleted" 제외) */
+const recordCount = (sub: string) => itemsOf(apiOutputs.TableName!, sub).filter((i) => !i.termId.S.startsWith("#")).length;
+/** 그 사용자의 최근 본 용어 수(RecentView에는 표시가 없어 전부 센다) */
+const viewCount = (sub: string) => itemsOf(apiOutputs.ActivityTableName!, sub).length;
 
 const results: [boolean, string][] = [];
 const check = (ok: boolean, what: string) => results.push([ok, what]);
@@ -37,6 +43,12 @@ const api = (path: string, init: { method?: string; token?: string; body?: unkno
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
 const recordsOf = async (token: string) => ((await (await api("/api/progress", { token })).json()) as { records: { termId: string; read: boolean }[] }).records;
+const recentOf = async (token: string) => {
+  const res = await api("/api/activity", { token });
+  const body = (await res.json()) as { recent?: { termId: string }[] };
+  if (!res.ok || !body.recent) throw new Error(`GET /api/activity → ${res.status} ${JSON.stringify(body)}`);
+  return body.recent;
+};
 const payloadOf = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1]!, "base64url").toString("utf8")) as { sub: string; exp: number };
 
 /** 화면에서 로그인하고 액세스 토큰을 꺼낸다(Amplify 기본 저장소) */
@@ -72,12 +84,15 @@ try {
   const subB = payloadOf(b.token).sub;
 
   // 토큰 검증(API Gateway JWT 인가)
-  check((await api("/api/progress")).status === 401, "토큰 없음 → 401");
   const [h, p, sig] = a.token.split(".") as [string, string, string];
   const flipped = sig.slice(0, -2) + (sig.at(-2) === "A" ? "B" : "A") + sig.at(-1);
-  check((await api("/api/progress", { token: `${h}.${p}.${flipped}` })).status === 401, "서명을 바꾼 토큰 → 401");
   const expired = Buffer.from(JSON.stringify({ ...payloadOf(a.token), exp: Math.floor(Date.now() / 1000) - 3600 })).toString("base64url");
-  check((await api("/api/progress", { token: `${h}.${expired}.${sig}` })).status === 401, "만료 시각을 과거로 바꾼 토큰 → 401");
+  for (const path of ["/api/progress", "/api/activity"]) {
+    check((await api(path)).status === 401, `${path} 토큰 없음 → 401`);
+    check((await api(path, { token: `${h}.${p}.${flipped}` })).status === 401, `${path} 서명을 바꾼 토큰 → 401`);
+    check((await api(path, { token: `${h}.${expired}.${sig}` })).status === 401, `${path} 만료 시각을 과거로 바꾼 토큰 → 401`);
+  }
+  check((await api("/api/activity/csrf", { method: "PUT" })).status === 401, "최근 본 용어 PUT 토큰 없음 → 401");
 
   // 사용자 분리: 대상은 토큰의 sub로만 정한다
   check((await api("/api/progress/csrf", { method: "PUT", token: a.token, body: { read: true, source: "manual" } })).status === 200, "A가 csrf 읽음 저장 → 200");
@@ -88,6 +103,16 @@ try {
   check(recordCount(subB) === 0, "테이블의 B 기록 0건");
   const aRecords = await recordsOf(a.token);
   check(aRecords.length === 1 && aRecords[0]!.termId === "csrf" && aRecords[0]!.read, "A의 GET에는 A의 csrf만");
+
+  // 최근 본 용어도 같은 기준: 대상은 토큰의 sub, 본문은 받지 않는다(본 시각은 서버가 정함)
+  check((await api("/api/activity/csrf", { method: "PUT", token: a.token })).status === 200, "A가 csrf 최근 본 용어 저장 → 200");
+  const viewSpoof = await api("/api/activity/xss", { method: "PUT", token: a.token, body: { userId: subB } });
+  check(viewSpoof.status === 400, `A 토큰 + 본문에 B의 userId(최근 본 용어) → ${viewSpoof.status}(거부)`);
+  const bRecent = await recentOf(b.token);
+  check(bRecent.length === 0, `B의 최근 본 용어 GET에 A 기록 없음(0건): ${bRecent.map((r) => r.termId).join(", ") || "없음"}`);
+  check(viewCount(subB) === 0, "RecentView 테이블의 B 기록 0건");
+  const aRecent = await recentOf(a.token);
+  check(aRecent.length === 1 && aRecent[0]!.termId === "csrf", `A의 최근 본 용어 GET에는 A의 csrf만: ${aRecent.map((r) => r.termId).join(", ")}`);
 
   // 다른 브라우저(새 컨텍스트)에서 같은 진행률(완료 기준)
   const a2 = await login(browser, users.A);
@@ -121,14 +146,21 @@ try {
   // 탈퇴 직후 예전 토큰(아직 유효)으로 저장 → 거부, 정리 후 테이블에 A 기록 0건
   const after = await api("/api/progress/xss", { method: "PUT", token: a.token, body: { read: true, source: "manual" } });
   check(after.status === 403, `탈퇴 직후 예전 토큰으로 PUT → ${after.status}(거부)`);
+  const viewAfter = await api("/api/activity/xss", { method: "PUT", token: a.token });
+  check(viewAfter.status === 403, `탈퇴 직후 예전 토큰으로 최근 본 용어 PUT → ${viewAfter.status}(거부)`);
   let left = recordCount(subA);
-  for (let i = 0; i < 30 && left > 0; i++) {
+  let viewsLeft = viewCount(subA);
+  for (let i = 0; i < 30 && left + viewsLeft > 0; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     left = recordCount(subA);
+    viewsLeft = viewCount(subA);
   }
   check(left === 0, `정리 후 테이블에 A 기록 ${left}건`);
+  check(viewsLeft === 0, `정리 후 RecentView에 A 기록 ${viewsLeft}건`);
   const again = await api("/api/progress/tcp-handshake", { method: "PUT", token: a.token, body: { read: true, source: "manual" } });
   check(again.status === 403 && recordCount(subA) === 0, `정리 뒤에도 예전 토큰 PUT → ${again.status}, 테이블 0건 유지`);
+  const viewAgain = await api("/api/activity/tcp-handshake", { method: "PUT", token: a.token });
+  check(viewAgain.status === 403 && viewCount(subA) === 0, `정리 뒤에도 예전 토큰 최근 본 용어 PUT → ${viewAgain.status}, RecentView 0건 유지`);
 } catch (e) {
   check(false, `진행 중 실패: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
 } finally {
