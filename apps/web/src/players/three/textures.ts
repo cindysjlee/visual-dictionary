@@ -127,7 +127,8 @@ export function paintCode(p: Painter, title: string | undefined, lines: readonly
     g.fillStyle = c.textMuted;
     g.font = `500 26px ${FONT}`;
     g.fillText(String(i + 1).padStart(2, " "), 56, y + lh * 0.66);
-    g.fillStyle = current === i + 1 ? c.villain : c.text;
+    // 판은 두 테마 모두 밝은 종이색이라 글자는 화면판 줄과 같은 어두운 토큰(c.text는 다크 테마에서 밝아 안 보인다)
+    g.fillStyle = c.villain;
     g.font = `${current === i + 1 ? 700 : 500} 30px ui-monospace, Consolas, ${FONT}`;
     g.fillText(line, 108, y + lh * 0.68, w - 190);
   });
