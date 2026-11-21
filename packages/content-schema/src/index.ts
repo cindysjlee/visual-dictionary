@@ -109,7 +109,8 @@ const stepSchema = z.strictObject({
   roundTrip: z.boolean().default(false),
   returnLabel: text.optional(),
   via: text.optional(),
-  camera: z.strictObject({ focus: text, distance: z.enum(["near", "mid", "far"]).optional() }).optional(),
+  // view "side": 이 단계만 옆에서 본다(겹친 두 판이 앞뒤로 떨어져 있는 것 등). 다음 단계는 기본 방향으로 돌아온다
+  camera: z.strictObject({ focus: text, distance: z.enum(["near", "mid", "far"]).optional(), view: z.enum(["side"]).optional() }).optional(),
   line: z.int().min(1).optional(), // 스택형: 이 단계 뒤 맨 위 프레임이 실행 중인 코드 줄(scenario.code, 1부터)
   burst: z.int().min(2).max(8).optional(), // 흐름형: 같은 봉투가 여러 개 연달아 날아감(보이는 개수, 실제 개수는 label에)
 });

@@ -274,11 +274,11 @@ describe("스택형 어휘: 스택 한도·overflow·고친 코드 판", () => {
     return r.success ? [] : r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
   };
 
-  it("한도를 넘는 push에 overflow를 쓰면 통과, 해결 방법은 갈림 단계부터 고친 코드 판", () => {
+  it("한도를 넘는 push에 overflow를 쓰면 통과, 해결 방법은 모드 내내 고친 코드 판", () => {
     expect(issues()).toEqual([]);
     const t = termSchema.parse(overflowTerm());
     expect(codeAt(t, null, 4)).toBe(t.scenario.code);
-    expect(codeAt(t, 0, 3)).toBe(t.scenario.code);
+    expect(codeAt(t, 0, 0)!.lines.at(-1)).toBe("// 고침");
     expect(codeAt(t, 0, 4)!.lines.at(-1)).toBe("// 고침");
   });
 

@@ -11,6 +11,8 @@ import { Timeline, easeOut, linear } from "./timeline.ts";
 import { TRACE, type Tracer } from "./trace.ts";
 
 const vec = (p: readonly [number, number, number]) => new Vector3(...p);
+/** camera.view "side": 오른쪽 옆 조금 위에서 본다(앞뒤로 겹친 판이 떨어져 보이게) */
+export const SIDE_VIEW = new Vector3(1.15, 0.6, 0.45);
 
 
 /**
@@ -90,11 +92,12 @@ export function buildStep(ctx: DirectorContext): Timeline {
   const showScreen = (id: string, screen: Parameters<typeof screenLabel>[0]) =>
     labels.set(`screen-${id}`, model.screenLabelPoint(id), screenLabel(screen, node(id)!.actor.tone === "attack"));
   /** 등장 행위자 전체(+ 차단 도장, 카메라 힌트 대상)가 들어오는 샷. 근접 연출이 끝나면 여기로 돌아온다 */
+  const side = view.camera?.view === "side";
   const frameShot = () => {
     const ids = view.camera ? [...involved, ...(view.camera.focus === "all" ? [...layout.values()].filter((p) => !p.parent).map((p) => p.id) : [view.camera.focus])] : involved;
     const pts = ids.flatMap((id) => model.framePoints(id));
     if (model.stamp.visible) pts.push(model.stamp.position.clone().add(new Vector3(1.9, 0.9, 0)), model.stamp.position.clone().add(new Vector3(-1.9, -0.9, 0)));
-    rig.frame(pts);
+    rig.frame(pts, side ? SIDE_VIEW : undefined);
   };
 
   const packetLabel = (text: string, t: Tone = tone, visible = true) =>
@@ -122,7 +125,8 @@ export function buildStep(ctx: DirectorContext): Timeline {
     env.visible = !self;
     model.setEnvelopeTone(tone);
     packetLabel(label);
-    if (view.camera) {
+    if (side) frameShot();
+    else if (view.camera) {
       if (view.camera.focus === "all") rig.frame([...layout.values()].filter((p) => !p.parent).map((p) => vec(p.anchor)));
       else rig.shot(anchor(view.camera.focus), view.camera.distance);
     } else frameShot();
@@ -402,7 +406,8 @@ export function buildStep(ctx: DirectorContext): Timeline {
           const start = { v: 1 };
           tl.call(() => {
             start.v = model.opacityOf(e.target);
-            rig.shot(anchor(e.target), "near");
+            if (side) frameShot();
+            else rig.shot(anchor(e.target), "near");
           });
           tl.tween(900, (t) => model.setOpacity(e.target, start.v + (e.value - start.v) * t));
           tl.wait(400);

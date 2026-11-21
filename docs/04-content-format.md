@@ -73,7 +73,7 @@
 - `scenario.code: { title?, lines[] }`: 코드 판(C·Java 문법에 가까운 의사코드 하나로 통일). `steps[].line`: 이 단계 뒤 맨 위 프레임이 실행 중인 줄(1부터). push할 때 호출한 쪽의 줄이 새 프레임의 **반환 주소**(돌아갈 곳)가 된다.
 - 효과: `locals { target?, vars: [{ name, value }] }`(맨 위 프레임, 또는 `target` 함수의 맨 위 프레임 서랍의 지역 변수 칸을 정하거나 바꿈), `returnValue { value, into? }`(pop 단계에서 반환값이 호출한 프레임의 칸 `into`로 전달됨).
 - `scenario.stackLimit`(1~12): 유리 기둥 그 높이에 "스택 한도" 선을 긋는다(프레임 칸 수). 효과 `overflow`: 한도를 넘는 push에 붙이면 그 프레임이 선 위로 솟아 공격색이 되고 선이 깜빡인다. `stamp { label, tone }`(도장)도 스택형에서 쓸 수 있다(예: `StackOverflowError`).
-- `defenses[].code`(해결 방법만): 갈림 단계부터 코드 판이 이 코드(고친 코드)로 바뀐다. 대체 흐름의 `line`은 이 코드 기준이다. 판 높이는 가장 긴 코드에 맞춘다.
+- `defenses[].code`(해결 방법만): 이 모드에서는 처음부터 코드 판이 이 코드(고친 코드)다. 고친 프로그램을 처음부터 실행하는 것이므로, 갈림 단계 앞 단계의 자막이 원래 코드를 설명하면 `overrides`로 자막을 따로 쓴다. 모든 `line`이 두 코드에서 같은 줄을 가리키도록 줄 번호를 맞춰 두는 것이 좋다. 판 높이는 가장 긴 코드에 맞춘다.
 - 검증: push는 맨 위 함수가 부르고, pop은 맨 위 함수가 바로 아래 함수로 돌아가며, run은 맨 위 함수만. `returnValue`는 pop 단계에만. `line`은 그 단계에 보이는 코드 판 줄 수 이하. 한도를 넘는 push에는 `overflow`가 있어야 하고, `overflow`는 한도를 넘는 push에만, 그 모드의 마지막 단계에만(프로그램이 멈춤) 쓴다. `stackLimit`은 스택형에만, `defenses[].code`는 스택형 해결 방법(대체 흐름 있음)에만.
 
 ## 점유형 필드와 효과 (`playerType: "lock"`)
@@ -119,7 +119,7 @@
 | `slots` | `{ label, size(1~8) }` | server·database 섬 왼쪽 옆에 놓인 칸 선반(작은 상자 `size`개)과 라벨(`label 찬 수/size`). `occupy`·`vacate`로 채우고 비운다. 예: SYN-RECEIVED 대기열 |
 | `mirrorScreen` | boolean, 기본 false | 켜면 화면판 내용을 늘 HTML 라벨로도 보여 준다(첫 줄이 제목, 나머지 줄은 부제). 판 글씨는 멀리서 작아 읽기 어려우므로, 상태가 개념의 핵심인 판(예: TCP 상태)에 켠다. 화면판이 있는 행위자에만 쓸 수 있다 |
 
-**단계 (`scenario.steps[]`)**: `burst`(2~8, 같은 봉투가 본 봉투를 따라 여러 개 연달아 날아감. 보이는 개수이고 실제 개수는 `label`에 적는다. 예: "SYN × 수천". 제자리 단계에는 못 씀), `effects[]`(아래 어휘), `roundTrip`(왕복), `returnLabel`(돌아올 때 라벨), `via`(거쳐 가는 행위자. 봉투가 먼저 들렀다 가고, `give`(from `"packet"`)은 그 자리에서 빠져나간다), `camera: { focus: 행위자 id | "all", distance?: near|mid|far }`(자동 카메라를 덮어쓸 때만). `from`과 `to`가 같으면 제자리 단계다(예: 탭 안에서 스크립트 실행): 봉투가 날지 않고 그 자리에서 효과만 보여 준다.
+**단계 (`scenario.steps[]`)**: `burst`(2~8, 같은 봉투가 본 봉투를 따라 여러 개 연달아 날아감. 보이는 개수이고 실제 개수는 `label`에 적는다. 예: "SYN × 수천". 제자리 단계에는 못 씀), `effects[]`(아래 어휘), `roundTrip`(왕복), `returnLabel`(돌아올 때 라벨), `via`(거쳐 가는 행위자. 봉투가 먼저 들렀다 가고, `give`(from `"packet"`)은 그 자리에서 빠져나간다), `camera: { focus: 행위자 id | "all", distance?: near|mid|far, view?: "side" }`(자동 카메라를 덮어쓸 때만. `view: "side"`면 그 단계만 오른쪽 옆에서 보고, 다음 단계는 기본 방향으로 돌아온다. 예: 앞뒤로 겹친 판이 떨어져 있는 것). `from`과 `to`가 같으면 제자리 단계다(예: 탭 안에서 스크립트 실행): 봉투가 날지 않고 그 자리에서 효과만 보여 준다.
 
 **효과 어휘 (`effects[]`)**. 물건(`item`)은 `cookie` `token` `script` `data` `coin`. 보관된 물건은 꺼내도 보관한 곳에 남는다(복사).
 

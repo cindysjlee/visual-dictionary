@@ -82,7 +82,7 @@ docs/                     설계 문서
 - aws-cdk-lib 새 버전이 나오면 올리기(Dependabot: 안에 든 minimatch 10.2.6 서비스 거부 취약점, 11.0.1에서 수정. 배포 도구 쪽이라 화면·Lambda에는 없음).
 - 고아 기록 정리(OrphanSweepFn, 매일 03:00 서울)와 구글 토큰 범위 축소: 코드·테스트 완료, IAM·OAuth 범위 diff 승인 뒤 배포(docs/03 2.5 "고아 기록 정리"). 배포 뒤 smoke:progress(D 고아 정리·A 탈퇴 표시 유지)와 check:aws(로컬: 일정 ENABLED).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
-- 나중에 별도 용어로: 스택 오버플로(stack), SYN flood(보안·flow).
+- 콘텐츠 1차(11-21) 공개: 스택 오버플로(stack), 경쟁 상태(lock), SYN 플러드·SSL 스트리핑·IDOR·클릭재킹(flow). 용어 14개. 새 일반 어휘(칸 선반·여러 봉투·겹친 화면·옆 카메라, 스택 한도·고친 코드 판, 공유 값)는 docs/04·06.
 - 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.
 배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 

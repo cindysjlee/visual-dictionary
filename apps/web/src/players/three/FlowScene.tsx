@@ -8,7 +8,7 @@ import { blockTarget } from "@app/content-schema/scene";
 import { holdMs, type StageProps } from "../stage.ts";
 import { billboardRect, faceCamera } from "./billboard.ts";
 import { CameraRig } from "./camera.ts";
-import { buildStep, involvedActors, sideStamp } from "./director.ts";
+import { SIDE_VIEW, buildStep, involvedActors, sideStamp } from "./director.ts";
 import { useFreeView } from "./freeView.ts";
 import { LabelLayer, screenLabel } from "./labels.ts";
 import { layoutScene } from "./layout.ts";
@@ -165,7 +165,7 @@ function SceneRoot({ term, state, view, reducedMotion, freeView, onStepDone, sta
         }
       }
       const stampPts = model.stamp.visible ? [model.stamp.position.clone().addScalar(1.9), model.stamp.position.clone().subScalar(1.9)] : [];
-      rig.frame([...framePoints(involved.current), ...stampPts]);
+      rig.frame([...framePoints(involved.current), ...stampPts], view.camera?.view === "side" ? SIDE_VIEW : undefined);
       jump.current = true;
       trace("stepStart");
       if (view.blocked) trace("blocked", { actor: focusId });

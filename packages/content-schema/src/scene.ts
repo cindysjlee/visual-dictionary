@@ -98,7 +98,7 @@ export type StepView = {
   roundTrip: boolean;
   returnLabel?: string;
   via?: string;
-  camera?: { focus: string; distance?: "near" | "mid" | "far" };
+  camera?: { focus: string; distance?: "near" | "mid" | "far"; view?: "side" };
   action: Step["action"];
   line?: number;
   burst?: number;
@@ -351,11 +351,13 @@ export function checkScene(term: Term): Issue[] {
   return issues;
 }
 
-/** 이 모드의 index번째 단계에서 보이는 코드 판: 해결 방법에 code가 있으면 갈림 단계부터 그 코드(고친 코드) */
-export function codeAt(term: Term, mode: Mode, index: number) {
+/**
+ * 이 모드의 index번째 단계에서 보이는 코드 판: 해결 방법에 code가 있으면 그 모드 내내 고친 코드(고친 프로그램을 처음부터 실행).
+ * 갈림 단계 앞 단계의 자막이 원래 코드를 설명하면 overrides로 따로 쓴다. index는 같은 시그니처를 위해 남겨 둔다
+ */
+export function codeAt(term: Term, mode: Mode, _index: number) {
   const d = mode === null ? undefined : term.defenses[mode];
-  if (d?.code && d.branchAtStep !== undefined && index >= d.branchAtStep - 1) return d.code;
-  return term.scenario.code;
+  return d?.code ?? term.scenario.code;
 }
 
 /** 단계 위치(모드마다 기본 흐름·override·대체 흐름 중 어디에 적혔는지) */

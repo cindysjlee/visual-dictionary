@@ -1,1 +1,1 @@
-["call-stack", "csrf", "deadlock", "session-hijacking", "sql-injection", "ssrf", "tcp-handshake", "xss"]
+["call-stack", "clickjacking", "csrf", "deadlock", "idor", "race-condition", "session-hijacking", "sql-injection", "ssl-stripping", "ssrf", "stack-overflow", "syn-flood", "tcp-handshake", "xss"]
