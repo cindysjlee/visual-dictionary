@@ -1,6 +1,7 @@
 # 자동 배포(FR-DEP-05, docs/03 2.6). AWS 키는 저장하지 않고 OIDC로 역할을 맡는다(신뢰: 이 저장소 main 브랜치만).
-# 순서: verify → E2E → 보안 관문(권한 확장이면 멈춤) → 변경 관문(삭제·교체면 멈춤) → 같은 변경 세트 실행 → smoke:prod → check:aws
-# 공개 저장소라 pull_request_target은 쓰지 않는다. 외부 액션은 커밋 해시로 고정한다
+# job 두 개(DF-49): verify(검증·E2E, OIDC 토큰 권한 없음) → deploy(id-token: write는 여기만, 설치 스크립트 없이 설치)
+#   deploy: 보안 관문(권한 확장이면 멈춤) → 변경 관문(삭제·교체면 멈춤) → 같은 변경 세트 실행 → smoke:prod → check:aws
+# 의존성 코드가 실행되는 단계(npm ci 설치 스크립트, 빌드·E2E)는 OIDC 토큰을 받을 수 없다. 공개 저장소라 pull_request_target은 쓰지 않는다. 외부 액션은 커밋 해시로 고정한다
 name: deploy
 
 on:
@@ -9,8 +10,8 @@ on:
   push:
     branches: [main]
 
+# 기본은 읽기만. OIDC 토큰(id-token: write)은 deploy job에서만 준다
 permissions:
-  id-token: write
   contents: read
 
 concurrency:
@@ -18,12 +19,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  verify:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
-    env:
-      AWS_REGION: ap-northeast-2
+    timeout-minutes: 60
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,6 +50,34 @@ jobs:
         run: npm run test:e2e -- --project=main
         env:
           E2E_WORKERS: "2"
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-northeast-2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # 설치 스크립트를 돌리지 않는다: 설치 스크립트가 있는 패키지는 esbuild(바이너리 확인용, 플랫폼 바이너리는 선택 패키지로 따로 설치)와 fsevents(macOS 전용)뿐이고,
+      # 이 상태로 빌드·cdk synth(Lambda 묶기 포함)가 되는 것을 확인했다(DF-49)
+      - name: 설치(설치 스크립트 없이)
+        run: npm ci --ignore-scripts
+
+      # 웹 스택은 apps/web/dist를 배포하므로 같은 커밋으로 다시 빌드한다(타입 검사 포함, 테스트는 verify job에서 끝남)
+      - name: 빌드
+        run: npm run build
 
       - name: AWS 역할 맡기(OIDC)
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
