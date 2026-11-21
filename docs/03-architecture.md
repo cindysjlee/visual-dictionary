@@ -330,9 +330,14 @@ flowchart TB
 **보안 메모.**
 - **돌아갈 곳(`?next=`) 검증:** `/`로 시작하고, 두 번째 글자가 `/`나 `\`가 아니고, `new URL(next, location.origin)`의 origin이 현재 사이트와 같을 때만 허용한다. 아니면 `/`로 보낸다(`//evil.com`, `/\evil.com`, `https://evil.com`, `javascript:…` 차단을 단위 테스트·E2E로 확인).
 - **비밀번호 "영문 포함":** Cognito는 대·소문자를 따로만 강제할 수 있어 서버는 8자+숫자만 강제하고 "영문 포함"은 화면에서 검사한다. 화면을 우회하면 자기 계정의 비밀번호만 약해진다.
-- **가입 여부 노출(한계):** 로그인·재설정은 사용자 존재 노출 방지로 가입 여부를 드러내지 않지만, 가입 화면의 "이미 가입된 이메일" 안내는 요구사항(FR-AUTH-02) 때문에 남긴다. 그래서 가입 화면으로 어떤 이메일이 가입됐는지 알아낼 수 있다는 한계가 있다.
-- **메일 한도:** Cognito 기본 메일은 계정 전체 하루 50통이라, 누가 가입·코드 재발송을 반복하면 그날 다른 사용자의 인증 메일이 막힐 수 있다. 대안은 사용자 풀에 AWS WAF 요청 수 제한을 거는 것(웹 ACL 월 $5 + 규칙 월 $1 + 요청 100만 건당 $0.60)이고, 과제 규모에서는 적용하지 않는다. 사용자가 늘면 SES 연결(1,000통당 $0.10)과 함께 다시 정한다.
 - **정리 순서:** 사용자 풀은 삭제 보호와 RETAIN이 걸려 있어 `cdk destroy`로 스택을 지워도 남는다. 지우려면 AWS 콘솔(서울 리전) → Amazon Cognito → 사용자 풀 → 해당 풀 → 설정 탭 → 삭제 방지 → 편집에서 끈 뒤 저장하고, 사용자 풀 목록에서 그 풀을 선택해 삭제를 따로 실행한다. 학습 기록 테이블(`LearningRecord`, 스택 `VisualDictionaryApi`)도 삭제 보호와 RETAIN이 걸려 있다. 지우려면 AWS 콘솔(서울 리전) → DynamoDB → 테이블 → 해당 테이블 → 추가 설정 탭 → 삭제 방지 → 편집(또는 끄기)에서 끈 뒤, 테이블 목록에서 선택해 삭제를 따로 실행한다. 탈퇴 정리 DLQ·로그 그룹은 스택과 함께 지워진다.
+
+**알고 있는 한계(11-21 ecc:security-review 점검, 사용자가 받아들임).** 결함이 아니라 설계상 선택으로 남긴 것이다(docs/08 4절). 조건이 바뀌면(사용자 증가, 민감한 데이터 추가) 다시 정한다.
+1. **토큰을 localStorage에 보관:** 위 "토큰 저장" 참고. XSS가 생기면 스크립트가 토큰을 읽을 수 있다. CSP `script-src 'self'`·사용자 HTML을 그리지 않는 구조로 XSS 자체를 막고, 액세스 토큰 1시간·로그아웃 시 리프레시 토큰 취소로 피해를 줄인다. API는 액세스 토큰만 받는다(DF-50).
+2. **요청 제한을 모두가 나눠 씀:** HTTP API 스테이지 제한(초당 10·버스트 20) 하나뿐이라, 한 사용자가 반복 호출하면 다른 사용자도 429를 받을 수 있다(사용자·IP별 제한 없음). 기록 저장이 실패해도 탐색·재생은 정상이다(NFR-02). 대안은 WAF 요청 수 규칙(월 약 $6 + 요청 100만 건당 $0.60).
+3. **가입 메일 한도:** Cognito 기본 메일은 계정 전체 하루 50통이라, 누가 가입·코드 재발송을 반복하면 그날 다른 사용자의 인증 메일이 막힐 수 있다. 대안은 사용자 풀에 AWS WAF 요청 수 제한을 거는 것(웹 ACL 월 $5 + 규칙 월 $1 + 요청 100만 건당 $0.60)이고, 과제 규모에서는 적용하지 않는다. 사용자가 늘면 SES 연결(1,000통당 $0.10)과 함께 다시 정한다.
+4. **가입 여부 노출:** 로그인·재설정은 사용자 존재 노출 방지로 가입 여부를 드러내지 않지만, 가입 화면의 "이미 가입된 이메일" 안내는 요구사항(FR-AUTH-02) 때문에 남긴다. 그래서 가입 화면으로 어떤 이메일이 가입됐는지 알아낼 수 있다.
+5. **CI 배포 job의 빌드가 OIDC 권한 아래 실행(DF-49 남은 위험):** `deploy` job은 설치 스크립트 없이 설치하지만, 같은 커밋으로 다시 하는 `npm run build`와 `cdk synth`(Lambda 묶기 포함)는 의존성 코드를 실행하고 그 job에는 `id-token: write`가 있다. 빌드 도구 패키지가 공급망 공격을 당하면 배포 역할을 맡을 수 있다. 완화: 잠금 파일(`npm ci`), 외부 액션 커밋 해시 고정, 역할 신뢰는 이 저장소 main만, 역할 자체 권한은 부트스트랩 역할 맡기와 읽기뿐, Dependabot. 완전히 막으려면 verify job의 빌드 결과물을 아티팩트로 넘기고 배포 job은 synth 없이 미리 만든 클라우드 어셈블리만 배포해야 하는데, 과제 규모에서는 하지 않는다.
 
 **구글 로그인(8단계).** "Google로 계속하기"는 Amplify `signInWithRedirect({ provider: "Google" })`로 로그인 도메인의 `/oauth2/authorize?identity_provider=Google`(인가 코드 + PKCE)을 거쳐 구글 화면으로 간다. 돌아오면 `/auth/callback`에서 OAuth 리스너가 코드를 토큰으로 바꾸고, 돌아갈 곳은 `customState`로 넘긴 next를 `safeNext`로 다시 검증해 보낸다. CSP는 `connect-src`에 로그인 도메인을 더한다(토큰 교환 `/oauth2/token`·취소 `/oauth2/revoke`). 구글·로그인 도메인으로의 화면 이동은 CSP 대상이 아니다. 구글 사용자의 로그아웃은 로그인 도메인의 `/logout`을 거쳐 첫 화면으로 돌아온다(구글 계정 로그인은 그대로).
 
@@ -410,15 +415,15 @@ flowchart TB
 
 **역할 권한과 이유.** ① `sts:AssumeRole`: CDK 부트스트랩 역할 deploy(변경 세트 만들기·실행), file-publishing(웹·Lambda 묶음 업로드), lookup(diff)만. 실제 배포 권한은 부트스트랩 역할에 있어 CI 역할은 S3·CloudFormation·IAM을 직접 다루지 않는다. 이미지 자산이 없어 image-publishing은 뺐다. ② 읽기만: 배포 관문의 변경 세트 조회(`cloudformation:DescribeChangeSet`)와 `check:aws`가 쓰는 Describe·Get·List. 프로젝트 리소스 이름(`VisualDictionary*`)으로 좁힐 수 있는 것은 좁혔고, CloudFront·로그 그룹 조회처럼 리소스 지정이 어려운 것만 넓다. 쓰기 권한은 없다(smoke:auth·smoke:progress는 Cognito 사용자를 만들고 지워야 해서 CI에서 돌리지 않고 로컬에서 돌린다).
 
-**워크플로(`.github/workflows/deploy.yml`).** main push와 수동 실행(`workflow_dispatch`)에서만 돈다(main이 아니면 작업을 건너뛴다). 공개 저장소라 `pull_request_target`은 쓰지 않는다. 권한은 `id-token: write`, `contents: read`뿐이고, 외부 액션은 커밋 해시로 고정한다(옆에 버전 주석). 같은 시각에 배포는 하나만 돈다. 순서:
+**워크플로(`.github/workflows/deploy.yml`).** main push와 수동 실행(`workflow_dispatch`)에서만 돈다(main이 아니면 작업을 건너뛴다). 공개 저장소라 `pull_request_target`은 쓰지 않는다. 기본 권한은 `contents: read`이고, 외부 액션은 커밋 해시로 고정한다(옆에 버전 주석). 같은 시각에 배포는 하나만 돈다. job은 둘이다(DF-49): `verify`는 OIDC 토큰 권한이 없고, `deploy`(`needs: verify`)만 `id-token: write`를 받는다. 남은 위험은 2.4 "알고 있는 한계" 5. 순서:
 
-1. `npm ci` → `npm run verify`
-2. `npx playwright install --with-deps chrome` → `npm run test:e2e`(workers 2)
-3. OIDC로 역할 맡기
+1. (`verify`) `npm ci` → `npm run verify`
+2. (`verify`) `npx playwright install --with-deps chrome` → `npm run test:e2e -- --project=main`(workers 2, 실제 속도 2개 제외)
+3. (`deploy`) `npm ci --ignore-scripts`(설치 스크립트 없이) → `npm run build` → OIDC로 역할 맡기
 4. **보안 관문** `node scripts/ci-gate.ts security`: `cdk diff --all --security-only` 출력에 IAM 문장·IAM 정책·보안 그룹 변경 표가 하나라도 있으면 배포하지 않고 실패한다. 작업 요약에 이유와 diff(계정 ID는 가림)를 남기고, GitHub가 실패 알림을 보낸다. 그 변경은 로컬에서 보안 변경을 보여 주고 사용자 "승인"을 받은 뒤 배포한다. (`cdk diff --fail-on`은 공식 문서에 없어 쓰지 않는다. 기본 `--require-approval broadening`도 터미널 없는 환경에서 권한 확장 배포를 거부하지만, 스택 순서상 앞 스택이 먼저 배포될 수 있어 이 관문이 먼저 모든 스택을 검사한다.)
 5. **변경 관문** `node scripts/ci-gate.ts changes`: `cdk deploy --all --method=prepare-change-set --change-set-name ci-gate`로 변경 세트만 만들고, 각 스택의 변경 세트에 `Remove` 또는 `Replacement: True·Conditional`이 있으면 멈춘다(작업 요약에 스택·리소스·종류). `AWS::CDK::Metadata`(CDK 버전·통계만 담은 가상 리소스, 데이터 없음)는 로컬과 CI에서 값이 달라 매번 교체로 잡히므로 검사와 "바뀐 스택" 판단에서 뺀다. 파일 배포(`Custom::CDKBucketDeployment`)는 화면 파일이 바뀔 때마다 "교체: Conditional"로 잡히는데, 데이터를 담지 않고 `retainOnDelete` 기본값(true)이라 교체돼도 S3 파일을 지우지 않으므로 **조건부 교체만** 허용한다. 이 리소스의 확정 교체(True)·삭제와 다른 리소스의 조건부 교체는 계속 멈춘다(`scripts/ci-gate-rules.ts`, 단위 테스트 `ci-gate-rules.test.ts`).
    - **Lambda 호출 권한 예외(11-21, CH-49):** 공개 용어가 바뀌면 함수 환경 변수 `TERM_IDS`가 바뀌어 함수는 제자리 수정되는데, 함수 ARN을 참조하는 `AWS::Lambda::Permission`이 "교체: Conditional"로 잡혀 매번 멈췄다(콘텐츠 1차 배포 CI 44853554353). 다음을 **모두** 만족할 때만 이 조건부 교체를 허용한다: ① 종류가 `AWS::Lambda::Permission` ② 변경 상세(`Details`)가 전부 `ChangeSource=ResourceAttribute`이고 원인(`CausingEntity`)이 다른 리소스의 `<논리 ID>.Arn` ③ 그 원인 리소스가 같은 변경 세트에서 `Modify`·`Replacement=False`(ARN이 그대로). 권한 내용을 직접 바꾸는 변경(`DirectModification`)이 하나라도 있거나, 원인이 교체(True·Conditional)되거나 변경 세트에 없으면 계속 멈춘다. 권한을 넓히는 변경은 앞의 보안 관문도 따로 잡는다. **보안 메모:** 판단 입력은 사용자 입력이 아니라 CloudFormation 변경 세트이고, 허용 목록 방식(종류·원인·원인의 교체 여부를 모두 확인)이라 다른 리소스로 번지지 않는다(ecc:security-review 11-21).
-6. 배포: 변경이 있는 스택만 `cdk deploy … --exclusively --method=execute-change-set --change-set-name ci-gate`로 **관문에서 검사한 같은 변경 세트**를 실행한다.
+6. 배포: 변경이 있는 스택만 하나씩(`cdk list` 순서) `cdk deploy <스택> --exclusively --method=execute-change-set --change-set-name ci-gate`로 **관문에서 검사한 같은 변경 세트**를 실행한다. `execute-change-set`는 스택을 하나만 받는다(DF-51: 두 스택을 한 번에 넘겨 CI의 첫 실제 배포가 실패, 배포는 일어나지 않음).
 7. `npm run smoke:prod` → `npm run check:aws`
 
 처음에는 수동 실행만 켜 두었고, 첫 실행 성공 뒤 사용자 확인으로 main push 실행을 켰다(7단계). CI 역할에는 Cognito 관리자 권한이 없어 smoke:auth·smoke:progress는 CI에서 돌지 않는다. CI가 스택을 실제로 배포한 경우에는 로컬에서 이 둘을 돌려 확인한다.

@@ -98,7 +98,11 @@ jobs:
         working-directory: infra
         env:
           STACKS: ${{ steps.gate.outputs.stacks }}
-        run: npx cdk deploy $STACKS --exclusively --method=execute-change-set --change-set-name ci-gate
+        # execute-change-set는 스택을 하나만 받는다(DF-51). STACKS는 cdk list 순서(의존 순서)
+        run: |
+          for stack in $STACKS; do
+            npx cdk deploy "$stack" --exclusively --method=execute-change-set --change-set-name ci-gate
+          done
 
       - name: smoke:prod
         run: npm run smoke:prod

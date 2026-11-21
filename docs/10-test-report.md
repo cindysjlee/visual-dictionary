@@ -12,14 +12,14 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google`, `@explore`, `@narrow`, `@wide`, `@perf` |
 | push·배포 직전 | 전체 E2E(`npm run test:e2e`, draft가 있으면 `test:e2e:drafts`) | 실제 속도 테스트 2개 포함 |
 | 배포 뒤 | `smoke:prod`, `smoke:auth`, `smoke:progress`, `check:aws` | 인증 코드를 바꿨을 때만 `smoke:auth:signup`(인증 메일 1통) |
-| main push마다(CI) | verify → E2E(실제 속도 제외) → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
+| main push마다(CI) | `verify` job: verify → E2E(실제 속도 제외) / `deploy` job(OIDC 권한은 여기만, DF-49): 설치 스크립트 없이 설치 → 빌드 → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
 | 구글 로그인 관련 변경 뒤 | 사람 확인 체크리스트 6단계(docs/03 2.4) | 구글은 자동화된 로그인을 막는다 |
 
 ## 2. 수준별 요약
 
 | 수준 | 대상과 목적 | 테스트 수 | 최근 결과 | 실행 시간 |
 | --- | --- | --- | --- | --- |
-| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 233(파일 18개) | 통과 233 / 실패 0 (11-21, 콘텐츠 1차) | verify 전체 약 30~46초(빌드 포함) |
+| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증, 모든 용어×모드 시뮬레이션, 인증·진행률 로직, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 238(파일 18개) | 통과 238 / 실패 0 (11-21, DF-48~50 수정 뒤) | verify 전체 약 30~46초(빌드 포함) |
 | 인프라(CDK assertions) | S3·CloudFront·헤더·캐시, Cognito·OAuth, API·Lambda 권한·일정, CI 역할 신뢰·권한, 템플릿 비ASCII·메일 해시 | 32(파일 4개) | 통과 32 / 실패 0 (11-21) | verify에 포함 |
 | E2E(Playwright, 데스크톱 1440×900. `@narrow` 360×800, `@wide` 1920×1080) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px·1920px 레이아웃, LCP·CLS | 247(main 245 + 실제 속도 2, 용어 14개) | 통과 247 / 실패 0 (11-21, 로컬) | 로컬 9.5분(workers 4), CI 약 9~14분(workers 2) |
 | smoke:prod | 운영 보안 헤더·CSP, SPA 라우팅·404, published 용어 상세·JSON, `/config.json`, 캐시 헤더 | 35 | 통과 35 / 실패 0 (11-21) | 2~3초 |
@@ -27,17 +27,17 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | smoke:progress | 실제 API: 토큰 검증(없음·변조·만료), 사용자 격리, 기록 GET·PUT 응답 시간(각 10회, 최대 1초 이하), 다른 브라우저 진행률, API 경로 전수 호출, 화면 탈퇴·정리, 오래된 토큰 탈퇴 거부, 고아 정리 | 43 | 통과 43 / 실패 0 (11-21) | 약 5분 45초(5분 넘은 토큰을 만들기 위한 대기 포함) |
 | smoke:auth:signup | 운영 화면 가입 → UNCONFIRMED 확인 → 삭제 | 근거 없음(개수 기록 없음) | 근거 없음 | 인증 메일 1통 |
 | check:aws | 배포된 리소스 설정을 읽기 전용으로 기대값과 비교(API·테이블·큐·경보·Lambda 권한·로그·CloudFront·Cognito·OAuth·CI 역할·고아 정리 일정) | 67(로컬), CI에서는 Scheduler·CI 역할 검사를 건너뜀 | 통과 67 / 실패 0 (11-21) | 약 60~90초 |
-| CI 관문 | 보안 관문(`cdk diff --security-only`에 IAM·보안 그룹 변경), 변경 관문(변경 세트의 삭제·교체) | 판단 단위 테스트 2(`ci-gate-rules.test.ts`) + CI 실행 16회 | 아래 4절 | 관문 각 약 1분 |
+| CI 관문 | 보안 관문(`cdk diff --security-only`에 IAM·보안 그룹 변경), 변경 관문(변경 세트의 삭제·교체) | 판단 단위 테스트 6(`ci-gate-rules.test.ts`) + CI 실행 16회 | 아래 4절 | 관문 각 약 1분 |
 | 사람 확인 | 자막 검수, 3D 화면 확인, 실제 메일, 구글 로그인 체크리스트 | 구글 체크리스트 6항목 + 같은 이메일 가입 확인 | 1~6 통과(11-20) | — |
 
 ### 단위·인프라 테스트 파일별 개수
 
 | 영역 | 파일(테스트 수) |
 | --- | --- |
-| 화면·플레이어 | `auth.test.ts`(17), `recent.test.ts`(2), `summary.test.ts`(3), `engine.test.ts`(18), `simulate.test.ts`(28), `speedStore.test.ts`(2), `lockState.test.ts`(3), `three/pure.test.ts`(14, 빈 구역 배치 추가), `stackState.test.ts`(3), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2) |
-| 콘텐츠 스키마 | `index.test.ts`(15), `scene.test.ts`(24) |
-| 스크립트 | `validate-content.test.ts`(9, 공개 ID 검사 2개 추가), `no-shell.test.ts`(16: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `ci-gate-rules.test.ts`(2), `changeset-prepare.test.ts`(3) |
-| API | `api.test.ts`(32) |
+| 화면·플레이어 | `auth.test.ts`(17), `recent.test.ts`(2), `summary.test.ts`(3), `engine.test.ts`(18), `simulate.test.ts`(50), `speedStore.test.ts`(2), `lockState.test.ts`(5), `three/pure.test.ts`(16), `stackState.test.ts`(5), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2) |
+| 콘텐츠 스키마 | `index.test.ts`(15), `scene.test.ts`(34) |
+| 스크립트 | `validate-content.test.ts`(9, 공개 ID 검사 2개 추가), `no-shell.test.ts`(16: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `ci-gate-rules.test.ts`(6, Lambda 호출 권한 예외 4개 추가), `changeset-prepare.test.ts`(3) |
+| API | `api.test.ts`(33, 액세스 토큰만 받기 DF-50) |
 | 인프라 | `web-stack.test.ts`(9), `auth-stack.test.ts`(7), `api-stack.test.ts`(8), `ci-stack.test.ts`(8) |
 
 ### E2E 파일별 개수
@@ -82,6 +82,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 배포(CloudFormation) | DF-43(Scheduler 그룹 변경 실패·롤백) | `changeset:prepare`, PR-10 |
 | 사람 | DF-02·03·04·12·13·14·15·16·17·18·19·24·25(화면·자막·배포 직후 2D 등), DF-34(탈퇴 재확인 우회), DF-27(결함 아님 판정) | 장면 기록 E2E, 겹침 E2E, 서버 재인증 검사 등 |
 | 검토 | DF-35(OAuth 기본값), DF-37(RecentView 정리 규칙), DF-42(파일 배포 관문) | infra 테스트, `deletable` 단위 테스트, 관문 판단 단위 테스트 |
+| 점검(ecc 스킬) | DF-48(3D 캔버스 글자 대비 30/60 미달, ecc:accessibility), DF-49(CI OIDC 권한 범위)·DF-50(ID 토큰으로 API 호출, ecc:security-review) | 장면 글자 토큰 표(docs/05)와 재측정, 워크플로 job 분리, `api.test.ts`·smoke:progress ID 토큰 401 |
 
 자동 테스트가 처음부터 잡지 못하고 사람이나 운영 smoke가 먼저 찾은 결함(DF-12·13, DF-33, DF-34)은 모두 그 뒤 같은 종류를 잡는 자동 검사를 추가했다(장면 기록 E2E, API 경로 전수 호출, 오래된 토큰 탈퇴 거부).
 

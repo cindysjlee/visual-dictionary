@@ -94,9 +94,9 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| NFR-01 보안 | docs/03 2.4~2.6 | API(토큰 sub로만 대상), Cognito, CSP, OIDC 역할 | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | |
+| NFR-01 보안 | docs/03 2.4~2.6 | API(액세스 토큰의 sub로만 대상, `accessSubject()`), Cognito, CSP, OIDC 역할(배포 job에만) | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료·ID 토큰 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | 알고 있는 한계 5개는 docs/03 2.4(DF-49 남은 위험 포함) |
 | NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(홈·상세 LCP ≤ 2.5초, CLS ≤ 0.1), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), S smoke:progress(기록 GET·PUT 각 10회 최대 ≤ 1초), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 완료 | LCP·CLS 기준 초과는 로컬 배포 전 전체 E2E에서만 실패(CI는 측정만), LCP는 로컬 빌드 기준(CDN 거리 제외), API 시간은 콜드 스타트 제외(docs/10) |
-| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드 | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 홈·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | |
+| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드, 3D 캔버스 글자 전용 토큰(`--scene-ink` 계열, DF-48) | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 홈·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 캔버스 글자 대비는 axe가 못 봐 토큰 값으로 계산(ecc:accessibility, 11-21 60개 조합 미달 0) |
 | DC-01 프론트엔드 기술 | docs/06, CLAUDE.md 원칙 8 | R3F 장면, PlaybackEngine | S/검사 `check:bundle`(홈 묶음에 three 없음) | 완료 | |
 | DC-02 인프라·백엔드 | docs/03 2.2~2.3 | `infra/lib/*.ts` | 인 테스트 4개, C check:aws | 완료 | |
 | DC-03 콘텐츠 제작 방식 | docs/04, CLAUDE.md 원칙 1 | 용어 JSON + 플레이어 3종 | 단 `simulate.test.ts`(모든 용어×모드가 데이터만으로 끝까지) | 완료 | 콘텐츠 1차(11-21): 플레이어 3종에 일반 어휘만 더하고 용어 6개를 JSON으로 추가(CH-48) |
