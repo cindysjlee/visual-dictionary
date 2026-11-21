@@ -83,7 +83,7 @@ test("인증을 끝내지 않은 계정으로 로그인하면 코드 입력 화�
   await expect(page.getByRole("status")).toContainText("새 코드를 보냈어요");
   await field(page, "인증 코드").fill(CODE);
   await page.getByRole("button", { name: "인증하기" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/terms$/); // next가 없으면 / → 저장된 로그인이 있어 목록으로
   await expect(bar(page)).toContainText("later@example.com");
 });
 
@@ -147,12 +147,12 @@ test("비밀번호 재설정: 가입하지 않은 이메일도 같은 안내(존
 });
 
 for (const next of ["//evil.com", "/\\evil.com", "https://evil.com", "javascript:alert(1)"]) {
-  test(`next 차단: ${next} → 로그인 뒤 사이트 첫 화면(/)`, tag, async ({ page, baseURL }) => {
+  test(`next 차단: ${next} → 로그인 뒤 사이트 안(/ → 로그인 상태라 목록)`, tag, async ({ page, baseURL }) => {
     await seedUser(page, "safe@example.com");
     await page.goto(`/auth/login?next=${encodeURIComponent(next)}`);
     await login(page, "safe@example.com");
     await expect(bar(page)).toContainText("safe@example.com");
-    expect(page.url()).toBe(`${baseURL}/`);
+    expect(page.url()).toBe(`${baseURL}/terms`);
   });
 }
 

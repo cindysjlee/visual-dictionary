@@ -4,7 +4,7 @@ export default function NotFoundPage({ message = "찾는 페이지가 없습니�
   return (
     <section className="glass card card-lg notice">
       <h1>{message}</h1>
-      <Link to="/" className="btn btn-cta">
+      <Link to="/terms" className="btn btn-cta">
         용어 목록으로
       </Link>
     </section>

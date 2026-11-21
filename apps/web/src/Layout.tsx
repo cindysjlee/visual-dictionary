@@ -41,7 +41,8 @@ function AccountBar() {
   const state = useAuth();
   const { pathname, search } = useLocation();
   const [busy, setBusy] = useState(false);
-  if (state.status === "loading") return <span className="account-slot" aria-hidden="true" />;
+  // 랜딩(/)은 인증 구현을 받지 않는다: 저장된 로그인이 있으면 이미 /terms로 갔으므로 로그인 버튼을 바로 보인다
+  if (state.status === "loading" && pathname !== "/") return <span className="account-slot" aria-hidden="true" />;
   if (state.status === "user") {
     const signOut = async () => {
       setBusy(true);
@@ -73,11 +74,14 @@ function AccountBar() {
 
 export default function Layout() {
   const user = useAuth();
-  // 첫 화면을 그린 뒤 저장된 로그인 상태를 읽는다(인증 구현은 이때 따로 받는다)
+  const { pathname } = useLocation();
+  const landing = pathname === "/";
+  // 첫 화면을 그린 뒤 저장된 로그인 상태를 읽는다(인증 구현은 이때 따로 받는다). 랜딩(/)에서는 받지 않고, 다른 화면으로 가면 그때 시작한다
   useEffect(() => {
+    if (landing) return;
     startAuth();
     startProgress(); // 로그인 상태를 따라 학습 기록을 불러오고 비운다
-  }, []);
+  }, [landing]);
   return (
     <>
       <div className="backdrop" aria-hidden="true">
@@ -88,14 +92,15 @@ export default function Layout() {
       </div>
       <div className="page">
         <header className="glass topbar">
-          <Link to="/" className="logo">
+          <Link to={user.status === "user" ? "/terms" : "/"} className="logo">
             <LogoMark />
             <span className="logo-text">시각화 사전</span>
           </Link>
           <nav className="topbar-nav" aria-label="주 메뉴">
-            <NavLink to="/" end>
+            <NavLink to="/terms" end>
               용어
             </NavLink>
+            <NavLink to="/about">소개</NavLink>
             {user.status === "user" && <NavLink to="/me">내 학습</NavLink>}
           </nav>
           <div className="spacer" />
@@ -106,6 +111,7 @@ export default function Layout() {
           <Outlet />
         </main>
         <footer className="site-footer">
+          <Link to="/about">소개</Link>
           <Link to="/privacy">개인정보처리방침</Link>
           <span>문의 visualdict.help@gmail.com</span>
         </footer>

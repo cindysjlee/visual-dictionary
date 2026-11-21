@@ -25,6 +25,8 @@ export const toIndexEntry = ({ id, name, englishName, aliases, category, summary
   summary,
   playerType: scenario.playerType,
   stepCount: scenario.steps.length,
+  dangerFrom: scenario.steps.findIndex((s) => s.danger) + 1 || null,
+  blockedAt: [...new Set(defenses.flatMap((d) => (d.blockedAtStep === undefined ? [] : [d.blockedAtStep])))].sort((a, b) => a - b),
 });
 
 if (import.meta.main) {

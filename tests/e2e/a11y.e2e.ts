@@ -1,11 +1,12 @@
-// 접근성: 홈·모든 용어 상세 × 라이트·다크. axe의 serious·critical 위반이 있으면 실패
+// 접근성: 랜딩·목록·모든 용어 상세 × 라이트·다크. axe의 serious·critical 위반이 있으면 실패
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { terms } from "./terms.ts";
 
 // 용어 상세는 @<id> 태그(npm run test:e2e -- --grep @csrf 로 그 용어 테스트만)
 const pages = [
-  { path: "/", ready: ".term-card", tag: [] as string[] },
+  { path: "/", ready: ".ledger-row", tag: ["@landing"] as string[] },
+  { path: "/terms", ready: ".term-card", tag: ["@explore"] as string[] },
   ...terms.map((t) => ({ path: `/terms/${t.id}`, ready: ".play-btn", tag: [`@${t.id}`] })),
   ...["login", "signup", "confirm", "reset"].map((p) => ({ path: `/auth/${p}`, ready: ".auth-form", tag: ["@auth"] })),
   { path: "/auth/callback", ready: ".auth-card", tag: ["@google"] },

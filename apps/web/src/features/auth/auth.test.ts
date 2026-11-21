@@ -3,6 +3,7 @@ import { authMessage, FALLBACK_MESSAGE } from "./errors.ts";
 import { FAKE_CODE, fakeAuthClient } from "./fake.ts";
 import { passwordProblems } from "./password.ts";
 import { loginPath, safeNext } from "./safeNext.ts";
+import { hasStoredSession } from "./session.ts";
 
 const ORIGIN = "https://d1y3rvak3nd08u.cloudfront.net";
 
@@ -93,5 +94,31 @@ describe("가짜 인증(E2E용): Cognito와 같은 규칙", () => {
     await expect(c.confirmResetPassword("nobody@example.com", FAKE_CODE, "new12345")).rejects.toMatchObject({ name: "CodeMismatchException" });
     await c.confirmResetPassword("c@example.com", FAKE_CODE, "new12345");
     expect(await c.signIn("c@example.com", "new12345")).toBe("done");
+  });
+});
+
+describe("저장된 로그인 확인(랜딩에서 Amplify 없이)", () => {
+  const storage = (entries: Record<string, string>) => {
+    const keys = Object.keys(entries);
+    return { length: keys.length, key: (i: number) => keys[i] ?? null, getItem: (k: string) => entries[k] ?? null };
+  };
+
+  it("Cognito 마지막 사용자 키가 있으면 로그인한 것으로 본다", () => {
+    expect(hasStoredSession(storage({ "CognitoIdentityServiceProvider.abc123.LastAuthUser": "u1" }))).toBe(true);
+  });
+
+  it("다른 키·빈 값·비슷한 이름은 로그인으로 보지 않는다", () => {
+    expect(hasStoredSession(storage({}))).toBe(false);
+    expect(hasStoredSession(storage({ "CognitoIdentityServiceProvider.abc123.LastAuthUser": "" }))).toBe(false);
+    expect(hasStoredSession(storage({ "CognitoIdentityServiceProvider.abc123.u1.idToken": "x", theme: "dark" }))).toBe(false);
+  });
+
+  it("가짜 인증 세션(테스트 빌드)도 로그인으로 본다", () => {
+    expect(hasStoredSession(storage({ "fake-auth-session": "a@example.com" }))).toBe(true);
+  });
+
+  it("저장소를 못 쓰면 로그인하지 않은 것으로 본다", () => {
+    const broken = { length: 1, key: () => { throw new Error("denied"); }, getItem: () => { throw new Error("denied"); } };
+    expect(hasStoredSession(broken)).toBe(false);
   });
 });

@@ -39,7 +39,7 @@ test("콜백: 실패하면 안내와 로그인 링크, 코드 없이 오면 안�
   await expect(page.getByRole("alert")).toHaveText("로그인 정보가 없어요. 로그인 화면에서 다시 시도해 주세요.");
 
   await page.goto(`/auth/callback?code=fake&state=${encodeURIComponent("//evil.example.com/x")}`);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/terms$/); // 사이트 밖 next는 / → 로그인 상태라 목록으로
   await expect(bar(page).getByText(GOOGLE_EMAIL)).toBeVisible();
 });
 

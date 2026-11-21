@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import type { Category, IndexEntry, Term } from "@app/content-schema";
 import { CATEGORY_LABELS, PLAYER_LABELS } from "@app/content-schema/labels";
 import { ArrowIcon, SearchIcon, ShieldIcon } from "../../icons.tsx";
@@ -44,7 +44,7 @@ function ProgressCard({ index }: { index: IndexEntry[] }) {
       {auth.status !== "user" ? (
         <>
           <p className="muted">로그인하면 읽은 용어와 분야별 진행률이 여기에 표시돼요.</p>
-          <Link to={loginPath("/")} className="btn btn-sm study-login">
+          <Link to={loginPath("/terms")} className="btn btn-sm study-login">
             로그인
           </Link>
         </>
@@ -123,7 +123,7 @@ function FeaturedCard({ entry, label }: { entry: IndexEntry; label: string }) {
 }
 
 /** 다른 화면이 새로고침을 거치며 넘긴 안내를 한 번만 꺼낸다(저장소를 못 쓰면 없음). 넣는 곳: features/progress/MePage.tsx */
-const HANDED_NOTICE = "vd-notice";
+const HANDED_NOTICE = "vd-notice"; // main.tsx의 랜딩 로더도 이 키가 있으면 목록으로 보낸다
 function takeHandedNotice(): string | undefined {
   try {
     const notice = sessionStorage.getItem(HANDED_NOTICE) ?? undefined;
@@ -136,7 +136,8 @@ function takeHandedNotice(): string | undefined {
 
 export default function HomePage() {
   const load = useJson<IndexEntry[]>("/content/index.json");
-  const [query, setQuery] = useState("");
+  const [params] = useSearchParams();
+  const [query, setQuery] = useState(() => params.get("q") ?? ""); // 랜딩 검색(/terms?q=)에서 넘어온 검색어
   const [category, setCategory] = useState<Category | "all">("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   // 예: 탈퇴 완료. 구글 사용자는 로그아웃 때 로그인 도메인을 거쳐 새로 불러와지므로 sessionStorage로 한 번 넘겨받는다(features/progress/MePage)

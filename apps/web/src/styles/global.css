@@ -44,8 +44,18 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--defense);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
+}
+
+/* 브라우저 기본 표면도 토큰으로(선택 영역·입력 커서·체크 같은 기본 컨트롤) */
+::selection {
+  background: var(--selection);
+}
+
+:root {
+  accent-color: var(--defense);
+  caret-color: var(--defense-text);
 }
 
 .num {

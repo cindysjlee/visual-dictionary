@@ -33,7 +33,8 @@ const overflow = (page: Page) =>
   });
 
 const PAGES: { name: string; path: string; ready: (page: Page) => Promise<void>; signedIn?: boolean }[] = [
-  { name: "홈", path: "/", ready: async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible()) },
+  { name: "랜딩", path: "/", ready: async (p) => void (await expect(p.locator(".sheet-row").first()).toBeVisible()) },
+  { name: "목록", path: "/terms", ready: async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible()) },
   ...terms.map((t) => ({
     name: `상세 ${t.id}`,
     path: `/terms/${t.id}`,

@@ -1,0 +1,1005 @@
+/* 랜딩(/, /about): Y2K 크롬 + 리퀴드 글래스 + 스크롤 3D. 색·크기·간격·동작은 tokens.css의 변수만 쓴다(docs/05 "랜딩").
+   유리(.liquid)는 누르거나 읽는 컨트롤(검색·캡션·스위치)에만, 유리 위 유리는 쓰지 않는다. */
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-9);
+}
+
+/* 화면 폭을 꽉 채우는 장면(100vw)이 스크롤 막대 자리만큼 넘치는 것을 자른다. 랜딩 안에서 자르면 장면이 본문 폭으로 잘리므로 body에서(sticky는 그대로) */
+body:has(.landing) {
+  overflow-x: clip;
+}
+
+.liquid-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* ---------- 이름표(짧은 제목): 홀로그램 테두리 알약 ---------- */
+.name-tag {
+  justify-self: start;
+  align-self: start;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 6px 16px;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-pill);
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--holo) border-box;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  width: fit-content;
+}
+
+.name-tag-lg {
+  font-size: var(--fs-md);
+  padding: 8px 18px;
+}
+
+.landing-note {
+  max-width: 44ch;
+  color: var(--text-sub);
+  font-size: var(--fs-base);
+  line-height: var(--lh-snug);
+}
+
+/* ---------- 리퀴드 글래스: 뒤가 휘어 보이는 유리 + 마우스를 따라오는 빛 ---------- */
+.liquid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--liquid-bg);
+  border: 1px solid var(--liquid-border);
+  box-shadow:
+    inset 0 1px 0 var(--chrome-shine),
+    inset 0 -12px 24px -16px var(--chrome-shade),
+    0 22px 44px -22px var(--raised-shadow);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+/* 굴절 필터는 Chromium만(LandingPage가 판별해 html에 class). 나머지 브라우저는 위의 일반 blur */
+.has-refraction .liquid {
+  backdrop-filter: url(#liquid-refract) blur(4px) saturate(180%);
+}
+
+.liquid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, 24%) var(--my, 0%), var(--liquid-glint), transparent 62%);
+  transition: background-position var(--dur-quick) var(--ease-out);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .liquid {
+    background: var(--glass-fallback);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid,
+  .has-refraction .liquid {
+    background: var(--surface);
+    backdrop-filter: none;
+  }
+}
+
+/* ---------- 볼록한 크롬 버튼 ---------- */
+.btn-chrome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--chrome-edge);
+  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 var(--chrome-shine),
+    inset 0 -3px 6px var(--chrome-shade),
+    0 10px 18px -12px var(--raised-shadow);
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    filter var(--dur-quick) var(--ease-out);
+}
+
+.btn-chrome:hover {
+  filter: brightness(1.05) saturate(1.1);
+}
+
+.btn-chrome:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.btn-chrome-lg {
+  min-height: 54px;
+  padding: 0 var(--sp-6);
+  font-size: var(--fs-base);
+}
+
+/* 덜 중요한 동작: 크롬 대신 홀로그램 테두리 */
+.btn-chrome.is-quiet {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--holo) border-box;
+  box-shadow: none;
+}
+
+/* ---------- [방어 켜기] 스위치 ---------- */
+.defense-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.defense-switch-track {
+  position: relative;
+  flex: none;
+  width: 58px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--neutral); /* 꺼진 상태에서도 경계가 바탕 대비 3:1 이상(SC 1.4.11) */
+  background: var(--switch-track);
+  box-shadow: inset 0 2px 6px var(--chrome-shade);
+  transition:
+    background var(--dur-quick) var(--ease-out),
+    border-color var(--dur-quick) var(--ease-out);
+}
+
+.defense-switch-knob {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
+  box-shadow:
+    inset 0 1px 0 var(--chrome-shine),
+    0 3px 8px var(--chrome-shade);
+  transition: transform var(--dur-enter) var(--ease-out);
+}
+
+.defense-switch[aria-checked="true"] .defense-switch-track {
+  background: var(--defense);
+  border-color: var(--defense);
+}
+
+.defense-switch[aria-checked="true"] .defense-switch-knob {
+  transform: translateX(26px);
+}
+
+/* ---------- 고정 스크롤 장면 ---------- */
+/* 상단바(유리)는 장면 위에 뜬다: 장면이 화면 맨 위부터 깔리도록 상단바 높이만큼 끌어올린다 */
+body:has(.landing) .topbar {
+  position: relative;
+  z-index: 20;
+}
+
+.story {
+  position: relative;
+  /* 화면 폭 전체(본문 폭 밖까지), 화면 맨 위부터(.page 위 여백 22px + 상단바 62px + 간격 18px) */
+  margin-inline: calc(50% - 50vw);
+  margin-top: -102px;
+}
+
+.story.is-scroll {
+  height: 420vh;
+}
+
+.story-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.story-poster,
+.story-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.story-poster {
+  object-fit: cover;
+  transition: opacity var(--dur-story) var(--ease-out);
+}
+
+.story.is-ready .story-poster {
+  opacity: 0;
+}
+
+.story-canvas {
+  opacity: 0;
+  transition: opacity var(--dur-story) var(--ease-out);
+}
+
+.story.is-ready .story-canvas {
+  opacity: 1;
+}
+
+/* 머리 글: 스크롤하면 사라진다(--p는 LandingStory가 진행도로 넣는다) */
+.story-hud {
+  position: absolute;
+  left: max(var(--gutter), calc(50vw - 580px));
+  top: 16vh;
+  display: grid;
+  gap: var(--sp-4);
+  width: min(30rem, calc(100vw - 2 * var(--gutter)));
+  opacity: calc(1 - var(--p, 0) * 7);
+  translate: 0 calc(var(--p, 0) * -80px);
+}
+
+.story[data-stage]:not([data-stage="0"]) .story-hud {
+  visibility: hidden;
+}
+
+.hero-b .story-hud {
+  left: 50%;
+  top: auto;
+  bottom: 5vh;
+  justify-items: center;
+  text-align: center;
+  translate: -50% calc(var(--p, 0) * -80px);
+}
+
+.hero-b .story-hud .name-tag {
+  justify-self: center;
+}
+
+.hero-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  height: 60px;
+  padding: 0 6px 0 var(--sp-4);
+  border-radius: var(--r-pill);
+  color: var(--text-sub);
+}
+
+.hero-search:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-base);
+}
+
+.hero-search input::placeholder {
+  color: var(--text-sub);
+}
+
+.scroll-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-sub);
+}
+
+.scroll-cue::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--attack);
+  animation: cue-drop 1.8s var(--ease-in-out) infinite;
+}
+
+@keyframes cue-drop {
+  0%,
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}
+
+/* 단계 캡션과 스위치: 장면 아래쪽 */
+.story-controls {
+  position: absolute;
+  left: max(var(--gutter), calc(50vw - 580px));
+  right: max(var(--gutter), calc(50vw - 580px));
+  bottom: 7vh;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.story-caption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px var(--sp-3);
+  max-width: 36rem;
+  padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--sp-3);
+}
+
+.story-step {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
+  box-shadow: inset 0 1px 0 var(--chrome-shine), inset 0 -3px 6px var(--chrome-shade);
+  font-weight: 700;
+}
+
+.story-title {
+  font-weight: 800;
+}
+
+.story-line {
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+}
+
+.story-controls .defense-switch {
+  padding: 6px var(--sp-4) 6px 6px;
+  border-radius: var(--r-pill);
+  background: var(--liquid-bg);
+  border: 1px solid var(--liquid-border);
+  box-shadow:
+    inset 0 1px 0 var(--chrome-shine),
+    0 18px 36px -20px var(--raised-shadow);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+/* 403 도장: 방어가 켜진 채 검문소에 닿으면 찍힌다 */
+.story-stamp,
+.story-pass {
+  position: absolute;
+  top: 30%;
+  left: 60%;
+  padding: 10px 24px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.story-stamp {
+  background: var(--defense);
+  color: var(--on-color);
+  box-shadow:
+    0 0 0 3px var(--surface),
+    0 0 0 6px var(--defense),
+    0 24px 40px -18px var(--raised-shadow);
+}
+
+.story-pass {
+  background: var(--attack-solid);
+  color: var(--on-color);
+  font-size: var(--fs-lg);
+  box-shadow: 0 24px 40px -18px var(--raised-shadow);
+}
+
+/* ---------- 반짝이 별(장식) ---------- */
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  fill: var(--sparkle);
+  filter: drop-shadow(0 0 6px var(--sparkle));
+  animation: twinkle 3.6s var(--ease-in-out) infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.55) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}
+
+/* ---------- 크롬 글자 용어 이름 ---------- */
+.names {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.names-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.45em;
+  font-family: var(--font-num);
+  font-size: clamp(2.5rem, 1.4rem + 4.6vw, 6.5rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.chrome-word {
+  position: relative;
+  display: inline-block;
+  padding: 0.04em 0.02em 0.1em;
+  background: var(--chrome-text);
+  background-size: 100% 120%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration: none;
+  filter: drop-shadow(0 1px 0 var(--chrome-edge));
+}
+
+/* 누를 수 있다는 표시: 홀로그램 밑줄이 펼쳐진다 */
+.chrome-word::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.06em;
+  border-radius: var(--r-pill);
+  background: var(--holo);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-enter) var(--ease-out);
+}
+
+.chrome-word:hover::after,
+.chrome-word:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* 크롬 광택이 스크롤에 따라 위아래로 흐른다(장식, 지원 브라우저만) */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .chrome-word {
+      animation: chrome-sheen linear both;
+      animation-timeline: view();
+    }
+  }
+}
+
+@keyframes chrome-sheen {
+  from {
+    background-position: 0 0%;
+  }
+  to {
+    background-position: 0 100%;
+  }
+}
+
+/* ---------- 단계 장부(미니 장면) ---------- */
+.ledger {
+  --row-h: 52px;
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--r-xl);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--holo) border-box;
+  box-shadow: 0 28px 56px -32px var(--raised-shadow);
+}
+
+.ledger.is-placeholder {
+  min-height: calc(64px + 6 * var(--row-h) + 120px);
+}
+
+.ledger-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+}
+
+.ledger-term {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-right: auto;
+}
+
+.ledger-term h2 {
+  font-family: var(--font-num);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.ledger-en {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+}
+
+.ledger-steps {
+  list-style: none;
+  margin: var(--sp-5) 0 0;
+  padding: 0;
+}
+
+.ledger-row {
+  /* 행마다 같은 열 너비(라벨 열이 줄마다 어긋나지 않게) */
+  display: grid;
+  grid-template-columns: 40px 2.5ch 12em minmax(0, 1fr) 11em;
+  align-items: center;
+  column-gap: var(--sp-4);
+  min-height: var(--row-h);
+  padding-right: var(--sp-3);
+  border-radius: var(--r-md);
+  transition: background var(--dur-quick) var(--ease-out);
+}
+
+.ledger-rail {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+/* 레일: 행마다 세로선 한 토막. 첫 행은 아래 절반, 마지막 행·지금 행은 위 절반만 */
+.ledger-rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--line-strong);
+}
+
+.ledger-row:first-child .ledger-rail::before {
+  top: 50%;
+}
+
+.ledger-row:last-child .ledger-rail::before,
+.ledger-row.is-current .ledger-rail::before {
+  bottom: 50%;
+}
+
+.ledger-row.is-current:not(:last-child) .ledger-rail::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--line-strong);
+}
+
+.ledger-row.is-danger:is(.is-passed, .is-current) .ledger-rail::before {
+  background: var(--attack);
+}
+
+.ledger-node {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--neutral);
+}
+
+.ledger-row.is-danger:is(.is-passed, .is-current) .ledger-node {
+  background: var(--attack);
+  border-color: var(--attack);
+}
+
+.ledger-row.is-skipped .ledger-node {
+  border-style: dashed;
+}
+
+.packet {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px var(--surface),
+    0 8px 18px -6px var(--raised-shadow);
+}
+
+.packet.tone-attack {
+  background: var(--attack);
+}
+
+.packet.tone-neutral {
+  background: var(--text);
+}
+
+.packet.tone-defense {
+  background: var(--defense);
+}
+
+.ledger-no {
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ledger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  color: var(--text-sub);
+}
+
+.ledger-row.is-pending .ledger-title,
+.ledger-row.is-skipped .ledger-title {
+  color: var(--text-muted);
+}
+
+.ledger-row.is-skipped .ledger-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.ledger-row.is-current {
+  background: var(--surface-raised);
+}
+
+.ledger-steps.mode-attack .ledger-row.is-current.is-danger:last-child {
+  background: var(--attack-soft);
+}
+
+.ledger-tag {
+  justify-self: end;
+  display: inline-flex;
+}
+
+.tag-danger {
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  color: var(--attack-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.tag-skip {
+  font-size: var(--fs-xs);
+  color: var(--text-sub);
+}
+
+.stamp {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--r-sm);
+  background: var(--defense);
+  color: var(--on-color);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--defense);
+}
+
+.ledger-foot {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.ledger-caption {
+  display: flex;
+  gap: var(--sp-3);
+  min-height: calc(2 * var(--lh-body) * 1em);
+  max-width: 80ch;
+  line-height: var(--lh-body);
+}
+
+.ledger-caption-no {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--cta);
+  color: var(--cta-text);
+  font-size: var(--fs-xs);
+}
+
+.ledger-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+}
+
+/* ---------- 단계 막대 시트 ---------- */
+.sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: var(--sp-7);
+}
+
+.sheet-intro {
+  position: sticky;
+  top: var(--sp-6);
+  align-self: start;
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.sheet-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+}
+
+.sheet-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.sheet-groups {
+  display: grid;
+  gap: var(--sp-6);
+}
+
+.sheet-group h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-strong);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.sheet-count {
+  font-weight: 500;
+}
+
+.sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sheet-row {
+  /* 단계 막대는 고정 폭 칸에 왼쪽 정렬: 줄마다 같은 단계 번호가 위아래로 맞는다 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15em 5.5em;
+  align-items: center;
+  gap: var(--sp-5);
+  min-height: 56px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--dur-quick) var(--ease-out);
+}
+
+.sheet-row:hover {
+  background: var(--surface);
+}
+
+.sheet-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-2);
+  font-weight: 700;
+}
+
+.sheet-en {
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+.sheet-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-sub);
+  text-align: right;
+}
+
+.step-bar {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* 단계 칸: 색만이 아니라 모양으로도 구분(차단 = 더 큰 칸, 막혀서 실행 안 됨 = 점선) */
+.step-cell {
+  flex: none;
+  display: inline-block;
+  width: 18px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1.5px solid var(--neutral);
+  background: transparent;
+}
+
+.step-cell.is-danger {
+  background: var(--attack);
+  border-color: var(--attack);
+}
+
+.step-cell.is-block {
+  height: 20px;
+  background: var(--defense);
+  border-color: var(--defense);
+}
+
+.step-cell.is-cut {
+  border-color: var(--attack);
+  border-style: dashed;
+}
+
+.step-cell.is-after {
+  border-style: dashed;
+}
+
+/* ---------- 마무리 ---------- */
+.closing {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-4);
+  padding: var(--sp-7) 0 var(--sp-5);
+  border-top: 1px solid var(--line-strong);
+}
+
+.closing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.landing-error {
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* 개발 서버 정지 이미지 촬영(/?poster): 캔버스만 화면 가득 */
+.poster-capture {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+/* ---------- 동작 줄이기: 장식 움직임을 멈춘다(3D·고정 스크롤은 LandingPage가 아예 받지 않는다) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sparkle,
+  .scroll-cue::before {
+    animation: none;
+  }
+}
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 980px) {
+  .sheet {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-5);
+  }
+
+  .sheet-intro {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .landing {
+    gap: var(--sp-8);
+  }
+
+  .story-hud {
+    top: 10vh;
+  }
+
+  .hero-b .story-hud {
+    bottom: 22vh;
+  }
+
+  .story-controls {
+    bottom: 4vh;
+  }
+
+  .story-stamp,
+  .story-pass {
+    left: 50%;
+    top: 24%;
+    translate: -50% 0;
+    font-size: var(--fs-lg);
+  }
+
+  .ledger {
+    --row-h: 48px;
+    padding: var(--sp-4);
+  }
+
+  .ledger-row {
+    grid-template-columns: 28px 2ch minmax(0, 1fr) auto;
+    column-gap: var(--sp-3);
+    padding-right: var(--sp-2);
+  }
+
+  .ledger-label {
+    display: none;
+  }
+
+  .sheet-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .sheet-meta {
+    display: none;
+  }
+}

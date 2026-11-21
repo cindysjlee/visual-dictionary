@@ -19,7 +19,7 @@ async function shownNames(page: Page) {
 }
 
 test("홈: 모든 용어가 카드로 보이고, 카드마다 이름·한 줄 요약·카테고리 배지가 있다", tag, async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/terms");
   await expect(cardNames(page)).toHaveCount(terms.length);
   for (const t of terms) {
     const card = list(page).locator(".term-card", { has: page.locator(".term-card-name", { hasText: new RegExp(`^${t.name}$`) }) });
@@ -29,7 +29,7 @@ test("홈: 모든 용어가 카드로 보이고, 카드마다 이름·한 줄 �
 });
 
 test("비회원 카테고리 필터: 기본은 전체, 고르면 그 카테고리 용어만", tag, async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/terms");
   const chips = page.getByRole("group", { name: "카테고리" });
   await expect(chips.getByRole("button", { name: "전체" })).toHaveAttribute("aria-pressed", "true");
   for (const [category, label] of Object.entries(CATEGORY_LABELS)) {
@@ -49,14 +49,14 @@ for (const q of QUERIES) {
   test(`검색 "${q}": 이름·영문명·별칭·요약에서 대소문자 없이 찾는다`, tag, async ({ page }) => {
     const expected = expectedFor(q);
     expect(expected.length, "검색어가 적어도 한 용어와 맞아야 의미 있는 테스트").toBeGreaterThan(0);
-    await page.goto("/");
+    await page.goto("/terms");
     await search(page).fill(q);
     await expect.poll(() => shownNames(page)).toEqual(names(expected));
   });
 }
 
 test("검색은 카테고리 필터와 함께 적용되고, 결과가 없으면 안내와 '전체 목록 보기'로 처음 상태로 돌아간다", tag, async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/terms");
   await search(page).fill("forgery");
   await expect.poll(() => shownNames(page)).toEqual(names(expectedFor("forgery")));
   // 같은 검색어에 다른 카테고리: 결과 없음
@@ -69,7 +69,7 @@ test("검색은 카테고리 필터와 함께 적용되고, 결과가 없으면 
 });
 
 test("검색 결과 없음: 안내 문구와 '전체 목록 보기' 버튼", tag, async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/terms");
   await search(page).fill("없는용어zz");
   await expect(cardNames(page)).toHaveCount(0);
   await expect(list(page)).toContainText("찾는 용어가 없어요 · ‘없는용어zz’");
@@ -107,12 +107,12 @@ test("없는 용어 주소: 안내 문구와 목록으로 가는 버튼", tag, a
   await page.goto("/terms/no-such-term");
   await expect(page.getByRole("heading", { level: 1, name: "찾는 용어가 없습니다." })).toBeVisible();
   await page.getByRole("link", { name: "용어 목록으로" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/terms$/);
   await expect(cardNames(page)).toHaveCount(terms.length);
 });
 
 test("없는 화면 주소: 안내 문구와 목록으로 가는 버튼", tag, async ({ page }) => {
   await page.goto("/no-such-page");
   await expect(page.getByRole("heading", { level: 1, name: "찾는 페이지가 없습니다." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "용어 목록으로" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "용어 목록으로" })).toHaveAttribute("href", "/terms");
 });

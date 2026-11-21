@@ -71,7 +71,7 @@ const cardNames = (page: Page) => list(page).locator(".term-card-name").allTextC
 test("홈: 카드 읽음 표시, 읽음 필터(카테고리·검색과 함께), 전체·카테고리별 진행률", tag, async ({ page }) => {
   await signedIn(page, "home@example.com");
   await seedRecords(page, "home@example.com", { csrf: true, xss: false });
-  await page.goto("/");
+  await page.goto("/terms");
   const index = await page.evaluate(async () => (await (await fetch("/content/index.json")).json()) as { id: string; category: string; name: string }[]);
   const web = index.filter((t) => t.category === "web-security").length;
   await expect(page.locator(".progress-total")).toHaveText(`1 / ${index.length} 용어를 읽었어요`);
@@ -136,7 +136,7 @@ test("탈퇴: 틀린 비밀번호면 버튼이 꺼진 채, 맞으면 켜지고, 
 
   await withdrawBtn.click();
   await dialog.getByRole("button", { name: "탈퇴", exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/terms$/);
   await expect(page.getByRole("status").filter({ hasText: "탈퇴했어요" })).toBeVisible();
   await expect(page.locator(".topbar").getByRole("link", { name: "로그인" })).toBeVisible();
   const left = await page.evaluate(() => ({
@@ -151,14 +151,14 @@ test("탈퇴: 틀린 비밀번호면 버튼이 꺼진 채, 맞으면 켜지고, 
 const activity = { tag: ["@activity", "@progress"] };
 
 test("상세를 열면 최근 본 용어에 남고, 홈은 '이어서 볼 용어'(가장 최근)와 최근 3개, /me는 날짜와 함께", activity, async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/terms");
   await expect(page.locator(".featured .tag")).toHaveText("처음 볼 용어"); // 로그아웃 상태
   await signedIn(page, "recent@example.com");
   for (const id of ["csrf", "deadlock", "xss"]) {
     await page.goto(`/terms/${id}`);
     await expect(page.locator(".study-card")).toContainText("아직 안 읽음"); // 로그인 상태로 상세가 뜬 뒤
   }
-  await page.goto("/");
+  await page.goto("/terms");
   await expect(page.locator(".featured .tag")).toHaveText("이어서 볼 용어");
   await expect(page.locator(".featured .featured-name")).toHaveText("XSS");
   await expect(page.getByRole("navigation", { name: "최근 본 용어" }).getByRole("link")).toHaveText(["XSS", "데드락", "CSRF"]);
@@ -175,6 +175,6 @@ test("최근 본 용어 기록이 실패해도 상세·홈은 그대로(첫 용�
   await page.evaluate(() => localStorage.setItem("fake-progress-fail", "1"));
   await page.goto("/terms/csrf");
   await expect(page.getByRole("heading", { level: 1, name: "CSRF" })).toBeVisible();
-  await page.goto("/");
+  await page.goto("/terms");
   await expect(page.locator(".featured .tag")).toHaveText("처음 볼 용어");
 });

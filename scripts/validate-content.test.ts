@@ -71,4 +71,11 @@ describe("selectTerms", () => {
     const withSupport = { ...base, defenses: [...base.defenses, { ...base.defenses[0]!, name: "보조", blockedAtStep: undefined }] };
     expect(toIndexEntry(withSupport)).toMatchObject({ defenseCount: 2, supportCount: 1 });
   });
+
+  it("index 항목에 위험 시작 단계와 차단 단계(중복 없이)가 들어간다", () => {
+    // CSRF 예시: 3단계부터 위험, 방어 둘 다 5단계에서 차단
+    expect(toIndexEntry(base)).toMatchObject({ dangerFrom: 3, blockedAt: [5] });
+    const safe = { ...base, scenario: { ...base.scenario, steps: base.scenario.steps.map((s) => ({ ...s, danger: false })) }, defenses: [] };
+    expect(toIndexEntry(safe)).toMatchObject({ dangerFrom: null, blockedAt: [] });
+  });
 });

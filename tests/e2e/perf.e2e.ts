@@ -49,8 +49,12 @@ function judge(name: string, { lcp, cls }: { lcp: number; cls: number }) {
   expect(cls).toBeLessThanOrEqual(CLS);
 }
 
-test("홈 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {
-  judge("홈", await measure(page, "/", async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible())));
+test("랜딩 첫 화면: 단계 장부까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {
+  judge("랜딩", await measure(page, "/", async (p) => void (await expect(p.locator(".ledger-row").first()).toBeVisible())));
+});
+
+test("목록 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {
+  judge("목록", await measure(page, "/terms", async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible())));
 });
 
 test("상세(CSRF) 첫 화면: 플레이어까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {

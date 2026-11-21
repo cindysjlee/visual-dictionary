@@ -250,4 +250,6 @@ export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | 
   stepCount: number;
   defenseCount: number; // 차단 단계가 있는 방어 수
   supportCount: number; // 차단 단계 없는 보조 방어 수
+  dangerFrom: number | null; // 처음 위험해지는 단계 번호(1부터), 없으면 null
+  blockedAt: number[]; // 방어가 막는 단계 번호들(중복 없이 오름차순)
 };

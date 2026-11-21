@@ -87,7 +87,7 @@ function Withdraw({ leave }: { leave: () => void }) {
       } catch {
         // 저장소를 못 쓰면 안내만 빠진다
       }
-      void navigate("/", { replace: true, state: { notice: WITHDRAWN_NOTICE } });
+      void navigate("/terms", { replace: true, state: { notice: WITHDRAWN_NOTICE } });
       await auth.signOutAfterWithdraw();
     } catch (err) {
       dialog.current?.close();
@@ -243,7 +243,7 @@ export default function MePage() {
             className="btn btn-sm study-login"
             onClick={() => {
               leave();
-              void navigate("/", { replace: true });
+              void navigate("/terms", { replace: true });
               void auth.signOut();
             }}
           >
