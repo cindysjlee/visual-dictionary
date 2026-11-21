@@ -79,7 +79,6 @@ docs/                     설계 문서
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
 남은 일:
 - CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
-- aws-cdk-lib 새 버전이 나오면 올리기(Dependabot: 안에 든 minimatch 10.2.6 서비스 거부 취약점, 11.0.1에서 수정. 배포 도구 쪽이라 화면·Lambda에는 없음).
 - 고아 기록 정리(OrphanSweepFn, 매일 03:00 서울)와 구글 토큰 범위 축소: 코드·테스트 완료, IAM·OAuth 범위 diff 승인 뒤 배포(docs/03 2.5 "고아 기록 정리"). 배포 뒤 smoke:progress(D 고아 정리·A 탈퇴 표시 유지)와 check:aws(로컬: 일정 ENABLED).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
 - 콘텐츠 1차(11-21) 공개: 스택 오버플로(stack), 경쟁 상태(lock), SYN 플러드·SSL 스트리핑·IDOR·클릭재킹(flow). 용어 14개. 새 일반 어휘(칸 선반·여러 봉투·겹친 화면·옆 카메라, 스택 한도·고친 코드 판, 공유 값)는 docs/04·06.

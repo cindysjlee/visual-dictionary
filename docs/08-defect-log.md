@@ -67,7 +67,8 @@
 | DF-45 | 11-21 | 실행 출력 | DEP0190 경고(셸로 인자 전달) | `shell: true` | 셸 없이 실행(`shell: false`), CDK·Playwright는 Node로 JS 진입점을 직접 실행 | `scripts/no-shell.test.ts`: scripts에 `shell: true`나 `exec`·`execSync`가 있으면 verify 실패(이때 남아 있던 `e2e-drafts.ts`도 셸 없이 고침) | `5efde5e`, `4314ff3` |
 | DF-49 | 11-21 | **점검(ecc:security-review)** | CI 워크플로가 `id-token: write`를 작업 전체에 줘서, 배포 전 단계(npm ci의 설치 스크립트, E2E)에서도 GitHub OIDC 토큰을 받을 수 있음. 공급망 공격으로 의존성 코드가 실행되면 배포 역할을 맡아 보안·변경 관문을 거치지 않고 CDK 부트스트랩 역할로 배포할 수 있음 | 권한을 job 단위로 나누지 않음(검증·E2E와 배포가 한 job) | 워크플로 기본 `contents: read`, `verify` job(설치·verify·E2E, OIDC 권한 없음)과 `deploy` job(`needs: verify`, `id-token: write`는 여기만, `npm ci --ignore-scripts`)으로 분리 | 남은 위험(배포 job의 빌드·cdk synth가 OIDC 권한 아래 실행)은 사용자가 수용, docs/03 2.4 "알고 있는 한계" 5 | `d201a9c` |
 | DF-50 | 11-21 | **점검(ecc:security-review, 코드·AWS 문서 기준, 실제 호출로 재현 안 함)** | API가 액세스 토큰뿐 아니라 ID 토큰도 받음(HTTP API JWT 인가는 `aud` 또는 `client_id`를 확인). ID 토큰에는 `username` 클레임이 없어 탈퇴 API가 `sub`를 사용자 이름으로 씀 → 구글 사용자가 ID 토큰으로 탈퇴를 부르면 Cognito 삭제는 실패(500)하는데 정리 작업은 이미 큐에 들어가, 정리 함수가 `sub`로 사용자를 찾지 못해(구글 사용자 이름은 sub와 다름) 계정이 남은 채 학습 기록을 지움. 자기 토큰으로 직접 API를 부를 때만 생기고(화면은 액세스 토큰), 남의 기록에는 영향 없음 | 핸들러가 `token_use`를 확인하지 않음, 정리 작업의 사용자 이름을 토큰 종류에 따라 다르게 얻음 | 세 핸들러가 `accessSubject()`로 `token_use=access`일 때만 sub를 쓰고 아니면 401 `access-token-required`, 탈퇴는 문자열 `username` 클레임도 요구 | `api.test.ts` 5개, `smoke:progress`가 모든 라우트와 탈퇴에 ID 토큰을 보내 401 확인 | `4bb75ea` |
-| DF-51 | 11-21 | **CI**(44894352697) | CI가 변경 세트를 처음 실제로 실행하는 단계에서 실패: `--method=execute-change-set requires exactly one stack`. 바뀐 스택이 Api·Web 둘이었음. 변경 세트는 실행되지 않아 운영은 그대로 | 워크플로가 바뀐 스택 목록 전체를 한 번의 `cdk deploy`에 넘김. 지금까지 모든 배포를 로컬에서 먼저 해서 CI의 배포 단계가 한 번도 돌지 않았음(docs/10 "확인하지 못한 것") | 스택마다 하나씩 `cdk list` 순서로 실행 | 다음 CI 실행에서 두 스택 배포 확인 | (이 커밋) |
+| DF-51 | 11-21 | **CI**(44894352697) | CI가 변경 세트를 처음 실제로 실행하는 단계에서 실패: `--method=execute-change-set requires exactly one stack`. 바뀐 스택이 Api·Web 둘이었음. 변경 세트는 실행되지 않아 운영은 그대로 | 워크플로가 바뀐 스택 목록 전체를 한 번의 `cdk deploy`에 넘김. 지금까지 모든 배포를 로컬에서 먼저 해서 CI의 배포 단계가 한 번도 돌지 않았음(docs/10 "확인하지 못한 것") | 스택마다 하나씩 `cdk list` 순서로 실행 | CI 44896046840에서 Api·Web 차례로 배포 성공(CI의 첫 실제 배포), 이어서 smoke 4종 통과 | `32b2f5a` |
+| DF-52 | 11-21 | **CI**(44899352047) | E2E가 전체 시간 제한 20분에 걸려 끊김(199 통과, 46 실행 못 함, 실패한 테스트 없음). 같은 E2E가 직전 두 실행에서는 15.5분·14.5분 | 용어 14개로 늘어난 뒤 CI(workers 2) 평소 시간이 14~16분이 되어 `globalTimeout` 20분과 여유가 5분뿐. 이 러너는 장면 겹침 테스트가 개당 최대 1분으로 느렸음 | CI에서만 `globalTimeout` 35분(job 제한 60분 안), 로컬은 20분 그대로 | 다음 CI 실행의 E2E 시간 기록(docs/10 4절) | `c645a13` |
 
 ## 3. 절차 결함(작업 규칙 위반)
 
@@ -84,7 +85,7 @@
   - API 요청 제한이 스테이지 하나(초당 10·버스트 20)를 모두가 나눠 써서, 한 사용자가 반복 호출하면 다른 사용자도 429를 받을 수 있다(사용자·IP별 제한 없음). 기록 저장이 실패해도 재생은 정상(NFR-02).
   - 자가 가입 + Cognito 기본 메일(계정 하루 50통): 가입·코드 재전송을 반복하면 그날 인증 메일이 바닥나 정상 가입·재설정이 막힐 수 있다(CAPTCHA·위협 방어 없음).
   - 가입 화면은 이미 가입된 이메일임을 알려 준다(로그인·재설정은 노출 방지, docs/03 한계).
-  - Dependabot `aws-cdk-lib` 안 `minimatch`(중간): 이제 `aws-cdk-lib@2.278.0`으로 고칠 수 있다(배포 도구 쪽만).
+  - Dependabot `aws-cdk-lib` 안 `minimatch`(중간): `aws-cdk-lib@2.278.0`(minimatch 11.0.9)으로 올려 해결(CH-51, `70565ee`).
 
 - gitleaks(v8.30.1)로 커밋 기록 전체(당시 58개)를 검사: 키·토큰 0건, 계정 ID 0건. 커밋 작성자 메일이 공개 저장소에 노출된 것을 보고했고, 사용자가 noreply 주소로 바꿨다(이미 올라간 커밋의 메일은 남음).
-- Dependabot: `aws-cdk-lib` 안의 `minimatch` 서비스 거부 취약점(중간). 배포 도구에만 있어 화면·Lambda와 무관하며, `aws-cdk-lib` 새 버전이 나오면 올리기로 함(CLAUDE.md 남은 일).
+- Dependabot: `aws-cdk-lib` 안의 `minimatch` 서비스 거부 취약점(중간). 배포 도구에만 있어 화면·Lambda와 무관했고, 11-21 `aws-cdk-lib@2.278.0`으로 올려 해결했다(CH-51, `npm audit` 0건).
