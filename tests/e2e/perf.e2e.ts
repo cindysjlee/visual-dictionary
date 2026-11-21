@@ -49,8 +49,8 @@ function judge(name: string, { lcp, cls }: { lcp: number; cls: number }) {
   expect(cls).toBeLessThanOrEqual(CLS);
 }
 
-test("랜딩 첫 화면: 단계 장부까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {
-  judge("랜딩", await measure(page, "/", async (p) => void (await expect(p.locator(".ledger-row").first()).toBeVisible())));
+test("랜딩 첫 화면: 체험 창까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {
+  judge("랜딩", await measure(page, "/", async (p) => void (await expect(p.locator(".trick-button")).toBeVisible())));
 });
 
 test("목록 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {

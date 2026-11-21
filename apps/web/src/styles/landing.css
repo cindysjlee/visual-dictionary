@@ -1,15 +1,16 @@
-/* 랜딩(/, /about): Y2K 크롬 + 리퀴드 글래스 + 스크롤 3D. 색·크기·간격·동작은 tokens.css의 변수만 쓴다(docs/05 "랜딩").
-   유리(.liquid)는 누르거나 읽는 컨트롤(검색·캡션·스위치)에만, 유리 위 유리는 쓰지 않는다. */
+/* 랜딩(/, /about): 클릭재킹 "직접 해 보기" 체험 하나. Y2K 크롬 + 리퀴드 글래스, 배경은 페이지의 색 번짐만.
+   색·크기·간격·동작은 tokens.css의 변수만 쓴다(docs/05 "랜딩"). 장식 효과(테두리 빛·글리치·빛남)만 CSS 애니메이션, 나머지 움직임은 Motion */
 
 .landing {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-9);
+  gap: var(--sp-7);
+  padding: var(--sp-6) 0 var(--sp-5);
 }
 
-/* 화면 폭을 꽉 채우는 장면(100vw)이 스크롤 막대 자리만큼 넘치는 것을 자른다. 랜딩 안에서 자르면 장면이 본문 폭으로 잘리므로 body에서(sticky는 그대로) */
-body:has(.landing) {
-  overflow-x: clip;
+/* 개발 전용 움직임 캡처용(?freeze, LandingPage) */
+.freeze-backdrop .blob {
+  animation-play-state: paused;
 }
 
 .liquid-defs {
@@ -18,13 +19,13 @@ body:has(.landing) {
   height: 0;
 }
 
-/* ---------- 이름표(짧은 제목): 홀로그램 테두리 알약 ---------- */
+/* ---------- 이름표·캡션 ---------- */
 .name-tag {
-  justify-self: start;
-  align-self: start;
   display: inline-flex;
   align-items: baseline;
   gap: var(--sp-2);
+  width: fit-content;
+  margin: 0;
   padding: 6px 16px;
   border: 1.5px solid transparent;
   border-radius: var(--r-pill);
@@ -34,65 +35,25 @@ body:has(.landing) {
   color: var(--text);
   font-size: var(--fs-sm);
   font-weight: 800;
-  letter-spacing: -0.01em;
-  width: fit-content;
 }
 
 .name-tag-lg {
-  font-size: var(--fs-md);
   padding: 8px 18px;
+  font-size: var(--fs-md);
 }
 
 .landing-note {
   max-width: 44ch;
   color: var(--text-sub);
-  font-size: var(--fs-base);
+  font-size: var(--fs-sm);
   line-height: var(--lh-snug);
 }
 
-/* ---------- 리퀴드 글래스: 뒤가 휘어 보이는 유리 + 마우스를 따라오는 빛 ---------- */
-.liquid {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: var(--r-lg);
-  background: var(--liquid-bg);
-  border: 1px solid var(--liquid-border);
-  box-shadow:
-    inset 0 1px 0 var(--chrome-shine),
-    inset 0 -12px 24px -16px var(--chrome-shade),
-    0 22px 44px -22px var(--raised-shadow);
-  backdrop-filter: blur(18px) saturate(170%);
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
-}
-
-/* 굴절 필터는 Chromium만(LandingPage가 판별해 html에 class). 나머지 브라우저는 위의 일반 blur */
-.has-refraction .liquid {
-  backdrop-filter: url(#liquid-refract) blur(4px) saturate(180%);
-}
-
-.liquid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(260px circle at var(--mx, 24%) var(--my, 0%), var(--liquid-glint), transparent 62%);
-  transition: background-position var(--dur-quick) var(--ease-out);
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .liquid {
-    background: var(--glass-fallback);
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .liquid,
-  .has-refraction .liquid {
-    background: var(--surface);
-    backdrop-filter: none;
-  }
+.chrome-text {
+  background: var(--chrome-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* ---------- 볼록한 크롬 버튼 ---------- */
@@ -134,7 +95,6 @@ body:has(.landing) {
   font-size: var(--fs-base);
 }
 
-/* 덜 중요한 동작: 크롬 대신 홀로그램 테두리 */
 .btn-chrome.is-quiet {
   border: 1.5px solid transparent;
   background:
@@ -195,851 +155,40 @@ body:has(.landing) {
   transform: translateX(26px);
 }
 
-/* ---------- 고정 스크롤 장면 ---------- */
-/* 상단바(유리)는 장면 위에 뜬다: 장면이 화면 맨 위부터 깔리도록 상단바 높이만큼 끌어올린다 */
-body:has(.landing) .topbar {
-  position: relative;
-  z-index: 20;
-}
-
-.story {
-  position: relative;
-  /* 화면 폭 전체(본문 폭 밖까지), 화면 맨 위부터(.page 위 여백 22px + 상단바 62px + 간격 18px) */
-  margin-inline: calc(50% - 50vw);
-  margin-top: -102px;
-}
-
-.story.is-scroll {
-  height: 420vh;
-}
-
-.story-stage {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
-  overflow: hidden;
-}
-
-.story-poster,
-.story-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.story-poster {
-  object-fit: cover;
-  transition: opacity var(--dur-story) var(--ease-out);
-}
-
-.story.is-ready .story-poster {
-  opacity: 0;
-}
-
-.story-canvas {
-  opacity: 0;
-  transition: opacity var(--dur-story) var(--ease-out);
-}
-
-.story.is-ready .story-canvas {
-  opacity: 1;
-}
-
-/* 머리 글: 스크롤하면 사라진다(--p는 LandingStory가 진행도로 넣는다) */
-.story-hud {
-  position: absolute;
-  left: max(var(--gutter), calc(50vw - 580px));
-  top: 16vh;
+.defense-switch-label {
   display: grid;
-  gap: var(--sp-4);
-  width: min(30rem, calc(100vw - 2 * var(--gutter)));
-  opacity: calc(1 - var(--p, 0) * 7);
-  translate: 0 calc(var(--p, 0) * -80px);
+  text-align: left;
 }
 
-.story[data-stage]:not([data-stage="0"]) .story-hud {
-  visibility: hidden;
-}
-
-
-
-.hero-search {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  height: 60px;
-  padding: 0 6px 0 var(--sp-4);
-  border-radius: var(--r-pill);
+.defense-switch-hint {
   color: var(--text-sub);
-}
-
-.hero-search:focus-within {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.hero-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-base);
-}
-
-.hero-search input::placeholder {
-  color: var(--text-sub);
-}
-
-.scroll-cue {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
   font-size: var(--fs-xs);
-  color: var(--text-sub);
+  font-weight: 500;
 }
 
-.scroll-cue::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--attack);
-  animation: cue-drop 1.8s var(--ease-in-out) infinite;
-}
-
-@keyframes cue-drop {
-  0%,
-  100% {
-    transform: translateY(-3px);
-    opacity: 0.4;
-  }
-  50% {
-    transform: translateY(4px);
-    opacity: 1;
-  }
-}
-
-/* 단계 캡션과 스위치: 장면 아래쪽 */
-.story-controls {
-  position: absolute;
-  left: max(var(--gutter), calc(50vw - 580px));
-  right: max(var(--gutter), calc(50vw - 580px));
-  bottom: 7vh;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--sp-4);
-}
-
-.story-caption {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px var(--sp-3);
-  max-width: 36rem;
-  padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--sp-3);
-}
-
-.story-step {
-  grid-row: span 2;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
-  box-shadow: inset 0 1px 0 var(--chrome-shine), inset 0 -3px 6px var(--chrome-shade);
-  font-weight: 700;
-}
-
-.story-title {
-  font-weight: 800;
-}
-
-.story-line {
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-}
-
-.story-controls .defense-switch {
-  padding: 6px var(--sp-4) 6px 6px;
-  border-radius: var(--r-pill);
-  background: var(--liquid-bg);
-  border: 1px solid var(--liquid-border);
-  box-shadow:
-    inset 0 1px 0 var(--chrome-shine),
-    0 18px 36px -20px var(--raised-shadow);
-  backdrop-filter: blur(18px) saturate(170%);
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
-}
-
-/* 403 도장: 방어가 켜진 채 검문소에 닿으면 찍힌다 */
-.story-stamp,
-.story-pass {
-  position: absolute;
-  top: 30%;
-  left: 60%;
-  padding: 10px 24px;
-  border-radius: var(--r-md);
-  font-size: var(--fs-xl);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.story-stamp {
-  background: var(--defense);
-  color: var(--on-color);
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 6px var(--defense),
-    0 24px 40px -18px var(--raised-shadow);
-}
-
-.story-pass {
-  background: var(--attack-solid);
-  color: var(--on-color);
-  font-size: var(--fs-lg);
-  box-shadow: 0 24px 40px -18px var(--raised-shadow);
-}
-
-/* ---------- 반짝이 별(장식) ---------- */
-.sparkles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.sparkle {
-  position: absolute;
-  fill: var(--sparkle);
-  filter: drop-shadow(0 0 6px var(--sparkle));
-  animation: twinkle 3.6s var(--ease-in-out) infinite;
-}
-
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: scale(0.55) rotate(0deg);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1) rotate(45deg);
-  }
-}
-
-/* ---------- 크롬 글자 용어 이름 ---------- */
-.names {
-  display: grid;
-  gap: var(--sp-4);
-}
-
-.names-row {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 0.45em;
-  font-family: var(--font-num);
-  font-size: clamp(2.5rem, 1.4rem + 4.6vw, 6.5rem);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-}
-
-.chrome-word {
-  position: relative;
-  display: inline-block;
-  padding: 0.04em 0.02em 0.1em;
-  background: var(--chrome-text);
-  background-size: 100% 120%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-decoration: none;
-  filter: drop-shadow(0 1px 0 var(--chrome-edge));
-}
-
-/* 누를 수 있다는 표시: 홀로그램 밑줄이 펼쳐진다 */
-.chrome-word::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 0.06em;
-  border-radius: var(--r-pill);
-  background: var(--holo);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--dur-enter) var(--ease-out);
-}
-
-.chrome-word:hover::after,
-.chrome-word:focus-visible::after {
-  transform: scaleX(1);
-}
-
-/* 크롬 광택이 스크롤에 따라 위아래로 흐른다(장식, 지원 브라우저만) */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .chrome-word {
-      animation: chrome-sheen linear both;
-      animation-timeline: view();
-    }
-  }
-}
-
-@keyframes chrome-sheen {
-  from {
-    background-position: 0 0%;
-  }
-  to {
-    background-position: 0 100%;
-  }
-}
-
-/* ---------- 단계 장부(미니 장면) ---------- */
-.ledger {
-  --row-h: 52px;
-  padding: var(--sp-5) var(--sp-6);
-  border-radius: var(--r-xl);
-  border: 1.5px solid transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    var(--holo) border-box;
-  box-shadow: 0 28px 56px -32px var(--raised-shadow);
-}
-
-.ledger.is-placeholder {
-  min-height: calc(64px + 6 * var(--row-h) + 120px);
-}
-
-.ledger-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-3) var(--sp-5);
-}
-
-.ledger-term {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-  margin-right: auto;
-}
-
-.ledger-term h2 {
-  font-family: var(--font-num);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.ledger-en {
-  font-family: var(--font-num);
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-}
-
-.ledger-steps {
-  list-style: none;
-  margin: var(--sp-5) 0 0;
-  padding: 0;
-}
-
-.ledger-row {
-  /* 행마다 같은 열 너비(라벨 열이 줄마다 어긋나지 않게) */
-  display: grid;
-  grid-template-columns: 40px 2.5ch 12em minmax(0, 1fr) 11em;
-  align-items: center;
-  column-gap: var(--sp-4);
-  min-height: var(--row-h);
-  padding-right: var(--sp-3);
-  border-radius: var(--r-md);
-  transition: background var(--dur-quick) var(--ease-out);
-}
-
-.ledger-rail {
-  position: relative;
-  align-self: stretch;
-  display: grid;
-  place-items: center;
-}
-
-/* 레일: 행마다 세로선 한 토막. 첫 행은 아래 절반, 마지막 행·지금 행은 위 절반만 */
-.ledger-rail::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: var(--line-strong);
-}
-
-.ledger-row:first-child .ledger-rail::before {
-  top: 50%;
-}
-
-.ledger-row:last-child .ledger-rail::before,
-.ledger-row.is-current .ledger-rail::before {
-  bottom: 50%;
-}
-
-.ledger-row.is-current:not(:last-child) .ledger-rail::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: var(--line-strong);
-}
-
-.ledger-row.is-danger:is(.is-passed, .is-current) .ledger-rail::before {
-  background: var(--attack);
-}
-
-.ledger-node {
-  position: relative;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--neutral);
-}
-
-.ledger-row.is-danger:is(.is-passed, .is-current) .ledger-node {
-  background: var(--attack);
-  border-color: var(--attack);
-}
-
-.ledger-row.is-skipped .ledger-node {
-  border-style: dashed;
-}
-
-.packet {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 4px var(--surface),
-    0 8px 18px -6px var(--raised-shadow);
-}
-
-.packet.tone-attack {
-  background: var(--attack);
-}
-
-.packet.tone-neutral {
-  background: var(--text);
-}
-
-.packet.tone-defense {
-  background: var(--defense);
-}
-
-.ledger-no {
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-  font-variant-numeric: tabular-nums;
-}
-
-.ledger-title {
-  font-weight: 700;
-  color: var(--text);
-}
-
-.ledger-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-xs);
-  color: var(--text-sub);
-}
-
-.ledger-row.is-pending .ledger-title,
-.ledger-row.is-skipped .ledger-title {
-  color: var(--text-muted);
-}
-
-.ledger-row.is-skipped .ledger-title {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-
-.ledger-row.is-current {
-  background: var(--surface-raised);
-}
-
-.ledger-steps.mode-attack .ledger-row.is-current.is-danger:last-child {
-  background: var(--attack-soft);
-}
-
-.ledger-tag {
-  justify-self: end;
-  display: inline-flex;
-}
-
-.tag-danger {
-  padding: 2px 10px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-pill);
-  color: var(--attack-text);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-
-.tag-skip {
-  font-size: var(--fs-xs);
-  color: var(--text-sub);
-}
-
-.stamp {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: var(--r-sm);
-  background: var(--defense);
-  color: var(--on-color);
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  white-space: nowrap;
-  box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 4px var(--defense);
-}
-
-.ledger-foot {
-  display: grid;
-  gap: var(--sp-2);
-  margin-top: var(--sp-4);
-  padding-top: var(--sp-4);
-  border-top: 1px solid var(--line);
-}
-
-.ledger-caption {
-  display: flex;
-  gap: var(--sp-3);
-  min-height: calc(2 * var(--lh-body) * 1em);
-  max-width: 80ch;
-  line-height: var(--lh-body);
-}
-
-.ledger-caption-no {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-pill);
-  background: var(--cta);
-  color: var(--cta-text);
-  font-size: var(--fs-xs);
-}
-
-.ledger-note {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-4);
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-}
-
-/* ---------- 단계 막대 시트 ---------- */
-.sheet {
-  display: grid;
-  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-  gap: var(--sp-7);
-}
-
-.sheet-intro {
-  position: sticky;
-  top: var(--sp-6);
-  align-self: start;
-  display: grid;
-  gap: var(--sp-4);
-}
-
-.sheet-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--sp-2);
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-}
-
-.sheet-legend li {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
-.sheet-groups {
+/* ---------- 첫 화면 ---------- */
+.landing-hero {
   display: grid;
   gap: var(--sp-6);
 }
 
-.sheet-group h3 {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-2);
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--line-strong);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-sub);
-}
-
-.sheet-count {
-  font-weight: 500;
-}
-
-.sheet-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sheet-row {
-  /* 단계 막대는 고정 폭 칸에 왼쪽 정렬: 줄마다 같은 단계 번호가 위아래로 맞는다 */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 15em 5.5em;
-  align-items: center;
-  gap: var(--sp-5);
-  min-height: 56px;
-  padding: 0 var(--sp-3);
-  border-bottom: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  color: var(--text);
-  text-decoration: none;
-  transition: background var(--dur-quick) var(--ease-out);
-}
-
-.sheet-row:hover {
-  background: var(--surface);
-}
-
-.sheet-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-1) var(--sp-2);
-  font-weight: 700;
-}
-
-.sheet-en {
-  font-family: var(--font-num);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-sub);
-}
-
-.sheet-meta {
-  font-size: var(--fs-xs);
-  color: var(--text-sub);
-  text-align: right;
-}
-
-.step-bar {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-/* 단계 칸: 색만이 아니라 모양으로도 구분(차단 = 더 큰 칸, 막혀서 실행 안 됨 = 점선) */
-.step-cell {
-  flex: none;
-  display: inline-block;
-  width: 18px;
-  height: 12px;
-  border-radius: 3px;
-  border: 1.5px solid var(--neutral);
-  background: transparent;
-}
-
-.step-cell.is-danger {
-  background: var(--attack);
-  border-color: var(--attack);
-}
-
-.step-cell.is-block {
-  height: 20px;
-  background: var(--defense);
-  border-color: var(--defense);
-}
-
-.step-cell.is-cut {
-  border-color: var(--attack);
-  border-style: dashed;
-}
-
-.step-cell.is-after {
-  border-style: dashed;
-}
-
-/* ---------- 마무리 ---------- */
-.closing {
-  display: grid;
-  justify-items: start;
-  gap: var(--sp-4);
-  padding: var(--sp-7) 0 var(--sp-5);
-  border-top: 1px solid var(--line-strong);
-}
-
-.closing-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-}
-
-.landing-error {
-  padding: var(--sp-5);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-/* 개발 서버 정지 이미지 촬영(/?poster): 캔버스만 화면 가득 */
-.poster-capture {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-}
-
-/* ---------- 동작 줄이기: 장식 움직임을 멈춘다(3D·고정 스크롤은 LandingPage가 아예 받지 않는다) ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .sparkle,
-  .scroll-cue::before {
-    animation: none;
-  }
-}
-
-/* ---------- 좁은 화면 ---------- */
-@media (max-width: 980px) {
-  .sheet {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--sp-5);
-  }
-
-  .sheet-intro {
-    position: static;
-  }
-}
-
-@media (max-width: 720px) {
-  .landing {
-    gap: var(--sp-8);
-  }
-
-  .story-hud {
-    top: 10vh;
-  }
-
-
-  .story-controls {
-    bottom: 4vh;
-  }
-
-  .story-stamp,
-  .story-pass {
-    left: 50%;
-    top: 24%;
-    translate: -50% 0;
-    font-size: var(--fs-lg);
-  }
-
-  .ledger {
-    --row-h: 48px;
-    padding: var(--sp-4);
-  }
-
-  .ledger-row {
-    grid-template-columns: 28px 2ch minmax(0, 1fr) auto;
-    column-gap: var(--sp-3);
-    padding-right: var(--sp-2);
-  }
-
-  .ledger-label {
-    display: none;
-  }
-
-  .sheet-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: var(--sp-2);
-    padding: var(--sp-3);
-  }
-
-  .sheet-meta {
-    display: none;
-  }
-}
-
-/* ---------- 히어로 C: 직접 해 보기 ---------- */
-.hero-c .story-stage {
-  position: relative;
-  min-height: 100svh;
-  height: auto;
-  display: grid;
-  align-content: center;
-  padding: calc(102px + var(--sp-6)) var(--gutter) var(--sp-7);
-}
-
-/* C의 머리 글: 상단바 아래 한 줄(가운데 팝업을 가리지 않게) */
-.hero-c .story-hud {
-  position: absolute;
-  top: calc(102px + var(--sp-4));
-  left: max(var(--gutter), calc(50vw - 580px));
-  right: max(var(--gutter), calc(50vw - 580px));
-  width: auto;
+.landing-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3) var(--sp-5);
-  opacity: 1;
-  translate: none;
 }
 
-.hero-c .story-hud .landing-note {
-  max-width: 34ch;
-  font-size: var(--fs-sm);
-}
-
-.hero-c .hero-search {
-  width: min(22rem, 100%);
-  height: 52px;
-  margin-left: auto;
-}
-
-/* 층이 3D로 벌어지는 무대 */
+/* ---------- 체험: 무대와 옆 패널 ---------- */
 .trick {
-  position: relative;
-  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 30rem) minmax(0, 19rem);
+  grid-template-columns: minmax(0, 32rem) minmax(0, 19rem);
   grid-template-rows: auto auto;
   justify-content: center;
   align-items: center;
-  gap: var(--sp-3) var(--sp-7);
-  margin-top: var(--sp-8);
+  gap: var(--sp-3) var(--sp-8);
 }
 
-/* 이름표는 팝업 바로 위 모서리(벌어진 층보다 위) */
 .trick-tag {
   grid-column: 1;
   grid-row: 1;
@@ -1047,74 +196,157 @@ body:has(.landing) .topbar {
   z-index: 2;
 }
 
-.trick-reset {
-  justify-self: start;
-}
-
-/* 벌어진 뒤 팝업 버튼은 누를 수 없다(다시 해 보기로 접는다) */
-.trick-button:disabled {
-  opacity: 1;
-  cursor: default;
-}
-
-.trick-stack {
+.trick-scene {
   grid-column: 1;
   grid-row: 2;
+  perspective: 1300px;
+  padding-top: var(--sp-6); /* 은행 층이 앞·위로 나오며 이름표가 잘리지 않을 자리 */
+  margin-bottom: var(--sp-8); /* 층이 아래로 밀려나며 벌어질 자리 */
 }
 
+/* 위쪽 정렬로 고정: 버튼이 나타나도 패널이 다시 가운데 정렬되며 튀지 않게 */
 .trick-side {
   grid-column: 2;
   grid-row: 2;
+  align-self: start;
+  margin-top: var(--sp-7);
+  display: grid;
+  align-content: start;
+  gap: var(--sp-4);
 }
 
-.trick-stack {
+.trick-placeholder {
+  min-height: 420px;
+}
+
+/* 창(기울기 층 → 단계 층). 두 층 모두 3D를 이어받는다 */
+.trick-tilt,
+.trick-stage {
   position: relative;
-  aspect-ratio: 4 / 3;
-  perspective: 1200px;
   transform-style: preserve-3d;
+}
+
+.trick-stage {
+  aspect-ratio: 4 / 3;
+}
+
+/* 마우스 기울기(장식): ClickjackTrick이 --rx·--ry를 넣는다 */
+.trick-tilt {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.35s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trick-tilt {
+    transform: none;
+    transition: none;
+  }
 }
 
 .trick-layer {
   position: absolute;
   inset: 0;
   border-radius: var(--r-xl);
-  backface-visibility: hidden;
 }
 
+/* 아래층: 보이던 경품 페이지(Y2K 운영체제 창) */
 .trick-popup {
   display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-7) var(--sp-6) var(--sp-6);
-  text-align: center;
-  border: 1.5px solid transparent;
-  background:
-    linear-gradient(var(--liquid-bg), var(--liquid-bg)) padding-box,
-    var(--holo) border-box;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border: 1.5px solid var(--chrome-edge);
+  background: var(--liquid-bg);
+  box-shadow:
+    inset 0 1px 0 var(--chrome-shine),
+    0 34px 60px -30px var(--raised-shadow);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
 }
 
-.trick-bar {
+.has-refraction .trick-popup {
+  backdrop-filter: url(#liquid-refract) blur(4px) saturate(180%);
+}
+
+/* 크롬에 비친 빛: 마우스를 따라온다(--lx·--ly는 기울기 층이 넣는다) */
+.trick-popup::before {
+  content: "";
   position: absolute;
-  top: var(--sp-4);
-  left: var(--sp-5);
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(300px circle at var(--lx, 30%) var(--ly, 0%), var(--liquid-glint), transparent 60%);
+}
+
+/* 등장할 때 크롬 테두리에 빛이 한 번 훑고 지나간다(테두리 띠에만) */
+.trick-popup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, var(--chrome-shine) 50%, transparent 65%) 0 0 / 260% 100% no-repeat;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: border-sweep 0.9s var(--ease-out) 0.45s both;
+}
+
+@keyframes border-sweep {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+
+.trick-titlebar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px var(--sp-4);
+  background: var(--chrome-bar);
+  border-bottom: 1px solid var(--chrome-edge);
+  color: var(--scene-ink);
+}
+
+.trick-dots {
   display: flex;
   gap: 6px;
 }
 
-.trick-bar span {
+.trick-dots span {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
+  border: 1px solid var(--chrome-edge);
+  background: var(--surface);
   box-shadow: inset 0 1px 0 var(--chrome-shine);
 }
 
-.chrome-text {
-  background: var(--chrome-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.trick-wintitle {
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.trick-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-6) calc(var(--sp-6) + 70px);
+  text-align: center;
 }
 
 .trick-title {
@@ -1127,11 +359,53 @@ body:has(.landing) .topbar {
   color: var(--text-sub);
 }
 
-.trick-button {
-  margin-top: var(--sp-4);
+/* 미끼 [경품 받기]와 은행 [송금]은 층의 같은 자리(아래 가운데) */
+.trick-button,
+.trick-send {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: var(--sp-6);
+  translate: -50% 0;
 }
 
-/* 위층: 가짜 은행 송금 화면(불투명 판, 유리 위 유리 금지) */
+/* 벌어진 뒤 팝업 버튼은 잠긴다([다시 해 보기]로 접는다) */
+.trick-button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+/* 창 모양 후보 2: 홀로그램 테두리 유리 */
+.win-holo .trick-popup {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--liquid-bg), var(--liquid-bg)) padding-box,
+    var(--holo) border-box;
+}
+
+.win-holo .trick-titlebar {
+  background: transparent;
+  border-bottom-color: var(--line-strong);
+  color: var(--text);
+}
+
+/* 창 모양 후보 3: 아쿠아 젤 제목 막대(방어 파랑, 위쪽 광택) */
+.win-aqua .trick-popup {
+  border-radius: 26px;
+}
+
+.win-aqua .trick-titlebar {
+  background:
+    linear-gradient(180deg, var(--chrome-shine) 0%, transparent 55%),
+    var(--defense);
+  border-bottom: 0;
+}
+
+.win-aqua .trick-wintitle {
+  color: var(--on-color);
+}
+
+/* 위층: 숨어 있던 가짜 은행 송금 화면(불투명 판). 방어면 표시 거부된 빈 칸 */
 .trick-bank {
   display: grid;
   align-content: center;
@@ -1148,8 +422,8 @@ body:has(.landing) .topbar {
   padding: 4px 12px;
   border-radius: var(--r-pill);
   background: var(--surface);
-  font-size: var(--fs-xs);
   color: var(--text-sub);
+  font-size: var(--fs-xs);
 }
 
 .trick-form {
@@ -1166,14 +440,15 @@ body:has(.landing) .topbar {
 .trick-form dd {
   margin: 0;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 은행의 [송금] 버튼: 팝업의 [경품 받기]와 같은 자리 */
+.trick-balance.is-falling {
+  color: var(--attack-text);
+}
+
+/* 은행의 [송금]: 팝업의 [경품 받기]와 같은 자리 */
 .trick-send {
-  position: absolute;
-  left: 50%;
-  bottom: var(--sp-6);
-  translate: -50% 0;
   min-width: 9rem;
   padding: 14px var(--sp-6);
   border-radius: var(--r-pill);
@@ -1183,67 +458,188 @@ body:has(.landing) .topbar {
   text-align: center;
 }
 
-/* 방금 누른 자리 표시 */
-.trick-hit {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--sp-6) - 10px);
-  width: 72px;
-  height: 72px;
-  margin-left: -36px;
-  border-radius: 50%;
-  border: 3px solid var(--attack);
-  box-shadow: 0 0 0 6px var(--attack-soft);
+/* 누른 위치가 [송금]에 겹쳐 빛난다(두 번) */
+.trick-send.is-hit {
+  animation: hit-glow 0.7s var(--ease-out) 2;
 }
 
-/* 방어: 은행 화면이 표시되지 않은 빈 칸 */
+@keyframes hit-glow {
+  0% {
+    box-shadow: 0 0 0 0 var(--attack-soft);
+  }
+  60% {
+    box-shadow:
+      0 0 0 10px var(--attack-soft),
+      0 0 28px 6px var(--attack);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* 빠져나가는 동전 */
+.coins {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  pointer-events: none;
+}
+
+.coins i {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--chrome-shine), var(--scene-gold) 55%);
+  border: 1px solid var(--chrome-edge);
+}
+
 .trick-bank.is-empty {
-  /* 빈 칸이지만 뒤 팝업 글자와 겹쳐 읽히지 않도록 반투명 판(유리 아님, 블러 없음) */
+  /* 빈 칸이지만 뒤 팝업 글자와 겹쳐 읽히지 않도록 반투명 판(유리 아님) */
+  place-content: center;
+  text-align: center;
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   border: 2px dashed var(--defense);
   box-shadow: none;
-  place-content: center;
-  text-align: center;
 }
 
 .trick-refused {
   display: grid;
+  justify-items: center;
   gap: var(--sp-2);
-  color: var(--text-sub);
+}
+
+.trick-shield {
+  width: 56px;
+  height: 56px;
+  fill: var(--defense);
+  filter: drop-shadow(0 6px 12px var(--raised-shadow));
+}
+
+.trick-refused-title {
+  font-weight: 800;
+  color: var(--text);
 }
 
 .trick-refused-label {
-  justify-self: center;
-  padding: 6px 14px;
+  padding: 4px 12px;
   border-radius: var(--r-md);
   background: var(--defense);
   color: var(--on-color);
+  font-size: var(--fs-sm);
   font-weight: 800;
 }
 
-.trick-side,
-.lab-side {
-  display: grid;
-  gap: var(--sp-4);
-  align-content: start;
+/* 층 이름표 */
+/* 층 이름표: 창 안쪽 모서리(팝업은 넘침을 잘라 낸다) */
+.layer-tag {
+  position: absolute;
+  left: var(--sp-3);
+  bottom: var(--sp-3);
+  z-index: 4;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-/* 캡션은 읽는 글이라 유리가 아닌 판(움직이는 3D 위에 배경 흐림을 여러 겹 두면 프레임마다 다시 합성돼 느려진다) */
-.trick-caption,
-.lab-caption {
-  min-height: calc(4 * var(--lh-snug) * 1em);
-  padding: var(--sp-4) var(--sp-5);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  border: 1px solid var(--line-strong);
-  line-height: var(--lh-snug);
+.layer-tag.is-hidden-layer {
+  top: var(--sp-3);
+  bottom: auto;
+  left: auto;
+  right: var(--sp-3);
+}
+
+/* 한 박자: 창이 잠깐 가라앉는 덮개(무대에 filter를 걸지 않기 위해 따로 둔다) */
+.trick-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: var(--r-xl);
+  background: var(--bg);
+  pointer-events: none;
+}
+
+/* 동작 줄이기: 두 층이 같은 자리에 겹쳐 있었다는 사실을 글로 */
+.layer-order {
+  margin-top: var(--sp-4);
   color: var(--text-sub);
   font-size: var(--fs-sm);
 }
 
+/* 파문: 누른 자리에서 */
+.trick-ripple {
+  position: absolute;
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  border: 2px solid var(--text);
+  pointer-events: none;
+}
+
+/* 드러날 때 색수차·글리치가 한 번 지나간다 */
+.trick-stage.is-glitching .trick-layer {
+  animation: glitch 0.3s steps(3) 1;
+}
+
+/* 색수차(분홍·하늘 어긋남) + 작은 흔들림. 내용을 가리지 않는다(motion reviewer: 잘라내기는 내용 삭제로 읽힘) */
+@keyframes glitch {
+  0% {
+    filter: drop-shadow(-6px 0 0 var(--glitch-a)) drop-shadow(6px 0 0 var(--glitch-b));
+    translate: -5px 0;
+  }
+  35% {
+    filter: drop-shadow(4px 0 0 var(--glitch-a)) drop-shadow(-4px 0 0 var(--glitch-b));
+    translate: 4px 1px;
+  }
+  70% {
+    filter: drop-shadow(-2px 0 0 var(--glitch-a)) drop-shadow(2px 0 0 var(--glitch-b));
+    translate: -1px 0;
+  }
+  100% {
+    filter: none;
+    translate: 0 0;
+  }
+}
+
+/* 방어: 진짜 경품 창에서만 작은 축하 조각 */
+.confetti {
+  position: absolute;
+  left: 50%;
+  top: 72%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--holo);
+}
+
+/* ---------- 옆 패널 ---------- */
+.trick-caption {
+  /* 기본 문구(두 줄) 높이로 고정: 결과 문구가 한 줄이어도 아래 링크가 올라가지 않게(min-height는 안쪽 여백 포함) */
+  min-height: calc(2 * var(--lh-snug) * var(--fs-sm) + 2 * var(--sp-4) + 2px);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  color: var(--text-sub);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
 .trick-outcome {
   display: block;
-  margin-bottom: var(--sp-1);
   font-size: var(--fs-base);
 }
 
@@ -1255,204 +651,88 @@ body:has(.landing) .topbar {
   color: var(--defense-text);
 }
 
+.trick-reset,
 .trick-more {
   justify-self: start;
+}
+
+.trick-more {
   font-weight: 700;
 }
 
-.defense-switch-label {
-  display: grid;
-  text-align: left;
-}
-
-.defense-switch-hint {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-sub);
-}
-
-/* ---------- C-2 CSRF 체험 ---------- */
-.lab {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 19rem);
-  grid-template-areas:
-    "head head"
-    "stage side";
-  gap: var(--sp-5) var(--sp-7);
-}
-
-.lab.is-placeholder {
-  min-height: 560px;
-}
-
-.lab-head {
-  grid-area: head;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-}
-
-.lab-title {
-  font-family: var(--font-num);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.lab-stage {
-  grid-area: stage;
-  position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: var(--r-xl);
-  border: 1.5px solid transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    var(--holo) border-box;
-}
-
-.lab-stage canvas {
-  display: block;
-}
-
-/* 끌기·화살표 키를 받는 투명 층(포커스 링은 무대 안쪽에) */
-.lab-drag {
-  position: absolute;
-  inset: 0;
-  cursor: grab;
-  touch-action: pan-y;
-  border-radius: inherit;
-}
-
-.lab-drag:active {
-  cursor: grabbing;
-}
-
-.lab-drag:focus-visible {
-  outline-offset: -4px;
-}
-
-.lab-stamp {
-  top: 18%;
-  left: auto;
-  right: 6%;
-  pointer-events: none;
-}
-
-.lab-side {
-  grid-area: side;
-}
-
-.lab-controls {
+/* ---------- 다음으로: 체험보다 눈에 띄지 않게 작게 ---------- */
+.landing-next {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-4);
-}
-
-/* 동작 줄이기·WebGL 없음: 앞뒤 면 카드 */
-.lab-fallback {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
+  justify-content: center;
   gap: var(--sp-3);
-  padding: var(--sp-6);
 }
 
-.lab-face {
-  width: min(34rem, 100%);
-  padding: var(--sp-5) var(--sp-6);
+.landing-error {
+  padding: var(--sp-5);
   border-radius: var(--r-lg);
-  background: var(--surface-raised);
-  border: 1.5px solid var(--attack);
+  background: var(--surface);
 }
 
-.lab-face.tone-defense {
-  border-color: var(--defense);
+@supports not (backdrop-filter: blur(1px)) {
+  .trick-popup {
+    background: var(--glass-fallback);
+  }
 }
 
-.lab-face-title {
-  font-size: var(--fs-lg);
-  font-weight: 800;
-  color: var(--attack-text);
+@media (prefers-reduced-transparency: reduce) {
+  .trick-popup,
+  .has-refraction .trick-popup {
+    background: var(--surface);
+    backdrop-filter: none;
+  }
 }
 
-.lab-face.tone-defense .lab-face-title {
-  color: var(--defense-text);
+/* 동작 줄이기: 장식 효과(테두리 빛·글리치·빛남)를 끈다. 층 전환은 Motion이 투명도만 쓴다 */
+@media (prefers-reduced-motion: reduce) {
+  .trick-popup::after,
+  .trick-stage.is-glitching .trick-layer,
+  .trick-send.is-hit {
+    animation: none;
+  }
+
+  /* 빛남 대신 고정 강조: 누른 자리가 [송금]이었다는 표시 */
+  .trick-send.is-hit {
+    box-shadow:
+      0 0 0 4px var(--surface-raised),
+      0 0 0 7px var(--attack);
+  }
 }
 
-.lab-face dl {
-  display: grid;
-  gap: var(--sp-1);
-  margin: var(--sp-3) 0 0;
-}
-
-.lab-face dl div {
-  display: grid;
-  grid-template-columns: 7em 1fr;
-}
-
-.lab-face dt {
-  color: var(--text-sub);
-}
-
-.lab-face dd {
-  margin: 0;
-  font-weight: 700;
-}
-
-.lab-face-button {
-  display: inline-block;
-  margin-top: var(--sp-4);
-  padding: 10px 20px;
-  border-radius: var(--r-pill);
-  background: var(--attack-solid);
-  color: var(--on-color);
-  font-weight: 800;
-}
-
-.lab-cookie {
-  font-size: var(--fs-sm);
-  color: var(--text-sub);
-}
-
-@media (max-width: 980px) {
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 900px) {
   .trick {
-    grid-template-columns: minmax(0, 30rem);
-    gap: var(--sp-3);
+    grid-template-columns: minmax(0, 32rem);
   }
 
   .trick-side {
     grid-column: 1;
     grid-row: 3;
-    margin-top: var(--sp-3);
-  }
-
-  .lab {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "head"
-      "stage"
-      "side";
+    margin-top: var(--sp-6);
+    align-self: auto;
   }
 }
 
-@media (max-width: 720px) {
-  .hero-c .story-stage {
-    padding-top: calc(102px + 9rem);
-  }
-
-  .hero-c .hero-search {
-    margin-left: 0;
-    width: 100%;
-  }
-
+@media (max-width: 520px) {
   .trick-title {
     font-size: var(--fs-xl);
   }
 
-  .trick-popup {
-    padding: var(--sp-6) var(--sp-4) var(--sp-5);
+  .trick-body {
+    padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + 64px);
+  }
+
+  .trick-bank {
+    padding: var(--sp-4);
+  }
+
+  .trick-button,
+  .trick-send {
+    bottom: var(--sp-4);
   }
 }
