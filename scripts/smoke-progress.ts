@@ -98,12 +98,14 @@ async function login(browser: Browser, email: string) {
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await page.locator(".topbar").getByText(email).waitFor({ timeout: 30_000 });
-  const token = await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((k) => k.startsWith("CognitoIdentityServiceProvider.") && k.endsWith(".accessToken"));
-    return key ? localStorage.getItem(key) : null;
-  });
-  if (!token) throw new Error("액세스 토큰을 찾지 못함");
-  return { context, page, token };
+  const [token, idToken] = await page.evaluate(() =>
+    [".accessToken", ".idToken"].map((suffix) => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith("CognitoIdentityServiceProvider.") && k.endsWith(suffix));
+      return key ? localStorage.getItem(key) : null;
+    }),
+  );
+  if (!token || !idToken) throw new Error("액세스·ID 토큰을 찾지 못함");
+  return { context, page, token, idToken };
 }
 
 let browser: Browser | undefined;
@@ -134,6 +136,10 @@ try {
     check((await api(path, { token: `${h}.${expired}.${sig}` })).status === 401, `${path} 만료 시각을 과거로 바꾼 토큰 → 401`);
   }
   check((await api("/api/activity/csrf", { method: "PUT" })).status === 401, "최근 본 용어 PUT 토큰 없음 → 401");
+  // ID 토큰은 거부(DF-50): JWT 인가는 통과하지만 핸들러가 token_use=access만 받는다. 탈퇴도 ID 토큰으로는 진행되지 않는다
+  for (const [route, call] of Object.entries(ROUTE_CALLS)) check((await call(a.idToken)).status === 401, `ID 토큰으로 ${route} → 401`);
+  const idWithdraw = await api("/api/account", { method: "DELETE", token: a.idToken });
+  check(idWithdraw.status === 401, `ID 토큰으로 ${WITHDRAW_ROUTE} → ${idWithdraw.status}(거부, 뒤의 A 확인들이 계정이 남았음을 보임)`);
 
   // 사용자 분리: 대상은 토큰의 sub로만 정한다
   check((await api("/api/progress/csrf", { method: "PUT", token: a.token, body: { read: true, source: "manual" } })).status === 200, "A가 csrf 읽음 저장 → 200");

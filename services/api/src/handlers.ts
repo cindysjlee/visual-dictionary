@@ -9,7 +9,7 @@ import { reauthFresh, withdraw } from "./account.ts";
 import { getActivity, putActivity } from "./activity.ts";
 import { cleanup } from "./cleanup.ts";
 import { deleteActivity, deleteRecords, dynamoActivityRepo, dynamoProgressRepo, markWithdrawn, scanOwnedItems, unmarkWithdrawn } from "./dynamo.ts";
-import { getProgress, putProgress, type ApiResult } from "./progress.ts";
+import { accessSubject, getProgress, putProgress, type ApiResult } from "./progress.ts";
 
 const env = (name: string) => process.env[name] ?? "";
 const TABLE = env("TABLE_NAME");
@@ -37,9 +37,10 @@ const bodyOf = (e: APIGatewayProxyEventV2WithJWTAuthorizer) => (e.body && e.isBa
 
 export async function progressHandler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyResultV2> {
   const route = event.routeKey;
-  const sub = String(event.requestContext.authorizer.jwt.claims.sub ?? "");
+  // 액세스 토큰만 받는다(ID 토큰 거부, DF-50)
+  const sub = accessSubject(event.requestContext.authorizer.jwt.claims);
   try {
-    if (!sub) return respond(route, { status: 401, body: { error: "no-subject" } });
+    if (!sub) return respond(route, { status: 401, body: { error: "access-token-required" } });
     const repo = dynamoProgressRepo(TABLE);
     if (route === "GET /api/progress") return respond(route, await getProgress(sub, repo));
     if (route === "PUT /api/progress/{termId}") return respond(route, await putProgress(sub, event.pathParameters?.termId, bodyOf(event), TERM_IDS, repo));
@@ -52,9 +53,10 @@ export async function progressHandler(event: APIGatewayProxyEventV2WithJWTAuthor
 
 export async function activityHandler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyResultV2> {
   const route = event.routeKey;
-  const sub = String(event.requestContext.authorizer.jwt.claims.sub ?? "");
+  // 액세스 토큰만 받는다(ID 토큰 거부, DF-50)
+  const sub = accessSubject(event.requestContext.authorizer.jwt.claims);
   try {
-    if (!sub) return respond(route, { status: 401, body: { error: "no-subject" } });
+    if (!sub) return respond(route, { status: 401, body: { error: "access-token-required" } });
     const repo = dynamoActivityRepo(ACTIVITY_TABLE, TABLE);
     if (route === "GET /api/activity") return respond(route, await getActivity(sub, repo));
     if (route === "PUT /api/activity/{termId}") return respond(route, await putActivity(sub, event.pathParameters?.termId, bodyOf(event), TERM_IDS, repo));
@@ -68,10 +70,11 @@ export async function activityHandler(event: APIGatewayProxyEventV2WithJWTAuthor
 export async function accountHandler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyResultV2> {
   const route = event.routeKey;
   const claims = event.requestContext.authorizer.jwt.claims;
-  const sub = String(claims.sub ?? "");
-  // 이메일 로그인 풀에서 Cognito 사용자 이름은 sub와 같다(액세스 토큰의 username)
-  const username = String(claims.username ?? sub);
-  if (!sub) return respond(route, { status: 401, body: { error: "no-subject" } });
+  // 액세스 토큰만 받는다(DF-50): ID 토큰에는 username이 없어 구글 사용자의 탈퇴가 잘못된 이름으로 진행될 수 있었다
+  const sub = accessSubject(claims);
+  if (!sub) return respond(route, { status: 401, body: { error: "access-token-required" } });
+  const username = typeof claims.username === "string" && claims.username ? claims.username : null;
+  if (!username) return respond(route, { status: 401, body: { error: "access-token-required" } });
   // 화면의 재확인만 믿지 않는다: API를 직접 불러도 최근 5분 안에 인증한 토큰이어야 한다
   if (!reauthFresh(claims.auth_time, Math.floor(Date.now() / 1000))) return respond(route, { status: 403, body: { error: "reauth-required" } });
   const result = await withdraw(sub, username, {

@@ -3,7 +3,7 @@ import { reauthFresh, withdraw, type CleanupJob, type WithdrawDeps } from "./acc
 import { getActivity, putActivity, RECENT_LIMIT, type ActivityRepo, type ViewRecord } from "./activity.ts";
 import { cleanup, deletable, UserStillExistsError } from "./cleanup.ts";
 import { MAX_ORPHANS_PER_RUN, sweepOrphans, type OwnedItem, type SweepDeps } from "./orphans.ts";
-import { getProgress, putProgress, type ProgressRecord, type ProgressRepo } from "./progress.ts";
+import { accessSubject, getProgress, putProgress, type ProgressRecord, type ProgressRepo } from "./progress.ts";
 
 const TERMS = new Set(["csrf", "xss", "tcp-handshake"]);
 const body = (read: boolean, source = "manual") => JSON.stringify({ read, source });
@@ -325,5 +325,15 @@ describe("최근 본 용어 API: 사용자는 토큰의 sub로만, 본 시각은
     const t = memoryTable();
     expect((await putActivity("A", termId, raw, TERMS, t.activity)).status).toBe(status);
     expect(t.viewCount("A") + t.viewCount("B")).toBe(0);
+  });
+});
+
+describe("토큰 종류: 액세스 토큰만(DF-50)", () => {
+  it("token_use가 access이고 sub가 있을 때만 사용자를 돌려준다", () => {
+    expect(accessSubject({ token_use: "access", sub: "u-1", username: "u-1" })).toBe("u-1");
+    expect(accessSubject({ token_use: "id", sub: "u-1", aud: "client" })).toBeNull(); // ID 토큰
+    expect(accessSubject({ sub: "u-1" })).toBeNull(); // 종류 없음
+    expect(accessSubject({ token_use: "access" })).toBeNull(); // sub 없음
+    expect(accessSubject({ token_use: "access", sub: 7 })).toBeNull(); // 문자열이 아님
   });
 });

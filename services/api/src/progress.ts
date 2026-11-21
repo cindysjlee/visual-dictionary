@@ -13,6 +13,15 @@ export interface ProgressRepo {
 
 export type ApiResult = { status: number; body?: unknown };
 
+/**
+ * 액세스 토큰일 때만 사용자(sub)를 돌려준다(DF-50). HTTP API JWT 인가는 aud(ID 토큰)와 client_id(액세스 토큰)를 모두 통과시키므로,
+ * 토큰 종류를 여기서 다시 본다. ID 토큰에는 username 클레임이 없어 탈퇴가 잘못된 사용자 이름으로 진행될 수 있었다
+ */
+export function accessSubject(claims: Record<string, unknown>): string | null {
+  const sub = typeof claims.sub === "string" ? claims.sub : "";
+  return claims.token_use === "access" && sub ? sub : null;
+}
+
 /** 본문 크기 상한(바이트): {"read":false,"source":"completed"}는 40바이트 남짓 */
 export const MAX_BODY_BYTES = 1024;
 /** 용어 ID 형식(content-schema와 같음): 소문자·숫자·하이픈, 64자 이하. "#"으로 시작하는 내부 항목(탈퇴 표시)과 겹칠 수 없다 */
