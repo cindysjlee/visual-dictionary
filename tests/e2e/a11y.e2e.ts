@@ -6,6 +6,7 @@ import { terms } from "./terms.ts";
 // 용어 상세는 @<id> 태그(npm run test:e2e -- --grep @csrf 로 그 용어 테스트만)
 const pages = [
   { path: "/", ready: ".ledger-row", tag: ["@landing"] as string[] },
+  { path: "/?hero=c", ready: ".trick-button", tag: ["@landing"] as string[] },
   { path: "/terms", ready: ".term-card", tag: ["@explore"] as string[] },
   ...terms.map((t) => ({ path: `/terms/${t.id}`, ready: ".play-btn", tag: [`@${t.id}`] })),
   ...["login", "signup", "confirm", "reset"].map((p) => ({ path: `/auth/${p}`, ready: ".auth-form", tag: ["@auth"] })),

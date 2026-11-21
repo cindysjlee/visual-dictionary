@@ -7,7 +7,7 @@ import { MeshTransmissionMaterial, RoundedBox } from "@react-three/drei";
 import { BoxGeometry, CanvasTexture, Color, ExtrudeGeometry, MathUtils, Mesh, MeshBasicMaterial, PMREMGenerator, SRGBColorSpace, Shape, type Group, type Texture } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-export type Hero = "a" | "b";
+export type Hero = "a" | "c";
 export type Quality = "high" | "low";
 export type SceneProps = {
   hero: Hero;
@@ -25,13 +25,13 @@ const GATE_X = 4.2;
 const smooth = (a: number, b: number, v: number) => MathUtils.smoothstep(v, a, b);
 const mix = (from: Pose, to: Pose, a: number): Pose => [MathUtils.lerp(from[0], to[0], a), MathUtils.lerp(from[1], to[1], a), MathUtils.lerp(from[2], to[2], a)];
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const token = (name: string, fallback: string) => {
+export const token = (name: string, fallback: string) => {
   const v = css(name);
   return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback;
 };
 
 /** 장면 바탕: 페이지 배경 빛(--bg, --blob-1~4)과 같은 그라데이션. 유리가 이 색을 굴절해 보인다(캔버스가 투명이면 유리가 검게 보인다) */
-function backdropTexture(): Texture {
+export function backdropTexture(): Texture {
   const c = document.createElement("canvas");
   c.width = 640;
   c.height = 400;
@@ -56,14 +56,14 @@ function backdropTexture(): Texture {
   return tex;
 }
 
-/** 히어로 구성: A는 크롬 물체 중심, B는 큰 유리 브라우저 중심(물체가 그 뒤에서 굴절돼 보임) */
+/** 히어로 구성: A는 크롬 물체 중심(스크롤 이야기의 출발), C는 가운데 체험 팝업을 둘러싼 장식(물체는 가장자리, 유리 브라우저는 팝업 뒤) */
 const HERO: Record<Hero, { envelope: Pose; browser: Pose; browserScale: number; lock: Pose; cookie: Pose; shield: Pose }> = {
   a: { envelope: [1.7, 0.2, 1.3], browser: [3.3, -0.5, -2.4], browserScale: 0.72, lock: [0.3, 1.35, 0.2], cookie: [2.9, -1.35, 0.7], shield: [3.4, 1.35, -0.6] },
-  b: { envelope: [-0.6, 0.45, -1.1], browser: [0, 0.6, 0.9], browserScale: 1.2, lock: [1.2, 1.25, -1.8], cookie: [-1.4, -0.05, -1.5], shield: [0.8, -0.15, -1.4] },
+  c: { envelope: [3.65, 1.95, -0.6], browser: [-0.35, 0.05, -3.2], browserScale: 1.35, lock: [-3.7, 1.05, 0.1], cookie: [-3.35, -1.75, 0.6], shield: [3.75, -2.25, -0.6] },
 };
 
 /** 반사 환경: three의 RoomEnvironment에 홀로그램 색 발광판(분홍·하늘·주황)을 더해 크롬에 Y2K 색이 비치게 한다 */
-function ChromeEnvironment({ panels }: { panels: string[] }) {
+export function ChromeEnvironment({ panels }: { panels: string[] }) {
   const { gl, scene } = useThree();
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl);
@@ -91,7 +91,7 @@ function ChromeEnvironment({ panels }: { panels: string[] }) {
 }
 
 /** 크롬: 거울 금속 + 무지개빛 간섭막(Y2K 홀로그램 크롬) */
-function Chrome({ color }: { color: string }) {
+export function Chrome({ color }: { color: string }) {
   return (
     <meshPhysicalMaterial
       color={color}
@@ -101,14 +101,15 @@ function Chrome({ color }: { color: string }) {
       clearcoatRoughness={0.04}
       iridescence={0.75}
       iridescenceIOR={1.4}
-      iridescenceThicknessRange={[140, 560]}
+      iridescenceThicknessMinimum={140}
+      iridescenceThicknessMaximum={560}
       envMapIntensity={1.9}
     />
   );
 }
 
 /** 리퀴드 글래스: 저사양·휴대폰(low)은 샘플 수와 버퍼 해상도를 낮춘다. 굴절 버퍼 바탕은 장면 바탕 그라데이션 */
-function Glass({ quality, thick, backdrop }: { quality: Quality; thick: number; backdrop: Texture }) {
+export function Glass({ quality, thick, backdrop }: { quality: Quality; thick: number; backdrop: Texture }) {
   const high = quality === "high";
   return (
     <MeshTransmissionMaterial
@@ -250,12 +251,18 @@ export default function LandingScene({ hero, progress, defense, quality, still, 
 
       <group ref={root}>
         {/* 유리가 굴절해 보일 색 방울(홀로그램 분홍·하늘·공격 주황) */}
-        {(
-          [
-            [[1.0, 0.9, -3.6], 1.1, colors.pink],
-            [[3.2, -0.9, -3.4], 0.9, colors.sky],
-            [[GATE_X + 0.6, 1.9, -4.6], 0.6, colors.attack],
-          ] as const
+        {(hero === "c"
+          ? ([
+              // C: 오른쪽 캡션·스위치 뒤를 비운다(팝업 뒤와 왼쪽에만)
+              [[-1.4, 1.2, -4.2], 1.0, colors.pink],
+              [[0.9, -1.3, -4.4], 0.8, colors.sky],
+              [[-4.2, -0.2, -4.6], 0.6, colors.attack],
+            ] as const)
+          : ([
+              [[1.0, 0.9, -3.6], 1.1, colors.pink],
+              [[3.2, -0.9, -3.4], 0.9, colors.sky],
+              [[GATE_X + 0.6, 1.9, -4.6], 0.6, colors.attack],
+            ] as const)
         ).map(([pos, r, c], i) => (
           <mesh key={i} position={pos}>
             <sphereGeometry args={[r, 48, 48]} />

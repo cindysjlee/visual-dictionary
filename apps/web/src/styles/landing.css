@@ -263,18 +263,7 @@ body:has(.landing) .topbar {
   visibility: hidden;
 }
 
-.hero-b .story-hud {
-  left: 50%;
-  top: auto;
-  bottom: 5vh;
-  justify-items: center;
-  text-align: center;
-  translate: -50% calc(var(--p, 0) * -80px);
-}
 
-.hero-b .story-hud .name-tag {
-  justify-self: center;
-}
 
 .hero-search {
   display: flex;
@@ -962,9 +951,6 @@ body:has(.landing) .topbar {
     top: 10vh;
   }
 
-  .hero-b .story-hud {
-    bottom: 22vh;
-  }
 
   .story-controls {
     bottom: 4vh;
@@ -1001,5 +987,472 @@ body:has(.landing) .topbar {
 
   .sheet-meta {
     display: none;
+  }
+}
+
+/* ---------- 히어로 C: 직접 해 보기 ---------- */
+.hero-c .story-stage {
+  position: relative;
+  min-height: 100svh;
+  height: auto;
+  display: grid;
+  align-content: center;
+  padding: calc(102px + var(--sp-6)) var(--gutter) var(--sp-7);
+}
+
+/* C의 머리 글: 상단바 아래 한 줄(가운데 팝업을 가리지 않게) */
+.hero-c .story-hud {
+  position: absolute;
+  top: calc(102px + var(--sp-4));
+  left: max(var(--gutter), calc(50vw - 580px));
+  right: max(var(--gutter), calc(50vw - 580px));
+  width: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  opacity: 1;
+  translate: none;
+}
+
+.hero-c .story-hud .landing-note {
+  max-width: 34ch;
+  font-size: var(--fs-sm);
+}
+
+.hero-c .hero-search {
+  width: min(22rem, 100%);
+  height: 52px;
+  margin-left: auto;
+}
+
+/* 층이 3D로 벌어지는 무대 */
+.trick {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 30rem) minmax(0, 19rem);
+  grid-template-rows: auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-7);
+  margin-top: var(--sp-8);
+}
+
+/* 이름표는 팝업 바로 위 모서리(벌어진 층보다 위) */
+.trick-tag {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.trick-reset {
+  justify-self: start;
+}
+
+/* 벌어진 뒤 팝업 버튼은 누를 수 없다(다시 해 보기로 접는다) */
+.trick-button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.trick-stack {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.trick-side {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.trick-stack {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.trick-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-xl);
+  backface-visibility: hidden;
+}
+
+.trick-popup {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-7) var(--sp-6) var(--sp-6);
+  text-align: center;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--liquid-bg), var(--liquid-bg)) padding-box,
+    var(--holo) border-box;
+}
+
+.trick-bar {
+  position: absolute;
+  top: var(--sp-4);
+  left: var(--sp-5);
+  display: flex;
+  gap: 6px;
+}
+
+.trick-bar span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--chrome-hi), var(--chrome-lo));
+  box-shadow: inset 0 1px 0 var(--chrome-shine);
+}
+
+.chrome-text {
+  background: var(--chrome-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.trick-title {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  letter-spacing: var(--track-tight);
+}
+
+.trick-sub {
+  color: var(--text-sub);
+}
+
+.trick-button {
+  margin-top: var(--sp-4);
+}
+
+/* 위층: 가짜 은행 송금 화면(불투명 판, 유리 위 유리 금지) */
+.trick-bank {
+  display: grid;
+  align-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+  background: var(--surface-raised);
+  border: 1.5px solid var(--attack);
+  box-shadow: 0 30px 60px -28px var(--raised-shadow);
+  pointer-events: none;
+}
+
+.trick-url {
+  justify-self: start;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-size: var(--fs-xs);
+  color: var(--text-sub);
+}
+
+.trick-form {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+}
+
+.trick-form dt {
+  color: var(--text-sub);
+}
+
+.trick-form dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 은행의 [송금] 버튼: 팝업의 [경품 받기]와 같은 자리 */
+.trick-send {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-6);
+  translate: -50% 0;
+  min-width: 9rem;
+  padding: 14px var(--sp-6);
+  border-radius: var(--r-pill);
+  background: var(--attack-solid);
+  color: var(--on-color);
+  font-weight: 800;
+  text-align: center;
+}
+
+/* 방금 누른 자리 표시 */
+.trick-hit {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--sp-6) - 10px);
+  width: 72px;
+  height: 72px;
+  margin-left: -36px;
+  border-radius: 50%;
+  border: 3px solid var(--attack);
+  box-shadow: 0 0 0 6px var(--attack-soft);
+}
+
+/* 방어: 은행 화면이 표시되지 않은 빈 칸 */
+.trick-bank.is-empty {
+  /* 빈 칸이지만 뒤 팝업 글자와 겹쳐 읽히지 않도록 반투명 판(유리 아님, 블러 없음) */
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 2px dashed var(--defense);
+  box-shadow: none;
+  place-content: center;
+  text-align: center;
+}
+
+.trick-refused {
+  display: grid;
+  gap: var(--sp-2);
+  color: var(--text-sub);
+}
+
+.trick-refused-label {
+  justify-self: center;
+  padding: 6px 14px;
+  border-radius: var(--r-md);
+  background: var(--defense);
+  color: var(--on-color);
+  font-weight: 800;
+}
+
+.trick-side,
+.lab-side {
+  display: grid;
+  gap: var(--sp-4);
+  align-content: start;
+}
+
+/* 캡션은 읽는 글이라 유리가 아닌 판(움직이는 3D 위에 배경 흐림을 여러 겹 두면 프레임마다 다시 합성돼 느려진다) */
+.trick-caption,
+.lab-caption {
+  min-height: calc(4 * var(--lh-snug) * 1em);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  line-height: var(--lh-snug);
+  color: var(--text-sub);
+  font-size: var(--fs-sm);
+}
+
+.trick-outcome {
+  display: block;
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-base);
+}
+
+.trick-outcome.is-attack {
+  color: var(--attack-text);
+}
+
+.trick-outcome.is-defense {
+  color: var(--defense-text);
+}
+
+.trick-more {
+  justify-self: start;
+  font-weight: 700;
+}
+
+.defense-switch-label {
+  display: grid;
+  text-align: left;
+}
+
+.defense-switch-hint {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+/* ---------- C-2 CSRF 체험 ---------- */
+.lab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 19rem);
+  grid-template-areas:
+    "head head"
+    "stage side";
+  gap: var(--sp-5) var(--sp-7);
+}
+
+.lab.is-placeholder {
+  min-height: 560px;
+}
+
+.lab-head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.lab-title {
+  font-family: var(--font-num);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.lab-stage {
+  grid-area: stage;
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--holo) border-box;
+}
+
+.lab-stage canvas {
+  display: block;
+}
+
+/* 끌기·화살표 키를 받는 투명 층(포커스 링은 무대 안쪽에) */
+.lab-drag {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: pan-y;
+  border-radius: inherit;
+}
+
+.lab-drag:active {
+  cursor: grabbing;
+}
+
+.lab-drag:focus-visible {
+  outline-offset: -4px;
+}
+
+.lab-stamp {
+  top: 18%;
+  left: auto;
+  right: 6%;
+  pointer-events: none;
+}
+
+.lab-side {
+  grid-area: side;
+}
+
+.lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* 동작 줄이기·WebGL 없음: 앞뒤 면 카드 */
+.lab-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+}
+
+.lab-face {
+  width: min(34rem, 100%);
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--r-lg);
+  background: var(--surface-raised);
+  border: 1.5px solid var(--attack);
+}
+
+.lab-face.tone-defense {
+  border-color: var(--defense);
+}
+
+.lab-face-title {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--attack-text);
+}
+
+.lab-face.tone-defense .lab-face-title {
+  color: var(--defense-text);
+}
+
+.lab-face dl {
+  display: grid;
+  gap: var(--sp-1);
+  margin: var(--sp-3) 0 0;
+}
+
+.lab-face dl div {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+}
+
+.lab-face dt {
+  color: var(--text-sub);
+}
+
+.lab-face dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.lab-face-button {
+  display: inline-block;
+  margin-top: var(--sp-4);
+  padding: 10px 20px;
+  border-radius: var(--r-pill);
+  background: var(--attack-solid);
+  color: var(--on-color);
+  font-weight: 800;
+}
+
+.lab-cookie {
+  font-size: var(--fs-sm);
+  color: var(--text-sub);
+}
+
+@media (max-width: 980px) {
+  .trick {
+    grid-template-columns: minmax(0, 30rem);
+    gap: var(--sp-3);
+  }
+
+  .trick-side {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: var(--sp-3);
+  }
+
+  .lab {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "stage"
+      "side";
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-c .story-stage {
+    padding-top: calc(102px + 9rem);
+  }
+
+  .hero-c .hero-search {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .trick-title {
+    font-size: var(--fs-xl);
+  }
+
+  .trick-popup {
+    padding: var(--sp-6) var(--sp-4) var(--sp-5);
   }
 }

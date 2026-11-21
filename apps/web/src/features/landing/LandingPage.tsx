@@ -1,4 +1,4 @@
-// 랜딩(/, /about). Y2K 크롬 + 리퀴드 글래스 + 스크롤 3D(docs/05 "랜딩").
+// 랜딩(/, /about). Y2K 크롬 + 리퀴드 글래스 + 3D(docs/05 "랜딩"). 히어로 A: 스크롤 이야기, C: 직접 해 보기(클릭재킹 팝업 + CSRF 탭 뒤집기)
 // 첫 화면은 미리 렌더한 정지 이미지(LCP)와 머리 글만 그리고, 3D 장면(LandingStory: three.js·motion)은 첫 페인트 뒤 따로 받는다.
 // 동작 줄이기·WebGL 없음이면 3D를 받지 않고 정지 이미지 + 일반 스크롤. 숫자·용어 이름은 /content/index.json에서 읽는다(하드코딩 금지)
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from "react";
@@ -11,15 +11,18 @@ import { useJson } from "../../useJson.ts";
 import type { Hero } from "./LandingScene.tsx";
 import heroADark from "./posters/hero-a-dark.webp";
 import heroALight from "./posters/hero-a-light.webp";
-import heroBDark from "./posters/hero-b-dark.webp";
-import heroBLight from "./posters/hero-b-light.webp";
+import heroCDark from "./posters/hero-c-dark.webp";
+import heroCLight from "./posters/hero-c-light.webp";
+import ClickjackTrick from "./ClickjackTrick.tsx";
+import CsrfLab from "./CsrfLab.tsx";
 import "../../styles/landing.css";
 
 /** 미리 렌더한 정지 이미지(첫 화면 LCP, scripts/render-landing-posters.ts). 유리 굴절 바탕이 테마 바탕색이라 테마별 */
-const POSTERS = { a: { light: heroALight, dark: heroADark }, b: { light: heroBLight, dark: heroBDark } };
+const POSTERS = { a: { light: heroALight, dark: heroADark }, c: { light: heroCLight, dark: heroCDark } };
 
 const StepLedger = lazy(() => import("./StepLedger.tsx"));
 const LandingStory = lazy(() => import("./LandingStory.tsx"));
+const HeroBackdrop = lazy(() => import("./HeroBackdrop.tsx"));
 // 개발 서버 전용(배포 빌드에서는 DEV가 false라 청크째 빠진다)
 const PosterCapture = import.meta.env.DEV ? lazy(() => import("./PosterCapture.tsx")) : null;
 
@@ -182,12 +185,15 @@ function TermSheet({ index }: { index: IndexEntry[] }) {
 
 export default function LandingPage() {
   const [params] = useSearchParams();
-  const hero: Hero = params.get("hero") === "b" ? "b" : "a"; // 미리보기 비교용(?hero=a|b). 하나로 정하면 나머지는 지운다
+  const hero: Hero = params.get("hero") === "c" ? "c" : "a"; // 미리보기 비교용(?hero=a|c). 하나로 정하면 나머지는 지운다
   const poster = import.meta.env.DEV && params.has("poster"); // 개발 서버에서 정지 이미지를 찍는 모드(scripts/render-landing-posters.ts)
   const load = useJson<IndexEntry[]>("/content/index.json");
   const index = load.state === "ok" ? load.data : null;
   const heroId = index ? pickHero(index) : null;
   const heroTerm = useJson<Term>(heroId ? `/content/terms/${heroId}.json` : null);
+  // 히어로 C의 클릭재킹 체험(공개된 용어일 때만)
+  const jackId = hero === "c" && index?.some((t) => t.id === "clickjacking") ? "clickjacking" : null;
+  const jackTerm = useJson<Term>(jackId ? `/content/terms/${jackId}.json` : null);
   const story = useRef<HTMLElement>(null);
   const theme = useDocTheme();
   // 3D는 첫 페인트 뒤에만: 동작 줄이기·WebGL 없음이면 받지 않는다
@@ -198,8 +204,14 @@ export default function LandingPage() {
   useEffect(() => {
     document.documentElement.classList.toggle("has-refraction", supportsRefraction());
     if (!enhanced || poster) return;
-    const id = requestAnimationFrame(() => setTimeout(() => setStart3d(true), 120));
-    return () => cancelAnimationFrame(id);
+    // 3D(셰이더 컴파일이 메인 스레드를 막는다)는 첫 화면 글·데이터가 그려진 뒤 브라우저가 한가할 때(늦어도 1.2초)
+    const start = () => setStart3d(true);
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(start, { timeout: 1200 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(start, 300);
+    return () => clearTimeout(id);
   }, [enhanced, poster]);
 
   // 리퀴드 글래스의 빛 반사가 마우스를 따라온다(CSS 변수, CSSOM이라 CSP와 무관)
@@ -216,7 +228,7 @@ export default function LandingPage() {
   return (
     <div className={`landing hero-${hero}`} onPointerMove={glint}>
       <LiquidFilter />
-      <section ref={story} className={`story${enhanced ? " is-scroll" : ""}${ready3d ? " is-ready" : ""}`} aria-labelledby="landing-title">
+      <section ref={story} className={`story${enhanced && hero === "a" ? " is-scroll" : ""}${ready3d ? " is-ready" : ""}`} aria-labelledby="landing-title">
         <div className="story-stage">
           <img
             className="story-poster"
@@ -227,11 +239,17 @@ export default function LandingPage() {
             fetchPriority="high"
           />
           <Sparkles />
-          {start3d && heroTerm.state === "ok" && (
+          {start3d && hero === "a" && heroTerm.state === "ok" && (
             <Suspense fallback={null}>
               <LandingStory key={theme} section={story} hero={hero} term={heroTerm.data} onReady={() => setReady3d(true)} />
             </Suspense>
           )}
+          {start3d && hero === "c" && (
+            <Suspense fallback={null}>
+              <HeroBackdrop key={theme} section={story} onReady={() => setReady3d(true)} />
+            </Suspense>
+          )}
+          {hero === "c" && jackTerm.state === "ok" && <ClickjackTrick term={jackTerm.data} />}
           <div className="story-hud">
             <h1 id="landing-title" className="name-tag name-tag-lg">
               보안·CS 개념 시각화 사전
@@ -250,14 +268,16 @@ export default function LandingPage() {
                 찾기
               </button>
             </Form>
-            {enhanced && <p className="scroll-cue">스크롤하면 {heroTerm.state === "ok" ? heroTerm.data.name : "요청"} 요청이 검문소까지 가요</p>}
+            {enhanced && hero === "a" && <p className="scroll-cue">스크롤하면 {heroTerm.state === "ok" ? heroTerm.data.name : "요청"} 요청이 검문소까지 가요</p>}
           </div>
         </div>
       </section>
 
+      {hero === "c" && heroTerm.state === "ok" && <CsrfLab term={heroTerm.data} enhanced={enhanced} />}
+
       {index && <NameBand index={index} />}
 
-      {load.state === "error" || load.state === "notfound" ? (
+      {hero === "c" ? null : load.state === "error" || load.state === "notfound" ? (
         <p role="alert" className="landing-error">
           용어 목록을 불러오지 못했어요. <Link to="/terms">용어 목록</Link>에서 다시 시도해 주세요.
         </p>
