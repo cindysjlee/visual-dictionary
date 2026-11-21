@@ -17,6 +17,12 @@ export const TOKEN_NAMES = {
   paper: "--scene-paper",
   gold: "--scene-gold",
   island: "--scene-island",
+  ink: "--scene-ink",
+  inkMuted: "--scene-ink-muted",
+  inkAttack: "--scene-ink-attack",
+  inkDefense: "--scene-ink-defense",
+  inkSymbol: "--scene-ink-symbol",
+  paperDim: "--scene-paper-dim",
 } as const;
 
 export type Palette = Record<keyof typeof TOKEN_NAMES, string>;

@@ -65,6 +65,17 @@
   --scene-gold: #d99a1e;
   --scene-island: #cdd4e4;
 
+  /* 3D 장면 글자(캔버스 텍스처, DF-48). 판 바탕(--scene-paper)이 두 테마 모두 밝으므로 글자도 두 테마 모두 어두운 같은 값.
+     글자 4.5:1 이상, 기호(↩·▶)·도장 테두리 3:1 이상(두 테마의 판 바탕과 연한 판 기준) */
+  --scene-ink: #1f2433;
+  --scene-ink-muted: #4f5770;
+  --scene-ink-attack: #a63a0a;
+  --scene-ink-defense: #155a99;
+  --scene-ink-symbol: #8a5a00;
+  --scene-paper-dim: #eef1f7;
+  /* 흰 글자를 얹는 공격색 바탕(장면 라벨). --attack(#d9480f)은 흰 글자 4.30:1이라 미달 */
+  --attack-solid: #a63a0a;
+
   --font-sans: "Noto Sans KR", system-ui, sans-serif;
   --font-num: "Sora", "Noto Sans KR", system-ui, sans-serif;
 
@@ -134,6 +145,8 @@
   --scene-paper: #e9edf7;
   --scene-gold: #f2c14e;
   --scene-island: #20263d;
+  --scene-paper-dim: #d9dfec;
+  --attack-solid: var(--attack);
 }
 
 /* 공격·방어 연한 바탕: 각 색의 12%(라이트)·16%(다크) */

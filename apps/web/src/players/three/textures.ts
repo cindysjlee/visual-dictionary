@@ -34,24 +34,25 @@ export function paintScreen(p: Painter, screen: Screen | undefined, site: string
   g.fillStyle = c.paper;
   roundRect(g, 0, 0, w, h, 28);
   g.fill();
-  g.fillStyle = c.objectDim;
+  // 주소 막대는 연한 판 색(어두운 막대 위 회색 글자는 대비 미달이었다, DF-48)
+  g.fillStyle = c.paperDim;
   roundRect(g, 24, 22, w - 48, 52, 26);
   g.fill();
-  g.fillStyle = tone === "attack" ? c.attack : c.defense;
+  g.fillStyle = tone === "attack" ? c.inkAttack : c.inkDefense;
   g.beginPath();
   g.arc(56, 48, 11, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = c.textMuted;
+  g.fillStyle = c.inkMuted;
   g.font = `500 26px ${FONT}`;
   g.fillText(site ?? "", 80, 57);
   if (screen?.title) {
-    g.fillStyle = tone === "attack" ? c.attack : c.villain;
+    g.fillStyle = tone === "attack" ? c.inkAttack : c.ink;
     g.font = `800 52px ${FONT}`;
     g.fillText(screen.title, 40, 150, w - 80);
   }
   g.font = `500 32px ${FONT}`;
   (screen?.lines ?? []).forEach((line, i) => {
-    g.fillStyle = c.villain;
+    g.fillStyle = c.ink;
     g.fillText(line, 40, 210 + i * 54, w - 80);
   });
   p.texture.needsUpdate = true;
@@ -64,10 +65,11 @@ export function paintStamp(p: Painter, text: string, c: Palette, tone: "attack" 
   g.fillStyle = c.paper;
   roundRect(g, 10, 10, w - 20, h - 20, 36);
   g.fill();
+  const ink = tone === "attack" ? c.inkAttack : c.inkDefense;
   g.lineWidth = 14;
-  g.strokeStyle = c[tone];
+  g.strokeStyle = ink;
   g.stroke();
-  g.fillStyle = c[tone];
+  g.fillStyle = ink;
   g.font = `800 ${Math.min(110, (w - 80) / Math.max(4, text.length * 0.62))}px ${FONT}`;
   g.textAlign = "center";
   g.textBaseline = "middle";
@@ -86,7 +88,7 @@ export function paintCard(p: Painter, lines: readonly string[], c: Palette) {
   g.fill();
   g.font = `600 30px ${FONT}`;
   lines.forEach((line, i) => {
-    g.fillStyle = /없음|비어/.test(line) ? c.defense : i === 0 ? c.villain : c.textMuted;
+    g.fillStyle = /없음|비어/.test(line) ? c.inkDefense : i === 0 ? c.ink : c.inkMuted;
     g.fillText(line, 32, 64 + i * 56, w - 64);
   });
   p.texture.needsUpdate = true;
@@ -105,61 +107,61 @@ export function paintCode(p: Painter, title: string | undefined, lines: readonly
   g.fillStyle = c.paper;
   roundRect(g, 0, 0, w, h, 28);
   g.fill();
-  g.fillStyle = c.textMuted;
+  g.fillStyle = c.inkMuted;
   g.font = `600 30px ${FONT}`;
   g.fillText(title ?? "", 32, 58);
   lines.forEach((line, i) => {
     const y = top + i * lh;
     if (current === i + 1) {
-      g.fillStyle = c.neutral;
-      g.globalAlpha = 0.18;
+      // 실행 중인 줄: 연한 판 색 바탕 + 방어색 ▶(기호 3:1 이상)
+      g.fillStyle = c.paperDim;
       roundRect(g, 16, y, w - 32, lh - 6, 12);
       g.fill();
-      g.globalAlpha = 1;
-      g.fillStyle = c.neutral;
+      g.fillStyle = c.inkDefense;
       g.fillText("▶", 20, y + lh * 0.68);
     }
     if (returnLines.has(i + 1)) {
-      g.fillStyle = c.gold;
+      g.fillStyle = c.inkSymbol;
       g.font = `700 30px ${FONT}`;
       g.fillText("↩", w - 64, y + lh * 0.68);
     }
-    g.fillStyle = c.textMuted;
+    g.fillStyle = c.inkMuted;
     g.font = `500 26px ${FONT}`;
     g.fillText(String(i + 1).padStart(2, " "), 56, y + lh * 0.66);
-    // 판은 두 테마 모두 밝은 종이색이라 글자는 화면판 줄과 같은 어두운 토큰(c.text는 다크 테마에서 밝아 안 보인다)
-    g.fillStyle = c.villain;
+    // 판은 두 테마 모두 밝은 종이색이라 글자는 장면 글자 토큰(두 테마 모두 어두운 값, DF-47·48)
+    g.fillStyle = c.ink;
     g.font = `${current === i + 1 ? 700 : 500} 30px ui-monospace, Consolas, ${FONT}`;
     g.fillText(line, 108, y + lh * 0.68, w - 190);
   });
   p.texture.needsUpdate = true;
 }
 
-/** 프레임 앞면: 호출식 + 지역 변수 칸. 맨 위(실행 중)가 아니면 흐리게 */
+/** 프레임 앞면: 호출식 + 지역 변수 칸. 맨 위(실행 중)가 아니면 연한 판·점선 테두리·흐린 글자색으로(투명도는 대비를 깎아 쓰지 않는다, DF-48) */
 export function paintFrame(p: Painter, call: string, locals: readonly { name: string; value: string }[], running: boolean, c: Palette) {
   const { ctx: g, canvas } = p;
   const { width: w, height: h } = canvas;
   g.clearRect(0, 0, w, h);
-  g.fillStyle = c.paper;
-  roundRect(g, 0, 0, w, h, 24);
+  g.fillStyle = running ? c.paper : c.paperDim;
+  roundRect(g, 5, 5, w - 10, h - 10, 24);
   g.fill();
   g.lineWidth = 10;
-  g.strokeStyle = running ? c.neutral : c.objectDim;
+  g.strokeStyle = running ? c.inkDefense : c.inkMuted;
+  g.setLineDash(running ? [] : [26, 18]);
   g.stroke();
-  g.globalAlpha = running ? 1 : 0.6;
-  g.fillStyle = c.villain;
+  g.setLineDash([]);
+  const strong = running ? c.ink : c.inkMuted;
+  g.fillStyle = strong;
   g.font = `800 64px ui-monospace, Consolas, ${FONT}`;
   g.fillText(call, 32, 96, w * 0.4);
   g.font = `700 54px ui-monospace, Consolas, ${FONT}`;
   locals.forEach((l, i) => {
     const x = w * 0.45;
     const y = 86 + i * 84;
-    g.fillStyle = c.textMuted;
+    g.fillStyle = c.inkMuted;
     g.fillText(l.name, x, y, w * 0.16);
-    g.fillStyle = l.value.includes("▢") || l.value === "?" ? c.textMuted : c.villain;
+    g.fillStyle = l.value.includes("▢") || l.value === "?" ? c.inkMuted : strong;
     g.fillText(`= ${l.value}`, x + w * 0.17, y, w * 0.36);
   });
-  g.globalAlpha = 1;
   p.texture.needsUpdate = true;
 }
 
@@ -176,9 +178,9 @@ export function paintSign(p: Painter, text: string, tone: "attack" | "neutral", 
   roundRect(g, 4, 4, w - 8, h - 8, 22);
   g.fill();
   g.lineWidth = 8;
-  g.strokeStyle = tone === "attack" ? c.attack : c.objectDim;
+  g.strokeStyle = tone === "attack" ? c.inkAttack : c.objectDim;
   g.stroke();
-  g.fillStyle = tone === "attack" ? c.attack : c.villain;
+  g.fillStyle = tone === "attack" ? c.inkAttack : c.ink;
   g.font = `700 ${Math.min(64, (w - 48) / Math.max(4, text.length * 0.56))}px ${FONT}`;
   g.textAlign = "center";
   g.textBaseline = "middle";

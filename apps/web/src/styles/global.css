@@ -939,7 +939,7 @@ button:disabled {
 }
 
 .scene-label.tone-attack {
-  background: var(--attack);
+  background: var(--attack-solid);
   color: var(--on-color);
   border-color: transparent;
   font-family: var(--font-num);
