@@ -63,12 +63,12 @@ if (mode === "security") {
     const cs = JSON.parse(r.out) as { Status: string; StatusReason?: string; Changes: Change[] };
     if (cs.Status === "FAILED" && /didn't contain changes|No updates/i.test(cs.StatusReason ?? "")) continue;
     if (cs.Status !== "CREATE_COMPLETE") stop("변경 세트 상태 이상", `${stack}: ${cs.Status} ${cs.StatusReason ?? ""}`, r.out);
-    // 판단은 ci-gate-rules.ts(단위 테스트): 가상 리소스 제외, 파일 배포의 조건부 교체만 허용
+    // 판단은 ci-gate-rules.ts(단위 테스트): 가상 리소스 제외, 파일 배포의 조건부 교체와 "교체되지 않는 함수의 ARN만 따라가는" Lambda 호출 권한의 조건부 교체만 허용
     const real = realChanges(cs.Changes.map((c) => c.ResourceChange));
     if (!real.length) continue;
     changed.push(stack);
     for (const c of real) {
-      if (isRisky(c)) {
+      if (isRisky(c, real)) {
         risky.push(`| ${stack} | ${c.LogicalResourceId} | ${c.ResourceType} | ${c.Action}${c.Replacement && c.Action === "Modify" ? ` (교체: ${c.Replacement})` : ""} |`);
       }
     }

@@ -4,7 +4,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const dir = new URL("./", import.meta.url);
-const BANNED = [/shell:\s*true/, /\bexec(Sync)?\s*\(/, /import\s*\{[^}]*\bexec(Sync)?\b[^}]*\}\s*from\s*["']node:child_process["']/];
+// exec 앞에 "."이 붙은 메서드 호출(정규식 /…/.exec)은 셸 실행이 아니므로 뺀다
+const BANNED = [/shell:\s*true/, /(?<![.\w])exec(Sync)?\s*\(/, /import\s*\{[^}]*\bexec(Sync)?\b[^}]*\}\s*from\s*["']node:child_process["']/];
 const offenders = (source: string) => BANNED.filter((re) => re.test(source)).map(String);
 
 describe("scripts는 셸 없이 실행한다", () => {
@@ -13,6 +14,7 @@ describe("scripts는 셸 없이 실행한다", () => {
     expect(offenders('import { exec } from "node:child_process"; exec("ls")')).toHaveLength(2);
     expect(offenders('execSync("ls")')).toHaveLength(1);
     expect(offenders('spawnSync(process.execPath, [cli], { shell: false }); execFileSync("aws", ["s3"])')).toEqual([]);
+    expect(offenders("const m = /^a$/.exec(s); regex.exec(x)")).toEqual([]);
   });
 
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts") && f !== "no-shell.test.ts")) {
