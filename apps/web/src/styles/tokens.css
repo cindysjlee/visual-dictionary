@@ -160,7 +160,7 @@
   --font-myeongjo: "Nanum Myeongjo", "Noto Serif KR", serif;
   /* 그림 1 연필 스케치: 그림판은 라이트·다크 모두 밝은 종이 카드(스케치를 붙여 둔 느낌)라 밤 지면에서도 같은 값을 쓴다.
      연필(--la-sk-pencil) 글자는 종이 대비 12:1, 색 글자(-deep·evil·grey-deep)는 4.5:1 이상. 면 색은 형광펜처럼 반투명(.sk-f) */
-  --font-hand: "Gaegu", "Noto Sans KR", cursive;
+  --font-hand: "Gaegu Hand", "Noto Sans KR", cursive;
   --la-sk-paper: #fffdf8;
   --la-sk-paper2: #f1eee6;
   --la-sk-white: #ffffff;

@@ -39,7 +39,7 @@ export default function DictionaryPage({ data, failed }: Props) {
     return new Set([first?.id, first?.related.find((id) => byId.has(id))].filter((id): id is string => !!id));
   }, [data, mine, progress, demoEntry, byId]);
 
-  // 이어 보기 책갈피: 내 기록이면 최근 본 것 중 아직 다 읽지 않은 표제어, 아니면 밑줄 미리보기와 겹치지 않는 참조 용어(미리보기)
+  // 책갈피: 내 기록이면 최근 본 것 중 아직 다 읽지 않은 표제어, 아니면 밑줄 미리보기와 겹치지 않는 참조 용어(미리보기)
   const recent = useRecent();
   const resumeId = useMemo(() => {
     if (!data) return undefined;
@@ -87,7 +87,7 @@ export default function DictionaryPage({ data, failed }: Props) {
               <span lang="ko-Hani">[視覺化辭典]</span> <span lang="en">visual dictionary</span>
             </span>
           </h1>
-          <p className="la-gloss">보안·CS 용어를 3D 장면으로 보는 사전</p>
+          <p className="la-gloss">단계별 그림과 3D 장면으로 보는 보안·CS 용어 사전</p>
           <p className="la-pos">「명사」</p>
           <ol className="la-senses">
             <li>
@@ -133,7 +133,7 @@ export default function DictionaryPage({ data, failed }: Props) {
           )}
         </article>
 
-        {demo ? <SketchFigure term={demo} /> : <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />}
+        {demo ? <SketchFigure term={demo} mine={mine} /> : <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />}
       </div>
 
       <section ref={indexRef} id="la-index" className={inView ? "la-index is-inview" : "la-index"} aria-labelledby="la-index-title">
@@ -231,8 +231,8 @@ export default function DictionaryPage({ data, failed }: Props) {
               <dd>분야마다 밑줄 친 표제어가 몇 개인지 쌓인다.</dd>
             </div>
             <div>
-              <dt>이어 보기</dt>
-              <dd>최근 본 표제어가 목록 첫머리에 남는다.</dd>
+              <dt>책갈피</dt>
+              <dd>읽다 만 표제어에 책갈피가 꽂히고, 최근 본 표제어가 목록 첫머리에 남는다.</dd>
             </div>
           </dl>
           <p className="la-actions">

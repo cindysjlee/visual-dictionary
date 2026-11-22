@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IndexEntry, Term } from "@app/content-schema";
 import { defenseCounts } from "@app/content-schema/scene";
+import { subsetHandFont } from "./subset-hand-font.ts";
 import { validateOrExit } from "./validate-content.ts";
 
 const outDir = (includeDrafts: boolean) =>
@@ -44,4 +45,8 @@ if (import.meta.main) {
   copyFileSync(fileURLToPath(new URL("../apps/web/static/robots.txt", import.meta.url)), join(dir, "..", "robots.txt"));
 
   console.log(`인덱스 생성: ${terms.length}개 용어${includeDrafts ? " (draft 포함, 개발용)" : ""}`);
+  // 랜딩 그림 1의 손글씨 글꼴: 그림이 그리는 예시 용어(LandingPage.tsx pickDemo와 같은 규칙)의 글자만 남긴다
+  const demo = terms.find((t) => t.id === "csrf") ?? terms.find((t) => t.defenses.some((d) => d.blockedAtStep !== undefined)) ?? terms[0];
+  const font = await subsetHandFont(demo ? [demo] : []);
+  console.log(`손글씨 글꼴: 글자 ${font.chars}개, 조각 ${font.files}개, ${Math.round(font.before / 1024)}KB → ${Math.round(font.after / 1024)}KB`);
 }

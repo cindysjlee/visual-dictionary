@@ -4,7 +4,6 @@
 // - 움직임: 초당 12장(steps 이징)으로 끊는 스톱모션. 날아가는 것은 살짝 흔들리며 난다.
 // - 단계 순서·출발/도착·효과·차단 단계는 용어 JSON(stepView)에서 읽고, 행위자는 종류(kind)별 그리기 함수로 그린다(용어별 코드 없음).
 // - 사람(사용자·공격자)은 Open Peeps(Pablo Stanley, CC0)를 한 번 SVG로 뽑아 둔 정적 파일(./peeps)이다.
-import "@fontsource/gaegu/700.css";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import type { Actor, Term } from "@app/content-schema";
@@ -23,19 +22,31 @@ import faceAngry from "./peeps/angry.svg";
 type Pt = { x: number; y: number };
 type Spot = Pt & { a: Pt; actor: Actor; kind: string };
 
-// 그림판 800×420 위의 자리(종류별). 같은 종류가 여럿이면 나온 순서대로 채운다
-const TAB: Pt[] = [{ x: 175, y: 206 }, { x: 302, y: 206 }];
-const JAR: Pt = { x: 236, y: 306 };
-const BANK: Pt = { x: 640, y: 104 };
-const SERVER: Pt = { x: 606, y: 306 };
-const ATTACKER: Pt = { x: 734, y: 300 };
-const USER: Pt = { x: 52, y: 298 };
-const GATE: Pt = { x: 480, y: 132 }; // 은행 앞 검문소(봉투가 멈춰 검사받는 곳)
+// 그림판 800×410 위의 자리(종류별). 같은 종류가 여럿이면 나온 순서대로 채운다
+const VW = 800;
+const VH = 410;
+const TAB: Pt[] = [{ x: 172, y: 212 }, { x: 350, y: 212 }];
+const JAR: Pt = { x: 250, y: 324 };
+const BANK: Pt = { x: 650, y: 104 };
+const SERVER: Pt = { x: 640, y: 326 };
+const ATTACKER: Pt = { x: 748, y: 304 };
+const USER: Pt = { x: 46, y: 304 };
+const GATE: Pt = { x: 512, y: 132 }; // 은행 앞 검문소(봉투가 멈춰 검사받는 곳)
+/** 좁은 화면 카메라가 담을 행위자 영역(종류별, 자리 기준 [x, y, w, h]) */
+const BOX: Record<string, [number, number, number, number]> = {
+  tab: [-84, -76, 168, 152],
+  cookieJar: [-150, -38, 190, 78],
+  bank: [-94, -58, 188, 172],
+  server: [-90, -76, 180, 156],
+  attacker: [-58, -86, 116, 176],
+};
+const GATE_BOX: [number, number, number, number] = [404, 0, 236, 268]; // 검사 카드·검문소·도장
 const HOLD = 1100;
 const CUT = 2400; // 동작 줄이기: 정지 컷 하나를 보여 주는 시간
 const BOIL_MS = 170;
 const FRAME_MS = 1000 / 12;
-const TEXT = 1.45; // 그림판이 지면 폭의 절반쯤으로 줄어들어도 이름표가 읽히게 키운다
+// 그림판 안 글자(사용자 단위)의 최소는 손글씨 12×1.6 ≈ 19, 고딕(코드 줄) 18: 넓은 화면에서 그림판이 520px로 줄어도 화면에서 12px 이상
+const TEXT = 1.6; // Gaegu는 같은 크기에서 글자가 작게 보여 고딕보다 더 키운다
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -164,18 +175,21 @@ function Tx({ x, y, s = 13, c, a = "middle", plain, children }: { x: number; y: 
 const textW = (t: string, s: number) => [...t].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e80 ? s : s * 0.56), 0);
 
 /** 칸보다 긴 코드 줄(띄어쓰기 없는 주소)은 글자 간격을 줄여 칸에 맞춘다 */
-const fit = (t: string, max: number) => (textW(t, 13) > max ? { textLength: max, lengthAdjust: "spacingAndGlyphs" as const } : {});
+const CODE = 18; // .sk-code 글자 크기(landing.css와 같게)
+const fit = (t: string, max: number) => (textW(t, CODE) > max ? { textLength: max, lengthAdjust: "spacingAndGlyphs" as const } : {});
 
-/** 긴 줄을 띄어쓰기에서 나눈다(탭 안의 좁은 화면) */
-function wrap(lines: string[], max = 17) {
+/** 긴 줄을 칸 폭(max)에 맞춰 띄어쓰기에서, 그래도 길면 "/" 앞에서 나눈다(탭 안의 좁은 화면) */
+export function wrap(lines: string[], max = 146) {
   const out: string[] = [];
+  const words = (line: string) => line.split(" ").flatMap((w) => (textW(w, CODE) > max ? w.split(/(?=\/)/) : [w]));
   for (const line of lines) {
     let row = "";
-    for (const w of line.split(" ")) {
-      if (row && (row + " " + w).length > max) {
+    for (const w of words(line)) {
+      const next = row ? (w.startsWith("/") ? row + w : `${row} ${w}`) : w;
+      if (row && textW(next, CODE) > max) {
         out.push(row);
         row = w;
-      } else row = row ? `${row} ${w}` : w;
+      } else row = next;
     }
     if (row) out.push(row);
   }
@@ -225,8 +239,8 @@ function Peep({ at, base, face: f, flip }: { at: Pt; base: string; face: string;
 function Browser({ actor }: { actor: Actor }) {
   return (
     <g>
-      {rough("br", [R(95, 70, 280, 282, "paper"), R(95, 70, 280, 30, "paper2"), C(115, 85, 4.5, "attack", "thin"), C(130, 85, 4.5, "gold", "thin"), C(145, 85, 4.5, "green", "thin"), R(162, 78, 198, 15, "white", "thin")])}
-      <Tx x={261} y={90} s={12} c="grey-deep" plain>
+      {rough("br", [R(84, 70, 356, 290, "paper"), R(84, 70, 356, 32, "paper2"), C(102, 86, 4.5, "attack", "thin"), C(117, 86, 4.5, "gold", "thin"), C(132, 86, 4.5, "green", "thin"), R(146, 75, 284, 22, "white", "thin")])}
+      <Tx x={288} y={92} s={13} c="grey-deep" plain>
         {actor.name}
       </Tx>
     </g>
@@ -244,14 +258,14 @@ function Tab({ spot, scene, hidden }: { spot: Spot; scene: Scene; hidden: boolea
   if (flipped) {
     body = (
       <>
-        {rough(`${id}b`, [R(-58, -60, 116, 120, "paper2"), R(-58, -60, 116, 22, "evil-soft")])}
-        <Tx x={0} y={-44} s={13}>
+        {rough(`${id}b`, [R(-80, -72, 160, 144, "paper2"), R(-80, -72, 160, 26, "evil-soft")])}
+        <Tx x={0} y={-53} s={13}>
           {actor.back!.title ?? ""}
         </Tx>
         {wrap(actor.back!.lines)
           .slice(0, 5)
           .map((l, i) => (
-            <text key={i} x={-52} y={-20 + i * 16} className="sk-code" {...fit(l, 104)}>
+            <text key={i} x={-72} y={-24 + i * 21} className="sk-code" {...fit(l, 146)}>
               {l}
             </text>
           ))}
@@ -260,18 +274,18 @@ function Tab({ spot, scene, hidden }: { spot: Spot; scene: Scene; hidden: boolea
   } else if (attack) {
     body = rewritten ? (
       <>
-        {rough(`${id}r`, [R(-58, -60, 116, 120, "attack-soft"), R(-58, -60, 116, 22, "attack"), R(-21, -14, 42, 32, "attack"), R(-4, -14, 8, 32, "gold"), E(-9, -20, 9, 5.5, "gold"), E(9, -20, 9, 5.5, "gold")])}
-        <Tx x={0} y={-44} s={12}>
+        {rough(`${id}r`, [R(-80, -72, 160, 144, "attack-soft"), R(-80, -72, 160, 26, "attack"), R(-24, -24, 48, 38, "attack"), R(-5, -24, 10, 38, "gold"), E(-10, -31, 10, 6, "gold"), E(10, -31, 10, 6, "gold")])}
+        <Tx x={0} y={-53} s={13}>
           {actor.site ?? actor.name}
         </Tx>
-        <Tx x={0} y={42} s={16} c="attack-deep">
+        <Tx x={0} y={50} s={16} c="attack-deep">
           {screen?.title ?? ""}
         </Tx>
       </>
     ) : (
       <>
-        {rough(`${id}n`, [R(-58, -60, 116, 120, "white"), R(-58, -60, 116, 22, "paper2")])}
-        <Tx x={0} y={6} s={14} c="grey-deep">
+        {rough(`${id}n`, [R(-80, -72, 160, 144, "white"), R(-80, -72, 160, 26, "paper2")])}
+        <Tx x={0} y={8} s={14} c="grey-deep">
           {screen?.title ?? actor.name}
         </Tx>
       </>
@@ -279,19 +293,19 @@ function Tab({ spot, scene, hidden }: { spot: Spot; scene: Scene; hidden: boolea
   } else {
     body = (
       <>
-        {rough(`${id}f`, [R(-58, -60, 116, 120, "white"), R(-58, -60, 116, 22, "bank")])}
-        <Tx x={0} y={-44} s={12} c="bank-deep">
+        {rough(`${id}f`, [R(-80, -72, 160, 144, "white"), R(-80, -72, 160, 26, "bank")])}
+        <Tx x={0} y={-53} s={13} c="bank-deep">
           {actor.site ?? actor.name}
         </Tx>
-        <Tx x={0} y={-16} s={15}>
+        <Tx x={0} y={-20} s={15}>
           {screen?.title ?? actor.name}
         </Tx>
         {(screen?.lines ?? []).slice(0, 2).map((l, i) => (
-          <text key={i} x={0} y={6 + i * 17} textAnchor="middle" className="sk-code" {...fit(l, 104)}>
+          <text key={i} x={0} y={8 + i * 24} textAnchor="middle" className="sk-code" {...fit(l, 146)}>
             {l}
           </text>
         ))}
-        {scene.tokenAt === id && rough(`${id}k`, key(30, 46, 0.8))}
+        {scene.tokenAt === id && rough(`${id}k`, key(50, 56, 0.9))}
       </>
     );
   }
@@ -308,7 +322,7 @@ function Jar({ spot, full }: { spot: Spot; full: boolean }) {
   return (
     <g transform={`translate(${spot.x} ${spot.y})`}>
       {rough("jar", [R(-25, -22, 50, 44, "glass"), R(-21, -32, 42, 10, "grey-deep"), ...(full ? cookie(0, 3) : [])])}
-      <Tx x={-34} y={6} s={13} a="end" c="grey-deep">
+      <Tx x={-36} y={7} s={13} a="end" c="grey-deep">
         {spot.actor.name}
       </Tx>
     </g>
@@ -318,13 +332,13 @@ function Jar({ spot, full }: { spot: Spot; full: boolean }) {
 function Gate({ shut }: { shut: boolean }) {
   return (
     <g>
-      <g transform="translate(480 150)">
+      <g transform={`translate(${GATE.x} 150)`}>
         {rough("gate", [R(-39, -44, 11, 66, "grey"), R(28, -44, 11, 66, "grey"), R(-47, 20, 94, 10, "grey-deep")])}
         <Tx x={0} y={48} s={14}>
           검문소
         </Tx>
       </g>
-      <g transform="translate(447 120)">
+      <g transform={`translate(${GATE.x - 33} 120)`}>
         <g data-part="bar" className="sk-bar">
           {rough(shut ? "barS" : "bar", [R(0, -5, 68, 10, shut ? "bank-deep" : "attack"), R(12, -5, 9, 10, "white", "none"), R(32, -5, 9, 10, "white", "none"), R(52, -5, 9, 10, "white", "none")])}
         </g>
@@ -339,14 +353,14 @@ function Bank({ spot, mood, paid }: { spot: Spot; mood: Mood; paid: number }) {
     <g>
       <g transform={`translate(${spot.x} ${spot.y})`}>
         {rough("bank", [R(-62, -8, 124, 70, "bank"), P([[-72, -8], [0, -52], [72, -8]], "bank"), R(-52, 2, 10, 56, "white"), R(42, 2, 10, 56, "white"), R(-13, 34, 26, 28, "bank-deep"), ...face(mood, 0, 12, { sep: 12, blush: true })])}
-        <Tx x={0} y={-17} s={11} c="bank-deep">
+        <Tx x={0} y={-17} s={13} c="bank-deep">
           {actor.name}
         </Tx>
       </g>
       {actor.balance !== undefined && (
-        <g transform={`translate(${spot.x} ${spot.y + 90})`}>
-          {rough("sign", [R(-82, -16, 164, 32, "white")])}
-          <Tx x={0} y={6} s={13} c={paid ? "attack-deep" : undefined} plain>
+        <g transform={`translate(${spot.x - 5} ${spot.y + 96})`}>
+          {rough("sign", [R(-80, -17, 160, 34, "white")])}
+          <Tx x={0} y={7} s={12} c={paid ? "attack-deep" : undefined} plain>
             잔액 {(actor.balance - paid).toLocaleString("ko-KR")}원
           </Tx>
         </g>
@@ -382,11 +396,11 @@ function Attacker({ spot, mood, paid }: { spot: Spot; mood: Mood; paid: boolean 
 
 function Pill({ text }: { text: string }) {
   if (!text) return null;
-  const w = textW(text, 12 * TEXT) + 16;
+  const w = textW(text, 13 * TEXT) + 18;
   return (
     <>
-      {rough(`pill${w}`, [R(-w / 2, 20, w, 20, "white", "thin")])}
-      <Tx x={0} y={35} s={12} plain>
+      {rough(`pill${w}`, [R(-w / 2, 20, w, 26, "white", "thin")])}
+      <Tx x={0} y={39} s={13} plain>
         {text}
       </Tx>
     </>
@@ -395,7 +409,40 @@ function Pill({ text }: { text: string }) {
 
 /* ── 그림 1 ── */
 
-export default function SketchFigure({ term }: { term: Term }) {
+/** 좁은 화면 카메라: 행위자들을 담는 viewBox [x, y, w](높이는 그림판 비율로) */
+function frameOf(ids: (string | undefined)[], spots: Map<string, Spot>): [number, number, number] {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const id of ids) {
+    if (!id) continue;
+    let b: [number, number, number, number] | undefined;
+    if (id === "gate") b = GATE_BOX;
+    else {
+      const sp = spots.get(id);
+      const box = sp && BOX[sp.kind === "server" && sp.actor.look === "bank" ? "bank" : sp.kind];
+      if (sp && box) b = [sp.x + box[0], sp.y + box[1], box[2], box[3]];
+    }
+    if (!b) continue;
+    x0 = Math.min(x0, b[0]);
+    y0 = Math.min(y0, b[1]);
+    x1 = Math.max(x1, b[0] + b[2]);
+    y1 = Math.max(y1, b[1] + b[3]);
+  }
+  if (x0 === Infinity) return [0, 0, VW];
+  const w = Math.min(VW, Math.max(420, x1 - x0 + 24, ((y1 - y0 + 24) * VW) / VH));
+  const h = (w * VH) / VW;
+  const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
+  return [clamp((x0 + x1) / 2 - w / 2, VW - w), clamp((y0 + y1) / 2 - h / 2, VH - h), w];
+}
+
+/** 한 단계에 나오는 행위자(동작 줄이기의 정지 컷 카메라) */
+const stepIds = (v: StepView, spots: Map<string, Spot>) => {
+  const ids: (string | undefined)[] = [v.from, v.to];
+  for (const e of v.effects) for (const k of ["into", "from", "to", "target", "at"] as const) if (k in e) ids.push((e as Record<string, unknown>)[k] as string);
+  if (spots.get(v.to)?.actor.gate && !spots.get(v.from)?.actor.gate) ids.push("gate");
+  return ids;
+};
+
+export default function SketchFigure({ term, mine = false }: { term: Term; mine?: boolean }) {
   const modes = modeDefenses(term);
   const [mode, setMode] = useState<Mode>(null);
   const views = Array.from({ length: lastStepIndex(term, mode) + 1 }, (_, i) => stepView(term, mode, i));
@@ -416,6 +463,54 @@ export default function SketchFigure({ term }: { term: Term }) {
   viewsRef.current = views;
   const spotsRef = useRef(spots);
   spotsRef.current = spots;
+
+  // 좁은 화면(600px 이하)에서는 단계마다 그 단계 행위자 쪽으로 viewBox를 옮겨 확대한다(카메라가 설명). 초당 12장으로 끊어 옮긴다
+  const narrowQuery = "(max-width: 600px)";
+  const [narrow, setNarrow] = useState(() => matchMedia(narrowQuery).matches);
+  const narrowRef = useRef(narrow);
+  narrowRef.current = narrow;
+  const [cam, setCam] = useState<[number, number, number]>([0, 0, VW]);
+  const camRef = useRef(cam);
+  const camTimer = useRef(0);
+  const moveCam = (to: [number, number, number]) => {
+    clearInterval(camTimer.current);
+    const from = camRef.current;
+    if (reduced()) {
+      camRef.current = to;
+      setCam(to);
+      return;
+    }
+    let k = 0;
+    const n = 6; // 6장 × 83ms ≈ 0.5초
+    camTimer.current = window.setInterval(() => {
+      k++;
+      const t = k / n;
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const next = from.map((v, i) => v + (to[i]! - v) * e) as [number, number, number];
+      camRef.current = next;
+      setCam(next);
+      if (k >= n) clearInterval(camTimer.current);
+    }, FRAME_MS);
+  };
+  const look = (ids: (string | undefined)[]) => {
+    if (narrowRef.current) moveCam(frameOf(ids, spotsRef.current));
+  };
+  useEffect(() => {
+    const mq = matchMedia(narrowQuery);
+    const on = () => {
+      setNarrow(mq.matches);
+      if (!mq.matches) {
+        clearInterval(camTimer.current);
+        camRef.current = [0, 0, VW];
+        setCam([0, 0, VW]);
+      }
+    };
+    mq.addEventListener("change", on);
+    return () => {
+      mq.removeEventListener("change", on);
+      clearInterval(camTimer.current);
+    };
+  }, []);
 
   const anims = () => root.current?.getAnimations({ subtree: true }) ?? [];
   const stop = () => {
@@ -439,11 +534,13 @@ export default function SketchFigure({ term }: { term: Term }) {
         setCur({ i, done: false });
         await settle();
         if (!alive()) return;
-        if (!reduced())
+        if (reduced()) look(stepIds(viewsRef.current[i]!, spotsRef.current));
+        else
           await animateStep({
             svg: root.current!,
             v: viewsRef.current[i]!,
             spots: spotsRef.current,
+            look,
             beat: async (b) => {
               if (!alive()) throw new Error("cancelled");
               setBeats((s) => new Set(s).add(b));
@@ -463,6 +560,8 @@ export default function SketchFigure({ term }: { term: Term }) {
     } catch {
       // 취소(cancel)되면 finished가 거부된다: 다른 재생이 이어받았으므로 조용히 끝낸다
     }
+    // look·moveCam은 ref만 읽는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pause = () => {
@@ -523,6 +622,9 @@ export default function SketchFigure({ term }: { term: Term }) {
   const modeName = mode === null ? "공격 흐름" : `방어: ${term.defenses[mode]!.name}`;
   const all = [...spots.values()];
   const bank = all.find((s) => s.kind === "server" && s.actor.look === "bank");
+  // 끝까지 재생했다(마지막 단계가 끝남): 그림 아래에 다음 행동 한 줄
+  const finished = state === "ended" && cur.done && cur.i === views.length - 1;
+  const box = narrow ? cam : ([0, 0, VW] as const);
 
   return (
     <figure className="la-fig" aria-labelledby="la-fig-cap" onClickCapture={() => setTouched(true)} onKeyDownCapture={() => setTouched(true)}>
@@ -538,7 +640,7 @@ export default function SketchFigure({ term }: { term: Term }) {
       </div>
 
       <Boil.Provider value={frame}>
-        <svg ref={root} className="la-sketch" viewBox="0 24 800 380" role="img" aria-label={`${term.name} ${modeName} 손그림`}>
+        <svg ref={root} className="la-sketch" viewBox={`${r1(box[0])} ${r1(box[1])} ${r1(box[2])} ${r1((box[2] * VH) / VW)}`} role="img" aria-label={`${term.name} ${modeName} 손그림`}>
           {all.map((s) =>
             s.kind === "browser" ? (
               <g key={s.actor.id}>
@@ -564,19 +666,19 @@ export default function SketchFigure({ term }: { term: Term }) {
           )}
 
           {scene.card && (
-            <g transform={`translate(${GATE.x} 44)`}>
-              {rough(`card${scene.card.length}`, [R(-80, -12, 160, 18 + scene.card.length * 18, "white")])}
+            <g transform={`translate(${GATE.x} 24)`}>
+              {rough(`card${scene.card.length}`, [R(-100, -14, 200, 20 + scene.card.length * 21, "white")])}
               {scene.card.map((c, i) => (
-                <Tx key={i} x={-70} y={8 + i * 18} s={14} a="start" c={c.status === "fail" ? "bank-deep" : c.status === "skip" ? "attack-deep" : undefined} plain>
+                <Tx key={i} x={-90} y={8 + i * 21} s={13} a="start" c={c.status === "fail" ? "bank-deep" : c.status === "skip" ? "attack-deep" : undefined} plain>
                   {c.name}: {c.result}
                 </Tx>
               ))}
             </g>
           )}
           {scene.blocked && view?.blockedLabel && (
-            <g transform={`translate(${GATE.x} 238) rotate(-8)`}>
+            <g transform={`translate(${GATE.x + 16} 236) rotate(6)`}>
               <g className="sk-stamp">
-                {rough("stamp", [R(-76, -17, 152, 34, "white", "bank-deep")])}
+                {rough("stamp", [R(-86, -18, 172, 36, "white", "bank-deep")])}
                 <text textAnchor="middle" y="6" className="sk-stamp-text">
                   {view.blockedLabel}
                 </text>
@@ -612,6 +714,25 @@ export default function SketchFigure({ term }: { term: Term }) {
           ))}
         </svg>
       </Boil.Provider>
+
+      {/* 자리를 미리 잡아 두고(레이아웃이 밀리지 않게) 끝까지 재생하면 보인다 */}
+      <p className="la-fig-next" data-on={finished}>
+        <Link className="la-btn la-btn-sm la-btn-ink" to={`/terms/${term.id}`} tabIndex={finished ? undefined : -1}>
+          3D로 자세히 보기 → {term.name} 표제어
+        </Link>
+        {mine ? (
+          <Link className="la-btn la-btn-sm" to="/me" tabIndex={finished ? undefined : -1}>
+            내 학습 보기
+          </Link>
+        ) : (
+          <>
+            <span>가입하면 읽은 표제어에 밑줄이 남아요</span>
+            <Link className="la-btn la-btn-sm la-btn-mark" to="/auth/signup" tabIndex={finished ? undefined : -1}>
+              회원가입
+            </Link>
+          </>
+        )}
+      </p>
 
       <div className="la-player">
         <div className="la-steps-nav" role="group" aria-label="단계로 가기">
@@ -683,9 +804,9 @@ export default function SketchFigure({ term }: { term: Term }) {
 
 /* ── 한 단계의 움직임(초당 12장 스톱모션). 끝나면 resolve, 취소되면 reject ── */
 
-type Ctx = { svg: SVGSVGElement; v: StepView; spots: Map<string, Spot>; beat: (b: string) => Promise<void>; label: (t: string) => Promise<void> };
+type Ctx = { svg: SVGSVGElement; v: StepView; spots: Map<string, Spot>; look: (ids: (string | undefined)[]) => void; beat: (b: string) => Promise<void>; label: (t: string) => Promise<void> };
 
-async function animateStep({ svg, v, spots, beat, label }: Ctx) {
+async function animateStep({ svg, v, spots, look, beat, label }: Ctx) {
   const part = (n: string) => svg.querySelector<SVGGElement>(`[data-part="${n}"]`)!;
   const at = (id: string) => spots.get(id)?.a ?? { x: 400, y: 210 };
   const kind = (id: string) => spots.get(id)?.kind;
@@ -739,23 +860,27 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
   // 봉투가 보관함에 들러 쿠키를 붙인다(착!) / SameSite면 쿠키가 튕긴다(안 붙어!)
   let start = from;
   const attach = fx("attach");
+  const toGate = gated(v.to) && !gated(v.from);
+  // 카메라(좁은 화면): 출발지와 첫 목적지를 함께 담는다
+  look(attach ? [v.from, attach.from] : [v.from, toGate ? "gate" : v.to]);
   if (attach) {
     const jar = at(attach.from);
     const inJar = { x: jar.x, y: jar.y + 47 };
-    const stop = { x: jar.x + 64, y: jar.y + 40 }; // 보관함 오른쪽에 멈춘다(이름표는 보관함 왼쪽, 위는 탭이라 가리지 않게)
+    const stop = { x: jar.x + 80, y: jar.y + 30 }; // 보관함 오른쪽에 멈춘다(이름표는 보관함 왼쪽, 위는 탭이라 가리지 않게)
     await fly(mover, from, stop, 750, 30);
     start = stop;
     const ck = part("cookie");
     if (attach.refused) {
       await go(ck, [{ transform: tr(inJar), opacity: 1 }, { transform: tr({ x: stop.x + 10, y: stop.y + 4 }, -12), opacity: 1, offset: 0.5 }, { transform: tr(inJar), opacity: 1 }], 540);
-      say("안 붙어!", { x: jar.x, y: jar.y + 124 }, "defense"); // 브라우저 창 아래 빈 띠
+      say("안 붙어!", { x: jar.x, y: jar.y + 116 }, "defense"); // 브라우저 창 아래 빈 띠
       await wait(600);
     } else {
       await fly(ck, inJar, { x: stop.x + 16, y: stop.y - 13 }, 420, 16, 0);
       await beat("attach");
-      say("착!", { x: stop.x + 44, y: stop.y + 4 }, v.tone === "attack" ? "attack" : "neutral");
+      say("착!", { x: stop.x + 62, y: stop.y + 8 }, v.tone === "attack" ? "attack" : "neutral");
     }
     hide(ck);
+    look([attach.from, toGate ? "gate" : v.to]);
   }
 
   // 토큰(열쇠)은 봉투와 함께 따로 날아간다
@@ -772,7 +897,7 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
         })()
       : null;
 
-  if (gated(v.to) && !gated(v.from)) {
+  if (toGate) {
     // 검문소에서 멈춰 검사받는다. 막히면 쾅! 하고 떨어진다
     await fly(mover, start, GATE, 900, 50);
     if (fx("inspect")) {
@@ -781,11 +906,12 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
     }
     if (v.blocked) {
       await beat("block");
-      say("쾅!", { x: GATE.x + 66, y: GATE.y + 36 }, "defense"); // 검사 카드·검문소 기둥을 피해 오른쪽 아래
+      say("쾅!", { x: GATE.x + 36, y: GATE.y - 32 }, "defense"); // 검사 카드와 차단봉 사이
       await go(mover, [{ transform: tr(GATE), opacity: 1 }, { transform: tr({ x: GATE.x - 8, y: GATE.y + 20 }, 20), opacity: 1, offset: 0.4 }, { transform: tr({ x: GATE.x - 20, y: GATE.y + 70 }, 40), opacity: 0 }], 700);
       hide(mover);
       return;
     }
+    look(["gate", v.to]);
     const bar = part("bar");
     await go(bar, [{ transform: "rotate(0deg)" }, { transform: "rotate(-74deg)" }], 300);
     await fly(mover, GATE, dest, 600, 20);
@@ -804,6 +930,7 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
 
   // 도착한 뒤: 쿠키 보관 / 탭 등장 / 화면 바뀜·뒤집기 / 송금
   if (store) {
+    look([v.to, store.into]);
     const ck = part("cookie");
     const jar = at(store.into);
     await fly(ck, dest, { x: jar.x, y: jar.y + 47 }, 600, 24);
@@ -813,6 +940,7 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
   }
   const appear = fx("appear");
   if (appear) {
+    look([appear.target]);
     await beat("appear");
     const p = at(appear.target);
     say("뿅!", { x: p.x + 44, y: p.y - 58 }, "attack");
@@ -825,6 +953,7 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
   if (fx("rewrite")) await beat("rewrite");
   const flip = fx("flip");
   if (flip) {
+    look([flip.target]);
     const tab = svg.querySelector(`[data-actor="${flip.target}"]`);
     await wait(300);
     if (tab) await go(tab, [{ transform: "scaleX(1)" }, { transform: "scaleX(0.02)" }], 260);
@@ -836,9 +965,10 @@ async function animateStep({ svg, v, spots, beat, label }: Ctx) {
   }
   const transfer = fx("transfer");
   if (transfer) {
+    look([transfer.from, transfer.to]);
     const a = at(transfer.from);
     const b = at(transfer.to);
-    say("짤랑!", { x: b.x + 50, y: b.y - 70 }, "coin");
+    say("짤랑!", { x: b.x + 40, y: b.y - 62 }, "coin"); // 잔액 표 오른쪽, 공격자 머리 위
     await Promise.all(
       [0, 1, 2].map(async (i) => {
         await wait(i * 180);

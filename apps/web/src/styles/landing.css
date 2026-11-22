@@ -1,4 +1,7 @@
 /* 랜딩 "사전 지면". 색은 tokens.css의 --la-*(라이트 = 낮의 종이, 다크 = 밤 지면). 표제어 Noto Sans KR 800, 본문 나눔명조, 숫자 Sora */
+/* 그림 1 손글씨: 빌드 때 그림에 쓰는 글자만 남긴 Gaegu 700(scripts/subset-hand-font.ts) */
+@import "../../generated/hand-font/hand-font.css";
+
 html[data-landing] .backdrop {
   display: none;
 }
@@ -416,7 +419,7 @@ html[data-landing] ::selection {
 .sk-code {
   fill: var(--la-sk-ink);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 500;
 }
 
@@ -453,7 +456,7 @@ html[data-landing] ::selection {
 .sk-stamp-text {
   fill: var(--la-sk-bank-deep);
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 800;
 }
 
@@ -722,7 +725,7 @@ html[data-landing] ::selection {
   white-space: nowrap;
 }
 
-/* 이어 보기 책갈피: 표제어 줄 오른쪽 끝에 꽂힌 리본 */
+/* 책갈피: 표제어 줄 오른쪽 끝에 꽂힌 리본 */
 .la-resume {
   display: inline-block;
   margin-left: var(--sp-2);
@@ -939,4 +942,43 @@ html[data-landing] ::selection {
 .sk-bar {
   transform-box: fill-box;
   transform-origin: 0 50%;
+}
+
+/* 그림 1을 끝까지 재생한 뒤의 한 줄: 자리는 처음부터 잡아 두고(밀림 없음) 끝나면 보인다 */
+.la-fig-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
+.la-fig-next[data-on="false"] {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .la-fig-next[data-on="true"] {
+    animation: la-next-in 300ms steps(4, end) both;
+  }
+}
+
+@keyframes la-next-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+.la-fig-next .la-btn {
+  padding-inline: var(--sp-3);
+}
+
+/* 좁은 화면에서는 세 줄로 접혀 빈자리가 커서 미리 잡지 않는다(끝난 뒤에만 나타난다, 자동 재생이 끝나는 20초 뒤) */
+@media (max-width: 600px) {
+  .la-fig-next[data-on="false"] {
+    display: none;
+  }
 }
