@@ -5,9 +5,10 @@ export const TOKEN_NAMES = {
   bg: "--bg",
   text: "--text",
   textMuted: "--text-muted",
-  attack: "--attack",
-  defense: "--defense",
-  neutral: "--neutral",
+  // 장면 안의 공격·방어·중립 색. 기본은 --attack·--defense·--neutral과 같고, 종이 장면(html[data-scene="paper"])은 지면 팔레트로 채도를 살짝 낮춘다
+  attack: "--scene-attack",
+  defense: "--scene-defense",
+  neutral: "--scene-neutral",
   onColor: "--on-color",
   object: "--scene-object",
   objectDim: "--scene-object-dim",
@@ -23,7 +24,6 @@ export const TOKEN_NAMES = {
   inkDefense: "--scene-ink-defense",
   inkSymbol: "--scene-ink-symbol",
   paperDim: "--scene-paper-dim",
-  outline: "--scene-outline",
   /** 판 글자 글꼴(지면 본문과 같게) */
   font: "--font-body",
 } as const;
@@ -37,13 +37,13 @@ export function readPalette(): Palette {
   ) as Palette;
 }
 
-/** 테마(data-theme)·글꼴 조합(data-font)이 바뀌거나 글꼴 조각을 다 받으면 다시 읽는다(판 글자를 새 글꼴로 다시 칠하게) */
+/** 테마(data-theme)·장면 모양(data-scene)이 바뀌거나 글꼴 조각을 다 받으면 다시 읽는다(판 글자를 새 글꼴로 다시 칠하게) */
 export function usePalette(): Palette {
   const [palette, setPalette] = useState(readPalette);
   useEffect(() => {
     const reread = () => setPalette(readPalette());
     const observer = new MutationObserver(reread);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-font"] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-scene"] });
     document.fonts.addEventListener("loadingdone", reread);
     return () => {
       observer.disconnect();

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { Canvas } from "@react-three/fiber";
 import type { StageProps } from "../stage.ts";
 import { FOV } from "./camera.ts";
-import { lowEnd } from "./toon.ts";
 
 /** 장면 루트가 받는 것: 라벨을 붙일 HTML 층, 그림자 해상도, 지금 그려도 되는지 */
 export type SceneFrame = { labelRoot: RefObject<HTMLDivElement | null>; shadowSize: number; visible: boolean };
@@ -33,7 +32,7 @@ export function SceneCanvas({ stageRef, freeView, children }: Props) {
     <div className="scene3d">
       <div className="scene-canvas" aria-hidden="true">
         <Canvas
-          dpr={lowEnd ? [1, 1.25] : [1, 2]}
+          dpr={[1, 2]}
           shadows="percentage"
           frameloop={visible ? "always" : "never"}
           camera={{ fov: FOV, position: [0, 12.5, 14], near: 0.1, far: 160 }}
@@ -48,16 +47,16 @@ export function SceneCanvas({ stageRef, freeView, children }: Props) {
   );
 }
 
-/** 장면 공통 조명(그림자 범위는 무대 크기 기준). 종이 삽화: 주변광을 높이고 해를 낮춰 그늘·그림자를 연하게 */
+/** 장면 공통 조명(그림자 범위는 무대 크기 기준) */
 export function SceneLights({ shadowSize }: { shadowSize: number }) {
   return (
     <>
-      <hemisphereLight intensity={0.9} />
-      <ambientLight intensity={0.85} />
+      <hemisphereLight intensity={1.1} />
+      <ambientLight intensity={0.35} />
       <directionalLight
         castShadow
         position={[6, 12, 8]}
-        intensity={1.15}
+        intensity={1.8}
         shadow-mapSize-width={shadowSize}
         shadow-mapSize-height={shadowSize}
         shadow-bias={-0.0005}

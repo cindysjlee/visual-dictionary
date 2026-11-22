@@ -16,7 +16,7 @@ import {
   BufferGeometry,
   Mesh,
   MeshBasicMaterial,
-  MeshToonMaterial,
+  MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
   Shape,
@@ -27,7 +27,6 @@ import {
   type Camera,
   type Material,
 } from "three";
-import { outlineAll, paintOutlines, toon } from "./toon.ts";
 import type { Actor, Item, Term } from "@app/content-schema";
 import { hasPanel } from "@app/content-schema/scene";
 import { BROWSER_SIZE, type Placed, type Vec3 } from "./layout.ts";
@@ -45,11 +44,11 @@ export type ActorNode = {
   labelPoint: Vector3;
   panel?: { pivot: Group; front: Painter; back: Painter };
   slots: Map<Item, Object3D>;
-  gate?: { arm: Group; ring: Mesh; toneMats: MeshToonMaterial[] };
+  gate?: { arm: Group; ring: Mesh; toneMats: MeshStandardMaterial[] };
   /** wifi look의 전파 고리. 봉투가 가까이 지날 때만 퍼진다(pulseRings) */
   rings?: Mesh[];
   /** 칸 선반(slots): 상자마다 빈 칸·찬 칸 재질을 바꿔 끼운다 */
-  shelf?: { boxes: Mesh[]; filled: number; empty: MeshToonMaterial; full: MeshToonMaterial };
+  shelf?: { boxes: Mesh[]; filled: number; empty: MeshStandardMaterial; full: MeshStandardMaterial };
 };
 
 const v = (p: Vec3) => new Vector3(...p);
@@ -72,9 +71,9 @@ export class SceneModel {
   readonly card: Mesh;
   private stampPaint = screenPainter();
   private cardPaint = screenPainter();
-  private envMat: MeshToonMaterial;
+  private envMat: MeshStandardMaterial;
   private envTone: Tone = "neutral";
-  private bound: { mat: MeshToonMaterial | MeshBasicMaterial | LineBasicMaterial; key: ColorKey; emissive?: number }[] = [];
+  private bound: { mat: MeshStandardMaterial | MeshBasicMaterial | LineBasicMaterial; key: ColorKey; emissive?: number }[] = [];
   private layout: Map<string, Placed>;
   private palette: Palette;
   private signs: { painter: Painter; text: string; tone: "attack" | "neutral" }[] = [];
@@ -127,21 +126,19 @@ export class SceneModel {
 
   /* ---------- 재질: 모두 토큰 색에 묶어 두고 테마가 바뀌면 한 번에 다시 칠한다 ---------- */
   private std(key: ColorKey, opts: { emissive?: number; opacity?: number; metal?: number } = {}) {
-    const mat = toon();
+    const mat = new MeshStandardMaterial({ roughness: 0.55, metalness: opts.metal ?? 0.05 });
     if (opts.opacity !== undefined) Object.assign(mat, { transparent: true, opacity: opts.opacity, depthWrite: opts.opacity > 0.5 });
     this.bound.push({ mat, key, emissive: opts.emissive });
     this.paint(mat, key, opts.emissive);
     return mat;
   }
-  private paint(mat: MeshToonMaterial | MeshBasicMaterial | LineBasicMaterial, key: ColorKey, emissive?: number) {
+  private paint(mat: MeshStandardMaterial | MeshBasicMaterial | LineBasicMaterial, key: ColorKey, emissive?: number) {
     mat.color.set(this.palette[key]);
-    if (mat instanceof MeshToonMaterial) mat.emissive = new Color(this.palette[key]).multiplyScalar(emissive ?? 0);
+    if (mat instanceof MeshStandardMaterial) mat.emissive = new Color(this.palette[key]).multiplyScalar(emissive ?? 0);
   }
   setPalette(palette: Palette, state: SceneState) {
     this.palette = palette;
     for (const b of this.bound) this.paint(b.mat, b.key, b.emissive);
-    outlineAll(this.root, palette.outline);
-    paintOutlines(this.root, palette.outline);
     this.setEnvelopeTone(this.envTone);
     for (const [id, node] of this.nodes) if (node.shelf) this.setOccupied(id, node.shelf.filled);
     for (const sg of this.signs) paintSign(sg.painter, sg.text, sg.tone, palette);
@@ -165,7 +162,7 @@ export class SceneModel {
     const pts: Vector3[] = [];
     for (let i = -24; i <= 24; i += 2) pts.push(new Vector3(i, 0, -18), new Vector3(i, 0, 14), new Vector3(-24, 0, i * 0.66), new Vector3(24, 0, i * 0.66));
     this.root.add(new LineSegments(new BufferGeometry().setFromPoints(pts), grid));
-    const shadowCatcher = new Mesh(new PlaneGeometry(60, 40), new MeshToonMaterial({ transparent: true, opacity: 0 }));
+    const shadowCatcher = new Mesh(new PlaneGeometry(60, 40), new MeshStandardMaterial({ transparent: true, opacity: 0 }));
     shadowCatcher.rotation.x = -Math.PI / 2;
     shadowCatcher.receiveShadow = true;
     this.root.add(shadowCatcher);
@@ -477,7 +474,7 @@ export class SceneModel {
   opacityOf(id: string): number {
     let v = 1;
     this.nodes.get(id)?.group.traverse((o) => {
-      if (o instanceof Mesh) v = (o.material as MeshToonMaterial).opacity;
+      if (o instanceof Mesh) v = (o.material as MeshStandardMaterial).opacity;
     });
     return v;
   }
@@ -486,7 +483,7 @@ export class SceneModel {
   setOpacity(id: string, value: number) {
     this.nodes.get(id)?.group.traverse((o) => {
       if (!(o instanceof Mesh)) return;
-      const mat = o.material as MeshToonMaterial | MeshBasicMaterial;
+      const mat = o.material as MeshStandardMaterial | MeshBasicMaterial;
       mat.transparent = true;
       mat.opacity = value;
       mat.depthWrite = value > 0.95;

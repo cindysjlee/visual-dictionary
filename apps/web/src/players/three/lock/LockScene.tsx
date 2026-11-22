@@ -15,7 +15,7 @@ import {
   LineDashedMaterial,
   Mesh,
   MeshBasicMaterial,
-  MeshToonMaterial,
+  MeshStandardMaterial,
   PlaneGeometry,
   SphereGeometry,
   TorusGeometry,
@@ -24,7 +24,6 @@ import {
   type Object3D,
   type PerspectiveCamera,
 } from "three";
-import { outlineAll, paintOutlines, toon } from "../toon.ts";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { Term } from "@app/content-schema";
 import { kindOf } from "@app/content-schema/scene";
@@ -56,7 +55,7 @@ class LockModel {
   readonly billboards: Object3D[] = [];
   private waitLines = new Map<string, Line>();
   private stampPaint = screenPainter();
-  private mats: { mat: MeshToonMaterial | LineDashedMaterial; key: keyof Palette; emissive: number }[] = [];
+  private mats: { mat: MeshStandardMaterial | LineDashedMaterial; key: keyof Palette; emissive: number }[] = [];
   private palette: Palette;
 
   constructor(term: Term, palette: Palette) {
@@ -126,7 +125,7 @@ class LockModel {
   }
 
   private mesh(geo: BufferGeometry, key: keyof Palette, at: [number, number, number], parent: Object3D, emissive = 0) {
-    const mat = toon();
+    const mat = new MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 });
     this.mats.push({ mat, key, emissive });
     mat.color.set(this.palette[key]);
     mat.emissive = new Color(this.palette[key]).multiplyScalar(emissive);
@@ -187,10 +186,8 @@ class LockModel {
     this.palette = palette;
     for (const m of this.mats) {
       m.mat.color.set(palette[m.key]);
-      if (m.mat instanceof MeshToonMaterial) m.mat.emissive = new Color(palette[m.key]).multiplyScalar(m.emissive);
+      if (m.mat instanceof MeshStandardMaterial) m.mat.emissive = new Color(palette[m.key]).multiplyScalar(m.emissive);
     }
-    outlineAll(this.root, palette.outline);
-    paintOutlines(this.root, palette.outline);
     this.apply(state, this.stamp.visible);
   }
 

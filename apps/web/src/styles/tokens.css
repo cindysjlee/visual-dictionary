@@ -71,8 +71,9 @@
   /* 흰 글자를 얹는 공격색 바탕(장면 라벨). --attack(#d9480f)은 흰 글자 4.30:1이라 미달 */
   --attack-solid: #a63a0a;
 
-  --font-sans: "Noto Sans KR", system-ui, sans-serif;
-  --font-num: "Sora", "Noto Sans KR", system-ui, sans-serif;
+  /* 고딕은 Pretendard 하나(본문·UI·숫자). 숫자는 쓰는 곳에서 tabular-nums */
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  --font-num: var(--font-sans);
 
   --radius-lg: 30px;
   --radius: 26px;
@@ -152,12 +153,12 @@
   --la-tab-os: #1c6a4f;
   --la-tab-runtime: #5a3ab6;
   --la-on-tab: #ffffff;
-  /* 지면 글꼴(시험 중: 미리보기 ?font=a|b|c, 기본 a). 제목은 Noto Serif KR, 본문은 조합마다. UI(버튼·표지·숫자)는 --font-sans·--font-num */
+  /* 지면 글꼴(2026-11-23 B 확정): 제목 Noto Serif KR 700, 본문 Pretendard */
   --font-title: "Noto Serif KR", serif;
-  --font-body: "Gowun Batang", "Noto Serif KR", serif;
+  --font-body: var(--font-sans);
   /* 그림 1 연필 스케치: 그림판은 라이트·다크 모두 밝은 종이 카드(스케치를 붙여 둔 느낌)라 밤 지면에서도 같은 값을 쓴다.
      연필(--la-sk-pencil) 글자는 종이 대비 12:1, 색 글자(-deep·evil·grey-deep)는 4.5:1 이상. 면 색은 형광펜처럼 반투명(.sk-f) */
-  --font-hand: "Gaegu Hand", "Noto Sans KR", cursive;
+  --font-hand: "Gaegu Hand", "Pretendard Variable", Pretendard, cursive;
   --la-sk-paper: #fffdf8;
   --la-sk-paper2: #f1eee6;
   --la-sk-white: #ffffff;
@@ -306,15 +307,11 @@
   --field-bg: var(--la-paper);
   --field-border: var(--la-ink-sub);
   --field-inset: 0 0 0 transparent;
-  --stage-bg: var(--la-paper);
-
-  /* 3D 장면 = 종이 삽화(docs/06 "종이 삽화"): 물체는 종이색 면 + 먹 외곽선(밤에는 등불빛 선), 바닥 괘선은 지면 괘선.
-     판 글자(--scene-paper·--scene-ink*)는 DF-48 대비 기준 그대로 */
-  --scene-object: var(--la-paper);
-  --scene-object-dim: var(--la-paper-deep);
-  --scene-island: var(--la-paper-deep);
-  --scene-grid: var(--la-rule);
-  --scene-outline: var(--la-ink);
+  --stage-bg: var(--la-paper-deep);
+  /* 장면의 공격·방어·중립 색(기본 = 지면 UI와 같은 값). 종이 장면은 아래 html[data-scene="paper"]에서 바꾼다 */
+  --scene-attack: var(--attack);
+  --scene-defense: var(--defense);
+  --scene-neutral: var(--neutral);
   --stage-inset: 0 0 0 transparent;
   --tab-on: var(--la-paper);
 
@@ -328,17 +325,27 @@
   --r-sm: 2px;
 }
 
-/* 글꼴 조합 시험(?font=b|c, main.tsx가 html[data-font]에 둔다). 고르면 나머지는 지운다 */
-html[data-font="b"] {
-  --font-body: "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, sans-serif;
+/* 종이 장면(?scene=paper, 시험 중. docs/06 "종이 장면"): 3D 렌더링(재질·빛·배치)은 그대로 두고 장면 바탕과 색 토큰만 지면 팔레트에 맞춰 채도를 살짝 낮춘다.
+   판 글자(--scene-paper·--scene-ink*)는 DF-48 그대로 */
+html[data-scene="paper"] {
+  --stage-bg: var(--la-paper);
+  --scene-object: #e3e6eb;
+  --scene-object-dim: #c3c9d2;
+  --scene-island: var(--la-paper-deep);
+  --scene-grid: var(--la-rule);
+  --scene-object-attack: #4a3634;
+  --scene-villain: #2b303c;
+  --scene-attack: #b4542e;
+  --scene-defense: #2f5f93;
+  --scene-neutral: #687083;
 }
 
-html[data-font="c"] {
-  --font-body: "Noto Serif KR", serif;
-}
-
-/* 밤 사전의 3D 물체: 지면(#13161e)보다 한 단계 밝은 면이라야 툰 그늘이 검게 뭉개지지 않는다 */
-[data-theme="dark"] {
-  --scene-object: #2c3343;
-  --scene-object-dim: #232937;
+html[data-scene="paper"][data-theme="dark"] {
+  --scene-object: #454c5e;
+  --scene-object-dim: #323849;
+  --scene-object-attack: #4a2f34;
+  --scene-villain: #7d8396;
+  --scene-attack: #e48a66;
+  --scene-defense: #7ea9d9;
+  --scene-neutral: #9aa1b2;
 }

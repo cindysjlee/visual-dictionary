@@ -1,4 +1,4 @@
-/* 사이트 전체 "사전 지면"(랜딩에서 시작해 2차에 모든 화면으로). 색은 tokens.css의 --la-*(라이트 = 낮의 종이, 다크 = 밤 지면). 표제어 Noto Sans KR 800, 본문 나눔명조, 숫자 Sora */
+/* 사이트 전체 "사전 지면"(랜딩에서 시작해 2차에 모든 화면으로). 색은 tokens.css의 --la-*(라이트 = 낮의 종이, 다크 = 밤 지면). 제목 Noto Serif KR 700, 본문·UI·숫자 Pretendard */
 /* 그림 1 손글씨: 빌드 때 그림에 쓰는 글자만 남긴 Gaegu 700(scripts/subset-hand-font.ts) */
 @import "../../generated/hand-font/hand-font.css";
 
@@ -1396,4 +1396,78 @@ body {
 
 .la-term .la-headword {
   font-size: clamp(2rem, 1.4rem + 1.8vw, 2.75rem);
+}
+
+/* ════════ 종이 장면(?scene=paper, 시험 중. docs/06 "종이 장면") ════════
+   3D 렌더링은 건드리지 않고 감싸는 쪽만 지면에 맞춘다: ① 장면 바탕 = 지면 ② 가장자리를 종이 쪽으로 흐리게 ③ 옅은 종이 질감 ④ 장면 색(tokens.css) ⑤ 라벨을 사전 주석처럼 */
+html[data-scene="paper"] .stage-slot {
+  background: var(--la-paper);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* 가운데는 선명하게, 가장자리는 종이로 사라지게(캔버스만. HTML 라벨은 그대로 선명) */
+html[data-scene="paper"] .scene-canvas {
+  -webkit-mask-image: radial-gradient(ellipse 74% 72% at 50% 52%, #000 64%, transparent 100%);
+  mask-image: radial-gradient(ellipse 74% 72% at 50% 52%, #000 64%, transparent 100%);
+}
+
+/* 종이 질감: 캔버스 위, 라벨 아래. 낮에는 곱하기로 아주 옅게, 밤에는 더 옅게 */
+html[data-scene="paper"] .scene-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("../assets/paper-grain.svg");
+  background-size: 240px 240px;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+
+html[data-scene="paper"][data-theme="dark"] .scene-canvas::after {
+  mix-blend-mode: screen;
+  opacity: 0.25;
+}
+
+/* 라벨 = 사전 주석: 종이 바탕 + 가는 괘선, 행위자 이름표에는 아래로 가는 지시선. 크기(안쪽 여백·테두리 굵기)는 그대로라 위치 계산·겹침 검사가 같다 */
+html[data-scene="paper"] .scene-label {
+  border-radius: 0;
+  background: var(--la-paper);
+  border-color: var(--la-ink);
+  color: var(--la-ink);
+  font-family: var(--font-body);
+}
+
+html[data-scene="paper"] .scene-label small {
+  color: var(--la-ink-sub);
+}
+
+/* 행위자 이름표(이름 + 주소 줄)에서 물체 쪽으로 가는 가는 지시선. 번호는 숨은 라벨까지 세어 건너뛰는 번호가 생겨 쓰지 않는다 */
+html[data-scene="paper"] .scene-label:has(> small):not(.has-rows)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 12px;
+  background: var(--la-ink);
+}
+
+/* 공격·방어·중립 표지 라벨: 색 바탕 대신 종이 바탕 + 색 글자·테두리(명도 대비 유지) */
+html[data-scene="paper"] .scene-label.tone-attack {
+  background: var(--la-paper);
+  color: var(--la-attack);
+  border-color: var(--la-attack);
+}
+
+html[data-scene="paper"] .scene-label.tone-defense {
+  background: var(--la-defense-bg);
+  color: var(--la-defense);
+  border-color: var(--la-defense);
+}
+
+html[data-scene="paper"] .scene-label.tone-neutral {
+  background: var(--la-paper);
+  color: var(--la-ink-sub);
+  border-color: var(--la-ink-sub);
 }

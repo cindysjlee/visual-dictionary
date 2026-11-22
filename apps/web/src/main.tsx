@@ -2,17 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, redirect } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import "@fontsource/noto-sans-kr/400.css";
-import "@fontsource/noto-sans-kr/500.css";
-import "@fontsource/noto-sans-kr/700.css";
-import "@fontsource/noto-sans-kr/800.css";
-import "@fontsource/sora/500.css";
-import "@fontsource/sora/600.css";
-import "@fontsource/sora/700.css";
-import "@fontsource/noto-serif-kr/400.css";
 import "@fontsource/noto-serif-kr/700.css";
-import "@fontsource/gowun-batang/400.css";
-import "@fontsource/gowun-batang/700.css";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./styles/tokens.css";
 import "./styles/global.css";
@@ -36,17 +26,17 @@ const hasHandedNotice = () => {
 
 // 첫 렌더 전에 테마를 정한다 (CSP가 인라인 스크립트를 막으므로 index.html에서 할 수 없다)
 applyTheme(initialTheme());
-// 글꼴 조합 시험(미리보기): ?font=a|b|c를 html[data-font]에 두고 이 탭 동안 기억한다(tokens.css). 하나를 고르면 이 코드는 지운다
+// 3D 장면 모양 비교(미리보기): ?scene=plain(초기 3D + 도판 틀) | paper(종이 장면, 기본). html[data-scene]에 두고 이 탭 동안 기억한다. 고르면 이 코드는 지운다
 {
-  const pick = new URLSearchParams(location.search).get("font");
-  let font = pick && /^[abc]$/.test(pick) ? pick : null;
+  const pick = new URLSearchParams(location.search).get("scene");
+  let scene = pick === "plain" || pick === "paper" ? pick : null;
   try {
-    if (font) sessionStorage.setItem("vd-font", font);
-    else font = sessionStorage.getItem("vd-font");
+    if (scene) sessionStorage.setItem("vd-scene", scene);
+    else scene = sessionStorage.getItem("vd-scene");
   } catch {
     // 저장소를 못 쓰면 주소에 있을 때만
   }
-  if (font) document.documentElement.dataset.font = font;
+  document.documentElement.dataset.scene = scene ?? "paper";
 }
 installStaleChunkReload();
 

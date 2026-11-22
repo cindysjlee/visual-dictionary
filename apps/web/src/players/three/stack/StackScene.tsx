@@ -12,7 +12,7 @@ import {
   LineBasicMaterial,
   Mesh,
   MeshBasicMaterial,
-  MeshToonMaterial,
+  MeshStandardMaterial,
   PlaneGeometry,
   QuadraticBezierCurve3,
   SphereGeometry,
@@ -20,7 +20,6 @@ import {
   type Material,
   type PerspectiveCamera,
 } from "three";
-import { outlineAll, paintOutlines, toon } from "../toon.ts";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { Term } from "@app/content-schema";
 import { holdMs, type StageProps } from "../../stage.ts";
@@ -41,7 +40,7 @@ const BOARD = { x: -3.7, w: 5.4, lineH: 0.52, pad: 0.95 };
 /** 거의 정면(약 20° 위)에서 본다: 세로로 쌓이는 높이가 곧 호출 깊이라 위에서 내려다보면 겹친다 */
 const VIEW = new Vector3(0, 0.36, 1);
 
-type FrameNode = { group: Group; body: Mesh; plate: Painter; tag: Painter; string: Line; bodyMat: MeshToonMaterial };
+type FrameNode = { group: Group; body: Mesh; plate: Painter; tag: Painter; string: Line; bodyMat: MeshStandardMaterial };
 
 class StackModel {
   readonly root = new Group();
@@ -51,12 +50,12 @@ class StackModel {
   readonly stamp: Mesh;
   /** 스택 한도선(scenario.stackLimit이 있을 때). 넘으면 공격색으로 깜빡인다 */
   readonly limitLine?: Mesh;
-  private limitMat?: MeshToonMaterial;
-  private overMat: MeshToonMaterial;
+  private limitMat?: MeshStandardMaterial;
+  private overMat: MeshStandardMaterial;
   private stampPaint = screenPainter();
   private boardPaint: Painter;
   private frames = new Map<number, FrameNode>();
-  private mats: { mat: MeshToonMaterial | LineBasicMaterial; key: keyof Palette; emissive?: number }[] = [];
+  private mats: { mat: MeshStandardMaterial | LineBasicMaterial; key: keyof Palette; emissive?: number }[] = [];
   private term: Term;
   private palette: Palette;
   private state: StackState = { frames: [], overflowed: false };
@@ -98,15 +97,15 @@ class StackModel {
   }
 
   private std(key: keyof Palette, emissive = 0, opacity?: number) {
-    const mat = toon();
+    const mat = new MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 });
     if (opacity !== undefined) Object.assign(mat, { transparent: true, opacity, depthWrite: false });
     this.mats.push({ mat, key, emissive });
     this.paint(mat, key, emissive);
     return mat;
   }
-  private paint(mat: MeshToonMaterial | LineBasicMaterial, key: keyof Palette, emissive = 0) {
+  private paint(mat: MeshStandardMaterial | LineBasicMaterial, key: keyof Palette, emissive = 0) {
     mat.color.set(this.palette[key]);
-    if (mat instanceof MeshToonMaterial) mat.emissive = new Color(this.palette[key]).multiplyScalar(emissive);
+    if (mat instanceof MeshStandardMaterial) mat.emissive = new Color(this.palette[key]).multiplyScalar(emissive);
   }
 
   frameY = (depth: number) => 0.16 + FRAME.h / 2 + depth * (FRAME.h + FRAME.gap);
@@ -172,7 +171,6 @@ class StackModel {
     state.frames.forEach((f, depth) => {
       const node = this.frames.get(depth) ?? this.makeFrame(depth);
       this.frames.set(depth, node);
-      outlineAll(node.group, this.palette.outline); // 나중에 쌓이는 프레임에도 외곽선
       node.group.position.set(STACK_X, this.frameY(depth), 0);
       node.group.scale.setScalar(1);
       node.group.visible = true;
@@ -199,8 +197,6 @@ class StackModel {
   setPalette(palette: Palette) {
     this.palette = palette;
     for (const m of this.mats) this.paint(m.mat, m.key, m.emissive);
-    outlineAll(this.root, palette.outline);
-    paintOutlines(this.root, palette.outline);
     this.apply(this.state);
   }
 
