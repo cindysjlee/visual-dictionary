@@ -49,17 +49,9 @@ function judge(name: string, { lcp, cls }: { lcp: number; cls: number }) {
   expect(cls).toBeLessThanOrEqual(CLS);
 }
 
-// 랜딩 시안 3개. C는 실제 3D 플레이어가 스크린에 뜰 때까지 기다린다
-const LANDINGS = [
-  { hero: "a", ready: ".la-steps" },
-  { hero: "b", ready: ".lb-board" },
-  { hero: "c", ready: ".lc-screen .play-btn" },
-];
-for (const { hero, ready } of LANDINGS) {
-  test(`랜딩 ${hero} 첫 화면: LCP·CLS 기준 이내`, tag, async ({ page }) => {
-    judge(`랜딩 ${hero}`, await measure(page, `/?hero=${hero}`, async (p) => void (await expect(p.locator(ready).first()).toBeVisible())));
-  });
-}
+test("랜딩 첫 화면: 그림 1까지 뜬 뒤 LCP·CLS 기준 이내", tag, async ({ page }) => {
+  judge("랜딩", await measure(page, "/", async (p) => void (await expect(p.locator(".la-steps")).toBeVisible())));
+});
 
 test("목록 첫 화면: LCP·CLS 기준 이내", tag, async ({ page }) => {
   judge("목록", await measure(page, "/terms", async (p) => void (await expect(p.locator(".term-card").first()).toBeVisible())));

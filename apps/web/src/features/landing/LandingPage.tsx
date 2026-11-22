@@ -1,14 +1,11 @@
 // 랜딩(/, /about): "보안·CS 개념을 3D 시각화로 정리한 용어 사전"을 알리고 가입으로 잇는다.
-// 시안 3개를 ?hero=a|b|c로 비교(하나로 정하면 나머지는 지운다): A 사전 지면, B 학습 노선도, C 극장(실제 3D 플레이어).
+// 콘셉트는 "사전 지면"(DictionaryPage): 표제어 풀이 → 그림 1(공격/방어 단계) → 가나다 색인(밑줄 = 읽은 용어) → 책갈피(가입).
 // 숫자·용어·분야는 /content/index.json, 예시 장면은 /content/terms/csrf.json에서 읽는다(하드코딩·지어낸 수치 금지)
 import { useEffect } from "react";
-import { useSearchParams } from "react-router";
 import type { Category, IndexEntry, Term } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
 import { useJson } from "../../useJson.ts";
-import LandingA from "./LandingA.tsx";
-import LandingB from "./LandingB.tsx";
-import LandingC from "./LandingC.tsx";
+import DictionaryPage from "./DictionaryPage.tsx";
 
 export type LandingData = {
   index: IndexEntry[];
@@ -31,8 +28,6 @@ export const josa = (word: string, withFinal: string, without: string) => {
 export const pickDemo = (index: IndexEntry[]) => (index.find((t) => t.id === "csrf") ?? index.find((t) => t.blockedAt.length > 0) ?? index[0])?.id ?? null;
 
 export default function LandingPage() {
-  const [params] = useSearchParams();
-  const hero = params.get("hero") === "b" ? "b" : params.get("hero") === "c" ? "c" : "a";
   const load = useJson<IndexEntry[]>("/content/index.json");
   const index = load.state === "ok" ? load.data : null;
   const demoId = index ? pickDemo(index) : null;
@@ -40,13 +35,13 @@ export default function LandingPage() {
   const failed = load.state === "error" || load.state === "notfound";
   const data: LandingData | null = index ? { index, groups: groupByCategory(index), demo: demo.state === "ok" ? demo.data : null } : null;
 
-  // 시안마다 페이지 바탕·상단바 색이 다르다(tokens.css의 html[data-landing]). 랜딩을 떠나면 지운다
+  // 랜딩은 페이지 바탕이 종이 지면이다(landing.css의 html[data-landing]). 랜딩을 떠나면 지운다
   useEffect(() => {
-    document.documentElement.dataset.landing = hero;
+    document.documentElement.dataset.landing = "";
     return () => {
       delete document.documentElement.dataset.landing;
     };
-  }, [hero]);
+  }, []);
 
-  return hero === "b" ? <LandingB data={data} failed={failed} /> : hero === "c" ? <LandingC data={data} failed={failed} /> : <LandingA data={data} failed={failed} />;
+  return <DictionaryPage data={data} failed={failed} />;
 }

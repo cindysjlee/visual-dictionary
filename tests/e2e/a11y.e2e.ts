@@ -5,10 +5,7 @@ import { terms } from "./terms.ts";
 
 // 용어 상세는 @<id> 태그(npm run test:e2e -- --grep @csrf 로 그 용어 테스트만)
 const pages = [
-  // 랜딩 시안 3개(?hero=a|b|c, 하나로 정하면 나머지는 지운다)
-  { path: "/?hero=a", ready: ".la-steps", tag: ["@landing"] as string[] },
-  { path: "/?hero=b", ready: ".lb-board", tag: ["@landing"] as string[] },
-  { path: "/?hero=c", ready: ".lc-film", tag: ["@landing"] as string[] },
+  { path: "/", ready: ".la-steps", tag: ["@landing"] as string[] },
   { path: "/terms", ready: ".term-card", tag: ["@explore"] as string[] },
   ...terms.map((t) => ({ path: `/terms/${t.id}`, ready: ".play-btn", tag: [`@${t.id}`] })),
   ...["login", "signup", "confirm", "reset"].map((p) => ({ path: `/auth/${p}`, ready: ".auth-form", tag: ["@auth"] })),

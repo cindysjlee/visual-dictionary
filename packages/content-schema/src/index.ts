@@ -245,7 +245,7 @@ export type Zone = (typeof ZONES)[number];
 export type Look = (typeof LOOKS)[number];
 
 /** /content/index.json의 항목 하나 */
-export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | "category" | "summary"> & {
+export type IndexEntry = Pick<Term, "id" | "name" | "englishName" | "aliases" | "category" | "summary" | "related"> & {
   playerType: PlayerType;
   stepCount: number;
   defenseCount: number; // 차단 단계가 있는 방어 수

@@ -15,7 +15,7 @@ const outDir = (includeDrafts: boolean) =>
 export const selectTerms = (terms: Term[], includeDrafts: boolean) =>
   terms.filter((t) => t.status === "published" || (includeDrafts && t.status === "draft"));
 
-export const toIndexEntry = ({ id, name, englishName, aliases, category, summary, scenario, defenses }: Term): IndexEntry => ({
+export const toIndexEntry = ({ id, name, englishName, aliases, category, summary, related, scenario, defenses }: Term): IndexEntry => ({
   ...defenseCounts({ defenses }),
   id,
   name,
@@ -23,6 +23,7 @@ export const toIndexEntry = ({ id, name, englishName, aliases, category, summary
   aliases,
   category,
   summary,
+  related, // 랜딩 색인의 "→ 참조"
   playerType: scenario.playerType,
   stepCount: scenario.steps.length,
   dangerFrom: scenario.steps.findIndex((s) => s.danger) + 1 || null,
