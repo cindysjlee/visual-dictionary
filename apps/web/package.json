@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@app/content-schema": "*",
+    "@fontsource/gaegu": "5.3.0",
     "@fontsource/nanum-myeongjo": "5.3.0",
     "@fontsource/noto-sans-kr": "5.3.1",
     "@fontsource/sora": "5.3.0",

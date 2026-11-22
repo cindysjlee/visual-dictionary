@@ -116,7 +116,7 @@ html[data-landing] ::selection {
 /* ── 펼친 면: 왼쪽 표제어 풀이, 오른쪽 그림 1 ── */
 .la-spread {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: var(--la-gap);
 }
 
@@ -310,7 +310,7 @@ html[data-landing] ::selection {
   }
 }
 
-/* ── 그림 1: 움직이는 카툰 삽화(CartoonFigure.tsx). 굵은 외곽선 + 단순한 면 색, 색은 --la-ill-* ── */
+/* ── 그림 1: 움직이는 연필 스케치(SketchFigure.tsx). 색은 --la-sk-*, 글자는 손글씨(Gaegu) ── */
 .la-fig {
   display: flex;
   flex-direction: column;
@@ -355,200 +355,125 @@ html[data-landing] ::selection {
   color: var(--la-defense);
 }
 
-.la-toon {
+/* 그림판: 라이트·다크 모두 밝은 종이 카드(스케치를 지면에 붙여 둔 느낌). 주변 지면만 테마를 따른다 */
+.la-sketch {
+  display: block;
   width: 100%;
   height: auto;
-  border: 1.5px solid var(--la-ink);
-  border-radius: 6px;
-  font-family: var(--font-sans);
+  background: var(--la-sk-paper);
+  border: 1px solid var(--la-rule);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--la-rule), 0 10px 24px -18px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-hand);
 }
 
-.t-plate {
-  fill: var(--la-ill-plate);
-}
-
-.t-line {
-  stroke: var(--la-ill-line);
-  stroke-width: 3;
+/* 연필 선: 두 번 겹친 흔들린 선. 면 색: 윤곽보다 살짝 어긋나게 칠한 반투명 형광펜 */
+.sk-l {
+  fill: none;
+  stroke: var(--la-sk-pencil);
+  stroke-width: 1.35;
+  stroke-linecap: round;
   stroke-linejoin: round;
 }
+.sk-l-thin { stroke-width: 1; }
+.sk-l-bank-deep { stroke: var(--la-sk-bank-deep); stroke-width: 2.2; }
+.sk-f { fill-opacity: 0.62; }
+.sk-f-ink { fill: var(--la-sk-ink); fill-opacity: 0.85; }
+.sk-f-paper { fill: var(--la-sk-paper); }
+.sk-f-paper2 { fill: var(--la-sk-paper2); }
+.sk-f-white { fill: var(--la-sk-white); }
+.sk-f-bank { fill: var(--la-sk-bank); }
+.sk-f-bank-deep { fill: var(--la-sk-bank-deep); }
+.sk-f-attack { fill: var(--la-sk-attack); }
+.sk-f-attack-deep { fill: var(--la-sk-attack-deep); }
+.sk-f-attack-soft { fill: var(--la-sk-attack-soft); }
+.sk-f-evil { fill: var(--la-sk-evil); }
+.sk-f-evil-soft { fill: var(--la-sk-evil-soft); }
+.sk-f-glass { fill: var(--la-sk-glass); }
+.sk-f-cookie { fill: var(--la-sk-cookie); }
+.sk-f-chip { fill: var(--la-sk-chip); fill-opacity: 0.9; }
+.sk-f-gold { fill: var(--la-sk-gold); }
+.sk-f-grey { fill: var(--la-sk-grey); }
+.sk-f-grey-deep { fill: var(--la-sk-grey-deep); }
+.sk-f-green { fill: var(--la-sk-green); }
 
-.t-line-thin {
-  stroke: var(--la-ill-line);
-  stroke-width: 1.5;
+/* 손글씨 이름표: 종이색 테두리로 선 위에서도 읽힌다 */
+.sk-t {
+  fill: var(--la-sk-pencil);
+  font-family: var(--font-hand);
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--la-sk-paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.sk-t.is-plain { stroke: none; }
+.sk-c-bank-deep { fill: var(--la-sk-bank-deep); }
+.sk-c-attack-deep { fill: var(--la-sk-attack-deep); }
+.sk-c-evil { fill: var(--la-sk-evil); }
+.sk-c-grey-deep { fill: var(--la-sk-grey-deep); }
+/* 탭 안의 코드 줄(요청 주소·금액)은 고딕으로 */
+.sk-code {
+  fill: var(--la-sk-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.t-stroke,
-.t-stroke-on-evil {
+/* 효과음(휙!·뿅!·착!·쾅!·안 붙어!·짤랑!): 손글씨 + 흔들린 밑줄. 공격 = 진한 주황, 차단 = 진한 파랑(명도로도 구분) */
+.sk-word text {
+  font-size: 27px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--la-sk-paper);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  fill: var(--la-sk-ink);
+}
+.sk-word path {
   fill: none;
-  stroke: var(--la-ill-line);
-  stroke-width: 3;
+  stroke: var(--la-sk-ink);
+  stroke-width: 2;
   stroke-linecap: round;
 }
-
-.t-stroke-on-evil {
-  stroke: var(--la-ill-on-evil);
-}
-
-.t-thick {
-  stroke-width: 4;
-}
-
-.t-fill-line {
-  fill: var(--la-ill-line);
-}
-
-.t-fill-plate {
-  fill: var(--la-ill-plate-deep);
-}
-
-.t-fill-browser {
-  fill: var(--la-ill-browser);
-}
-
-.t-fill-paper {
-  fill: var(--la-ill-paper);
-}
-
-.t-fill-skin {
-  fill: var(--la-ill-skin);
-}
-
-.t-fill-hair {
-  fill: var(--la-ill-hair);
-}
-
-.t-fill-bank {
-  fill: var(--la-ill-bank);
-}
-
-.t-fill-evil {
-  fill: var(--la-ill-evil);
-}
-
-.t-fill-attacker {
-  fill: var(--la-ill-attacker);
-}
-
-.t-fill-cookie {
-  fill: var(--la-ill-cookie);
-}
-
-.t-fill-chip {
-  fill: var(--la-ill-chip);
-}
-
-.t-fill-coin {
-  fill: var(--la-ill-coin);
-}
-
-.t-fill-glass {
-  fill: var(--la-ill-glass);
-}
-
-.t-fill-attack {
-  fill: var(--la-attack);
-}
-
-.t-fill-defense {
-  fill: var(--la-defense);
-}
-
-.t-fill-defense-bg {
-  fill: var(--la-defense-bg);
-}
-
-.t-label {
-  fill: var(--la-ill-ink);
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.t-small {
-  font-size: 13px;
-}
-
-.t-on-evil {
-  fill: var(--la-ill-on-evil);
-}
-
-.t-env-label {
-  fill: var(--la-ill-ink);
-  font-family: var(--font-num);
-  font-size: 12px;
-  font-weight: 600;
-}
+.sk-word.is-attack text { fill: var(--la-sk-attack-deep); }
+.sk-word.is-attack path { stroke: var(--la-sk-attack); }
+.sk-word.is-defense text { fill: var(--la-sk-bank-deep); }
+.sk-word.is-defense path { stroke: var(--la-sk-bank-deep); }
+.sk-word.is-coin text { fill: var(--la-sk-attack-deep); }
+.sk-word.is-coin path { stroke: var(--la-sk-gold); }
 
 /* 움직이는 것: 평소에는 보이지 않고 단계마다 Web Animations가 꺼냈다 넣는다 */
-.t-move {
-  opacity: 0;
-}
-
-.t-tab {
+.sk-move { opacity: 0; }
+.sk-tab {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-/* 의성어: 두꺼운 글자 + 종이색 테두리. 슝(공격) = 공격색, 쾅(차단) = 방어색 */
-.t-word,
-.t-bang {
-  font-size: 30px;
+.sk-stamp-text {
+  fill: var(--la-sk-bank-deep);
+  font-family: var(--font-sans);
+  font-size: 16px;
   font-weight: 800;
-  paint-order: stroke;
-  stroke: var(--la-ill-plate);
-  stroke-width: 6px;
-  stroke-linejoin: round;
-  fill: var(--la-ill-ink);
-}
-
-.t-word-attack {
-  fill: var(--la-attack);
-}
-
-.t-word-defense,
-.t-bang {
-  fill: var(--la-defense);
-}
-
-.t-word-coin {
-  fill: var(--la-ill-coin-ink);
-}
-
-.t-bar {
-  transform-box: fill-box;
-  transform-origin: 0 50%;
-  transform: rotate(-60deg);
-  transition: transform var(--dur-enter) var(--ease-out);
-}
-
-.t-bar.is-shut {
-  transform: rotate(0deg);
-}
-
-.t-stamp-box {
-  fill: var(--la-ill-plate);
-  stroke: var(--la-defense);
-  stroke-width: 4;
-}
-
-.t-stamp-text {
-  fill: var(--la-defense);
-  font-family: var(--font-num);
-  font-size: 17px;
-  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .t-stamp {
-    animation: t-stamp 360ms var(--ease-out) both;
+  .sk-stamp {
+    animation: sk-stamp 300ms steps(4, end) both;
   }
 }
 
-@keyframes t-stamp {
+@keyframes sk-stamp {
   from {
     opacity: 0;
-    scale: 1.6;
+    scale: 2;
   }
+}
+
+.la-step-no:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 .la-player {
@@ -1009,4 +934,9 @@ html[data-landing] ::selection {
 .t-speed {
   stroke-width: 2.5;
   opacity: 0.7;
+}
+
+.sk-bar {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
 }

@@ -114,6 +114,9 @@ export default function Layout() {
           <Link to="/about">소개</Link>
           <Link to="/privacy">개인정보처리방침</Link>
           <span>문의 visualdict.help@gmail.com</span>
+          <span>
+            그림 1의 사람: <a href="https://www.openpeeps.com/" rel="noopener noreferrer">Open Peeps</a>(Pablo Stanley, CC0)
+          </span>
         </footer>
       </div>
     </>

@@ -9,7 +9,7 @@ import "@fontsource/nanum-myeongjo/400.css";
 import "@fontsource/nanum-myeongjo/700.css";
 import "../../styles/landing.css";
 import { isRead, useProgress, useRecent } from "../progress/store.ts";
-import CartoonFigure from "./CartoonFigure.tsx";
+import SketchFigure from "./SketchFigure.tsx";
 import { josa, type LandingData } from "./LandingPage.tsx";
 
 type Props = { data: LandingData | null; failed: boolean };
@@ -133,7 +133,7 @@ export default function DictionaryPage({ data, failed }: Props) {
           )}
         </article>
 
-        {demo ? <CartoonFigure term={demo} /> : <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />}
+        {demo ? <SketchFigure term={demo} /> : <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />}
       </div>
 
       <section ref={indexRef} id="la-index" className={inView ? "la-index is-inview" : "la-index"} aria-labelledby="la-index-title">
