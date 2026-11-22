@@ -1,7 +1,7 @@
 // 랜딩 그림 1의 손글씨(Gaegu 700)를 쓰는 글자만 남기고 잘라낸다.
 // 글자 출처: 용어 JSON에서 그림에 그려지는 필드(이름·사이트·화면 제목/줄·봉투 라벨·검사 결과) + 그림의 고정 문구 + 영숫자.
 // @fontsource/gaegu의 조각(woff2, unicode-range별)마다 필요한 글자만 남긴 작은 woff2를 만들고 @font-face CSS를 쓴다.
-// 출력: apps/web/generated/hand-font/ (landing.css가 @import, 빌드마다 다시 만든다)
+// 출력: apps/web/generated/hand-font/ (styles/dictionary.css가 @import, 빌드마다 다시 만든다)
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
