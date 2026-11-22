@@ -23,6 +23,9 @@ export const TOKEN_NAMES = {
   inkDefense: "--scene-ink-defense",
   inkSymbol: "--scene-ink-symbol",
   paperDim: "--scene-paper-dim",
+  outline: "--scene-outline",
+  /** 판 글자 글꼴(지면 본문과 같게) */
+  font: "--font-body",
 } as const;
 
 export type Palette = Record<keyof typeof TOKEN_NAMES, string>;
@@ -34,13 +37,18 @@ export function readPalette(): Palette {
   ) as Palette;
 }
 
-/** 테마(data-theme)가 바뀌면 다시 읽는다 */
+/** 테마(data-theme)·글꼴 조합(data-font)이 바뀌거나 글꼴 조각을 다 받으면 다시 읽는다(판 글자를 새 글꼴로 다시 칠하게) */
 export function usePalette(): Palette {
   const [palette, setPalette] = useState(readPalette);
   useEffect(() => {
-    const observer = new MutationObserver(() => setPalette(readPalette()));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
+    const reread = () => setPalette(readPalette());
+    const observer = new MutationObserver(reread);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-font"] });
+    document.fonts.addEventListener("loadingdone", reread);
+    return () => {
+      observer.disconnect();
+      document.fonts.removeEventListener("loadingdone", reread);
+    };
   }, []);
   return palette;
 }

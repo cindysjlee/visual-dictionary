@@ -14,9 +14,9 @@ body {
 .la {
   --la-gap: clamp(32px, 4vw, 64px);
   color: var(--la-ink);
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-size: 1.0625rem;
-  line-height: 1.85;
+  line-height: 1.75;
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
@@ -25,7 +25,7 @@ body {
 
 /* 밤 지면: 밝은 글자가 번지지 않게 줄 간격·자간을 조금 넓힌다 */
 [data-theme="dark"] .la {
-  line-height: 1.9;
+  line-height: 1.8;
   letter-spacing: 0.01em;
 }
 
@@ -74,7 +74,7 @@ body {
 }
 
 .la-lookup label {
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-weight: 700;
 }
 
@@ -121,8 +121,8 @@ body {
 
 .la-headword {
   margin: 0;
-  font-family: var(--font-sans);
-  font-weight: 800;
+  font-family: var(--font-title);
+  font-weight: 700;
   font-size: clamp(3.25rem, 1.6rem + 4.6vw, 6rem);
   line-height: 1;
   letter-spacing: -0.035em;
@@ -132,7 +132,7 @@ body {
 .la-hanja {
   display: block;
   margin-top: 0.55em;
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-weight: 400;
   font-size: 0.28em;
   line-height: 1.3;
@@ -147,7 +147,7 @@ body {
 
 .la-gloss {
   margin: var(--sp-4) 0 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-title);
   font-size: var(--fs-xl);
   font-weight: 700;
   line-height: var(--lh-snug);
@@ -580,8 +580,8 @@ body {
 .la-index-head h2,
 .la-bm-text h2 {
   margin: 0;
-  font-family: var(--font-sans);
-  font-weight: 800;
+  font-family: var(--font-title);
+  font-weight: 700;
   font-size: var(--fs-2xl);
   letter-spacing: -0.02em;
   line-height: var(--lh-tight);
@@ -681,8 +681,8 @@ body {
 }
 
 .la-word {
-  font-family: var(--font-sans);
-  font-weight: 800;
+  font-family: var(--font-title);
+  font-weight: 700;
   font-size: var(--fs-lg);
   color: var(--la-ink);
   text-decoration: none;
@@ -1123,7 +1123,7 @@ body {
 .la-term-def {
   margin: var(--sp-3) 0 0;
   max-width: var(--measure);
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-size: var(--fs-md);
   line-height: 1.85;
   text-wrap: pretty;
@@ -1143,9 +1143,9 @@ body {
 
 .la-margin h2 {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-title);
   font-size: var(--fs-md);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .la-margin .study-status {
@@ -1170,7 +1170,7 @@ body {
 }
 
 .la-term-fig > figcaption {
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-size: var(--fs-sm);
   color: var(--la-ink-sub);
 }
@@ -1202,15 +1202,15 @@ body {
 .la-defenses .defense-title {
   display: block;
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-title);
   font-size: var(--fs-md);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .la-defenses p {
   margin: var(--sp-1) 0 0;
   max-width: var(--measure);
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   line-height: 1.8;
 }
 
@@ -1363,7 +1363,7 @@ body {
 }
 
 .la-me .la-gloss {
-  font-family: var(--font-myeongjo);
+  font-family: var(--font-body);
   font-size: var(--fs-md);
   font-weight: 400;
   line-height: 1.8;
@@ -1379,4 +1379,21 @@ body {
 .la-me-marks {
   margin: 0;
   font-size: var(--fs-md);
+}
+
+/* 사전 도판 틀: 플레이어를 괘선 두른 판으로 감싸고 아래에 "그림 n." 캡션 */
+.la-term-fig .player {
+  border: 1px solid var(--la-ink);
+  border-radius: 0;
+  box-shadow: 0 0 0 4px var(--la-paper), 0 0 0 5px var(--la-rule);
+  background: var(--la-paper);
+}
+
+.la-term-fig .stage-slot {
+  border: 1px solid var(--la-rule);
+  border-radius: 0;
+}
+
+.la-term .la-headword {
+  font-size: clamp(2rem, 1.4rem + 1.8vw, 2.75rem);
 }

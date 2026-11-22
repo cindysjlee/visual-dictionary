@@ -1,9 +1,14 @@
-// 탭 화면·도장·내용 카드의 글자를 캔버스 텍스처로 그린다(실제 3D 면이라 뒤집기·가림이 자연스럽다). 글꼴은 번들에 포함된 Noto Sans KR
+// 탭 화면·도장·내용 카드의 글자를 캔버스 텍스처로 그린다(실제 3D 면이라 뒤집기·가림이 자연스럽다). 글꼴은 지면 본문과 같은 --font-body(팔레트 c.font)
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type { Palette } from "./tokens.ts";
 import type { Screen } from "./sceneState.ts";
 
-const FONT = "'Noto Sans KR', system-ui, sans-serif";
+/** 글자를 쓰기 전에 그 글자가 든 글꼴 조각(unicode-range)을 받게 한다. 다 받으면 usePalette가 팔레트를 다시 읽어 장면이 다시 칠한다 */
+function fill(g: CanvasRenderingContext2D, text: string, x: number, y: number, max?: number) {
+  if (!document.fonts.check(g.font, text)) void document.fonts.load(g.font, text).catch(() => {});
+  if (max === undefined) g.fillText(text, x, y);
+  else g.fillText(text, x, y, max);
+}
 
 function makeCanvas(w: number, h: number) {
   const canvas = document.createElement("canvas");
@@ -43,17 +48,17 @@ export function paintScreen(p: Painter, screen: Screen | undefined, site: string
   g.arc(56, 48, 11, 0, Math.PI * 2);
   g.fill();
   g.fillStyle = c.inkMuted;
-  g.font = `500 26px ${FONT}`;
-  g.fillText(site ?? "", 80, 57);
+  g.font = `500 26px ${c.font}`;
+  fill(g, site ?? "", 80, 57);
   if (screen?.title) {
     g.fillStyle = tone === "attack" ? c.inkAttack : c.ink;
-    g.font = `800 52px ${FONT}`;
-    g.fillText(screen.title, 40, 150, w - 80);
+    g.font = `800 52px ${c.font}`;
+    fill(g, screen.title, 40, 150, w - 80);
   }
-  g.font = `500 32px ${FONT}`;
+  g.font = `500 32px ${c.font}`;
   (screen?.lines ?? []).forEach((line, i) => {
     g.fillStyle = c.ink;
-    g.fillText(line, 40, 210 + i * 54, w - 80);
+    fill(g, line, 40, 210 + i * 54, w - 80);
   });
   p.texture.needsUpdate = true;
 }
@@ -70,10 +75,10 @@ export function paintStamp(p: Painter, text: string, c: Palette, tone: "attack" 
   g.strokeStyle = ink;
   g.stroke();
   g.fillStyle = ink;
-  g.font = `800 ${Math.min(110, (w - 80) / Math.max(4, text.length * 0.62))}px ${FONT}`;
+  g.font = `800 ${Math.min(110, (w - 80) / Math.max(4, text.length * 0.62))}px ${c.font}`;
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillText(text, w / 2, h / 2 + 4, w - 60);
+  fill(g, text, w / 2, h / 2 + 4, w - 60);
   g.textAlign = "start";
   g.textBaseline = "alphabetic";
   p.texture.needsUpdate = true;
@@ -86,10 +91,10 @@ export function paintCard(p: Painter, lines: readonly string[], c: Palette) {
   g.fillStyle = c.paper;
   roundRect(g, 0, 0, w, h, 24);
   g.fill();
-  g.font = `600 30px ${FONT}`;
+  g.font = `600 30px ${c.font}`;
   lines.forEach((line, i) => {
     g.fillStyle = /없음|비어/.test(line) ? c.inkDefense : i === 0 ? c.ink : c.inkMuted;
-    g.fillText(line, 32, 64 + i * 56, w - 64);
+    fill(g, line, 32, 64 + i * 56, w - 64);
   });
   p.texture.needsUpdate = true;
 }
@@ -108,8 +113,8 @@ export function paintCode(p: Painter, title: string | undefined, lines: readonly
   roundRect(g, 0, 0, w, h, 28);
   g.fill();
   g.fillStyle = c.inkMuted;
-  g.font = `600 30px ${FONT}`;
-  g.fillText(title ?? "", 32, 58);
+  g.font = `600 30px ${c.font}`;
+  fill(g, title ?? "", 32, 58);
   lines.forEach((line, i) => {
     const y = top + i * lh;
     if (current === i + 1) {
@@ -118,20 +123,20 @@ export function paintCode(p: Painter, title: string | undefined, lines: readonly
       roundRect(g, 16, y, w - 32, lh - 6, 12);
       g.fill();
       g.fillStyle = c.inkDefense;
-      g.fillText("▶", 20, y + lh * 0.68);
+      fill(g, "▶", 20, y + lh * 0.68);
     }
     if (returnLines.has(i + 1)) {
       g.fillStyle = c.inkSymbol;
-      g.font = `700 30px ${FONT}`;
-      g.fillText("↩", w - 64, y + lh * 0.68);
+      g.font = `700 30px ${c.font}`;
+      fill(g, "↩", w - 64, y + lh * 0.68);
     }
     g.fillStyle = c.inkMuted;
-    g.font = `500 26px ${FONT}`;
-    g.fillText(String(i + 1).padStart(2, " "), 56, y + lh * 0.66);
+    g.font = `500 26px ${c.font}`;
+    fill(g, String(i + 1).padStart(2, " "), 56, y + lh * 0.66);
     // 판은 두 테마 모두 밝은 종이색이라 글자는 장면 글자 토큰(두 테마 모두 어두운 값, DF-47·48)
     g.fillStyle = c.ink;
-    g.font = `${current === i + 1 ? 700 : 500} 30px ui-monospace, Consolas, ${FONT}`;
-    g.fillText(line, 108, y + lh * 0.68, w - 190);
+    g.font = `${current === i + 1 ? 700 : 500} 30px ui-monospace, Consolas, ${c.font}`;
+    fill(g, line, 108, y + lh * 0.68, w - 190);
   });
   p.texture.needsUpdate = true;
 }
@@ -151,16 +156,16 @@ export function paintFrame(p: Painter, call: string, locals: readonly { name: st
   g.setLineDash([]);
   const strong = running ? c.ink : c.inkMuted;
   g.fillStyle = strong;
-  g.font = `800 64px ui-monospace, Consolas, ${FONT}`;
-  g.fillText(call, 32, 96, w * 0.4);
-  g.font = `700 54px ui-monospace, Consolas, ${FONT}`;
+  g.font = `800 64px ui-monospace, Consolas, ${c.font}`;
+  fill(g, call, 32, 96, w * 0.4);
+  g.font = `700 54px ui-monospace, Consolas, ${c.font}`;
   locals.forEach((l, i) => {
     const x = w * 0.45;
     const y = 86 + i * 84;
     g.fillStyle = c.inkMuted;
-    g.fillText(l.name, x, y, w * 0.16);
+    fill(g, l.name, x, y, w * 0.16);
     g.fillStyle = l.value.includes("▢") || l.value === "?" ? c.inkMuted : strong;
-    g.fillText(`= ${l.value}`, x + w * 0.17, y, w * 0.36);
+    fill(g, `= ${l.value}`, x + w * 0.17, y, w * 0.36);
   });
   p.texture.needsUpdate = true;
 }
@@ -181,10 +186,10 @@ export function paintSign(p: Painter, text: string, tone: "attack" | "neutral", 
   g.strokeStyle = tone === "attack" ? c.inkAttack : c.objectDim;
   g.stroke();
   g.fillStyle = tone === "attack" ? c.inkAttack : c.ink;
-  g.font = `700 ${Math.min(64, (w - 48) / Math.max(4, text.length * 0.56))}px ${FONT}`;
+  g.font = `700 ${Math.min(64, (w - 48) / Math.max(4, text.length * 0.56))}px ${c.font}`;
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillText(text, w / 2, h / 2 + 3, w - 40);
+  fill(g, text, w / 2, h / 2 + 3, w - 40);
   g.textAlign = "start";
   g.textBaseline = "alphabetic";
   p.texture.needsUpdate = true;

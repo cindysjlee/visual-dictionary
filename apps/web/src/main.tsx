@@ -9,8 +9,11 @@ import "@fontsource/noto-sans-kr/800.css";
 import "@fontsource/sora/500.css";
 import "@fontsource/sora/600.css";
 import "@fontsource/sora/700.css";
-import "@fontsource/nanum-myeongjo/400.css";
-import "@fontsource/nanum-myeongjo/700.css";
+import "@fontsource/noto-serif-kr/400.css";
+import "@fontsource/noto-serif-kr/700.css";
+import "@fontsource/gowun-batang/400.css";
+import "@fontsource/gowun-batang/700.css";
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./styles/tokens.css";
 import "./styles/global.css";
 import "./styles/dictionary.css";
@@ -33,6 +36,18 @@ const hasHandedNotice = () => {
 
 // 첫 렌더 전에 테마를 정한다 (CSP가 인라인 스크립트를 막으므로 index.html에서 할 수 없다)
 applyTheme(initialTheme());
+// 글꼴 조합 시험(미리보기): ?font=a|b|c를 html[data-font]에 두고 이 탭 동안 기억한다(tokens.css). 하나를 고르면 이 코드는 지운다
+{
+  const pick = new URLSearchParams(location.search).get("font");
+  let font = pick && /^[abc]$/.test(pick) ? pick : null;
+  try {
+    if (font) sessionStorage.setItem("vd-font", font);
+    else font = sessionStorage.getItem("vd-font");
+  } catch {
+    // 저장소를 못 쓰면 주소에 있을 때만
+  }
+  if (font) document.documentElement.dataset.font = font;
+}
 installStaleChunkReload();
 
 const router = createBrowserRouter([

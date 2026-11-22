@@ -152,7 +152,9 @@
   --la-tab-os: #1c6a4f;
   --la-tab-runtime: #5a3ab6;
   --la-on-tab: #ffffff;
-  --font-myeongjo: "Nanum Myeongjo", "Noto Serif KR", serif;
+  /* 지면 글꼴(시험 중: 미리보기 ?font=a|b|c, 기본 a). 제목은 Noto Serif KR, 본문은 조합마다. UI(버튼·표지·숫자)는 --font-sans·--font-num */
+  --font-title: "Noto Serif KR", serif;
+  --font-body: "Gowun Batang", "Noto Serif KR", serif;
   /* 그림 1 연필 스케치: 그림판은 라이트·다크 모두 밝은 종이 카드(스케치를 붙여 둔 느낌)라 밤 지면에서도 같은 값을 쓴다.
      연필(--la-sk-pencil) 글자는 종이 대비 12:1, 색 글자(-deep·evil·grey-deep)는 4.5:1 이상. 면 색은 형광펜처럼 반투명(.sk-f) */
   --font-hand: "Gaegu Hand", "Noto Sans KR", cursive;
@@ -304,7 +306,15 @@
   --field-bg: var(--la-paper);
   --field-border: var(--la-ink-sub);
   --field-inset: 0 0 0 transparent;
-  --stage-bg: var(--la-paper-deep);
+  --stage-bg: var(--la-paper);
+
+  /* 3D 장면 = 종이 삽화(docs/06 "종이 삽화"): 물체는 종이색 면 + 먹 외곽선(밤에는 등불빛 선), 바닥 괘선은 지면 괘선.
+     판 글자(--scene-paper·--scene-ink*)는 DF-48 대비 기준 그대로 */
+  --scene-object: var(--la-paper);
+  --scene-object-dim: var(--la-paper-deep);
+  --scene-island: var(--la-paper-deep);
+  --scene-grid: var(--la-rule);
+  --scene-outline: var(--la-ink);
   --stage-inset: 0 0 0 transparent;
   --tab-on: var(--la-paper);
 
@@ -316,4 +326,19 @@
   --r-lg: 4px;
   --r-md: 3px;
   --r-sm: 2px;
+}
+
+/* 글꼴 조합 시험(?font=b|c, main.tsx가 html[data-font]에 둔다). 고르면 나머지는 지운다 */
+html[data-font="b"] {
+  --font-body: "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, sans-serif;
+}
+
+html[data-font="c"] {
+  --font-body: "Noto Serif KR", serif;
+}
+
+/* 밤 사전의 3D 물체: 지면(#13161e)보다 한 단계 밝은 면이라야 툰 그늘이 검게 뭉개지지 않는다 */
+[data-theme="dark"] {
+  --scene-object: #2c3343;
+  --scene-object-dim: #232937;
 }

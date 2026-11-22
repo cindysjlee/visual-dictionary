@@ -585,9 +585,17 @@ button:disabled {
   overflow: hidden;
 }
 
-/* 무대는 화면 높이에 묶는다: 1440×900에서 무대·자막·조작이 한 화면에 들어오게(쪽 머리·표제어 몫 약 400px) */
+/* 무대 비율을 먼저 정한다: 넓은 화면은 16:10(최소 520px). 한 화면에 다 안 들어가면 무대를 깎지 않고 스크롤한다. 좁은 화면은 폭에 맞춘 높이 */
 .stage-slot.is-3d {
-  height: clamp(300px, min(46vw, 100svh - 400px), 540px);
+  height: clamp(300px, 46vw, 540px);
+}
+
+@media (min-width: 900px) {
+  .stage-slot.is-3d {
+    height: auto;
+    aspect-ratio: 16 / 10;
+    min-height: 520px;
+  }
 }
 
 .stage-slot.is-2d {
@@ -641,6 +649,7 @@ button:disabled {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  font-family: var(--font-body); /* 라벨도 지면 본문 글꼴 */
 }
 
 .scene-label {

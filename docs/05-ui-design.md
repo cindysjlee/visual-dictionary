@@ -84,6 +84,7 @@
 - **스타일:** `styles/dictionary.css`(main.tsx에서 전역, 나눔명조도 전역). 공통 부품은 `features/dictionary/Dictionary.tsx`: 첫소리 묶기(`byInitial`)·엄지 색인(`Thumbs`)·색인 줄(`IndexColumns`)·「분야」(`Field`, 괄호는 CSS)·→ 참조(`SeeAlso`)·분야별 밑줄 장부(`Ledger`, `.progress-total` "n / m 표제어에 밑줄", `.progress-cats` "n/m")·〔n단계, 방어 n〕(`entryMeta`).
 - **상단바:** 쪽 머리처럼 아래 굵은 괘선 하나, 현재 쪽은 형광펜 밑줄. 메뉴 이름: 색인·소개·내 단어장.
 - **표제어 한 쪽(/terms/:id):** 쪽 머리(색인으로·「분야」) → 표제어 h1(읽었으면 형광펜 밑줄) + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이(명조, `.term-desc`) + 오른쪽 여백의 밑줄 메모(`.study-card`: "밑줄 그음 · 읽음"/"밑줄 없음 · 아직 안 읽음", [밑줄 긋기]/[밑줄 지우기], 비로그인은 [로그인하고 밑줄 남기기]) → [그림 1] figure 안 3D 플레이어 + figcaption → 방어(해결) 방법 ol("¶ n단계에서 막힌다"는 본문 크기·방어색) → 참고 자료 → → 참조(`.related`). 무대 높이는 `clamp(300px, min(46vw, 100svh - 400px), 540px)`.
+- **글꼴(시험 중):** 제목 `--font-title` = Noto Serif KR 700, 본문 `--font-body`는 조합에 따라 A Gowun Batang(기본) · B Pretendard · C Noto Serif KR. 미리보기에서 `?font=a|b|c`로 바꿔 보고(main.tsx가 `html[data-font]`에 두고 탭 동안 기억) 하나를 고르면 나머지를 지운다. 지면 본문 17px·줄 간격 1.75(밤 1.8). UI(버튼·표지·숫자)는 Noto Sans KR·Sora. 나눔명조는 뺐다. 그림 1 손글씨(Gaegu)는 그대로.
 - **출처 표기:** Open Peeps 출처는 그 그림이 있는 랜딩(/·/about) 푸터에만.
 
 ## (옛) 디자인 컨셉: Bento Glass — 2026-11-23 사전 지면으로 대체, 아래는 기록
