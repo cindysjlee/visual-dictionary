@@ -1,0 +1,756 @@
+/* 랜딩 시안 A "사전 지면"(?hero=a). 색은 tokens.css의 --la-*. 표제어 Noto Sans KR 800, 본문 나눔명조, 숫자 Sora */
+html[data-landing] .backdrop {
+  display: none;
+}
+
+html[data-landing="a"] body {
+  background: var(--la-paper);
+}
+
+html[data-landing="a"] ::selection {
+  background: var(--la-defense-bg);
+  color: var(--la-ink);
+}
+
+.la {
+  --la-gap: clamp(32px, 4vw, 64px);
+  color: var(--la-ink);
+  font-family: var(--font-myeongjo);
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding-bottom: var(--sp-8);
+}
+
+.la :focus-visible {
+  outline: 2px solid var(--la-defense);
+  outline-offset: 3px;
+}
+
+.la-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}
+
+/* 쪽 머리: 사전 이름 + 길잡이 말(이 쪽의 첫·마지막 표제어) */
+.la-runhead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin: var(--sp-5) 0 0;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--la-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.la-guide {
+  font-weight: 500;
+  color: var(--la-ink-sub);
+}
+
+/* 펼친 면: 왼쪽 뜻풀이, 오른쪽 그림. 가운데 세로 괘선 */
+.la-spread {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: var(--la-gap);
+}
+
+.la-fig {
+  border-left: 1px solid var(--la-rule);
+  padding-left: var(--la-gap);
+  margin-left: calc(var(--la-gap) / -2);
+}
+
+.la-headword {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: clamp(3.25rem, 1.6rem + 4.6vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.la-hanja {
+  display: block;
+  margin-top: 0.55em;
+  line-height: 1.3;
+  font-family: var(--font-myeongjo);
+  font-weight: 400;
+  font-size: 0.3em;
+  letter-spacing: 0.08em;
+  color: var(--la-ink-sub);
+}
+
+.la-hanja::before {
+  content: "[";
+}
+
+.la-hanja::after {
+  content: "]";
+}
+
+.la-pos {
+  margin: var(--sp-4) 0 0;
+  font-weight: 700;
+  color: var(--la-ink-sub);
+}
+
+.la-senses {
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: sense;
+  max-width: 34em;
+}
+
+.la-senses li {
+  counter-increment: sense;
+  position: relative;
+  padding-left: 1.9em;
+  margin-bottom: var(--sp-3);
+  text-wrap: pretty;
+}
+
+/* 뜻풀이 번호는 순서가 의미를 갖는다(무엇인가·무엇이 들어 있나·왜 가입하나) */
+.la-senses li::before {
+  content: counter(sense);
+  position: absolute;
+  left: 0;
+  top: 0.32em;
+  width: 1.3em;
+  height: 1.3em;
+  border: 1px solid var(--la-ink);
+  border-radius: 50%;
+  font-family: var(--font-num);
+  font-size: 0.78em;
+  line-height: 1.22em;
+  text-align: center;
+}
+
+.la-example {
+  display: block;
+  color: var(--la-ink-sub);
+}
+
+.la-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin: var(--sp-6) 0 0;
+}
+
+.la-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--sp-5);
+  border: 1.5px solid var(--la-ink);
+  border-radius: 2px;
+  color: var(--la-ink);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background var(--dur-quick) var(--ease-out),
+    color var(--dur-quick) var(--ease-out);
+}
+
+.la-btn:hover {
+  background: var(--la-paper-deep);
+}
+
+.la-btn-ink {
+  background: var(--la-ink);
+  color: var(--la-paper);
+}
+
+.la-btn-ink:hover {
+  background: var(--la-ink-sub);
+}
+
+.la-note {
+  margin-top: var(--sp-4);
+  color: var(--la-attack);
+  font-family: var(--font-sans);
+}
+
+/* [그림 1] */
+.la-fig {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.la-fig-wait {
+  min-height: 560px;
+}
+
+.la-iso {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  background: var(--la-paper-deep);
+  border: 1px solid var(--la-rule);
+}
+
+.la-box path {
+  stroke: var(--la-ink);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  transition: fill var(--dur-quick) var(--ease-out);
+}
+
+.la-face-t {
+  fill: var(--la-paper);
+}
+
+.la-face-l {
+  fill: var(--la-rule);
+}
+
+.la-face-r {
+  fill: var(--la-paper-deep);
+}
+
+.la-box.is-on .la-face-t {
+  fill: var(--la-ink);
+}
+
+.la-iso-label {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  fill: var(--la-ink);
+  paint-order: stroke;
+  stroke: var(--la-paper-deep);
+  stroke-width: 4px;
+}
+
+.la-box.is-on .la-iso-label {
+  font-weight: 800;
+}
+
+.la-route {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-dasharray: 5 4;
+  stroke: var(--la-ink);
+}
+
+.la-route.la-tone-attack {
+  stroke: var(--la-attack);
+  stroke-dasharray: none;
+}
+
+.la-route.la-tone-defense {
+  stroke: var(--la-defense);
+}
+
+.la-arrowhead {
+  fill: var(--la-ink);
+}
+
+.la-arrowhead.la-tone-attack {
+  fill: var(--la-attack);
+}
+
+.la-arrowhead.la-tone-defense {
+  fill: var(--la-defense);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .la-route {
+    animation: la-draw 520ms var(--ease-out) both;
+  }
+}
+
+@keyframes la-draw {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 60;
+  }
+}
+
+.la-fig-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.la-fig-modes button,
+.la-thumb {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--la-ink);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--la-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.la-fig-modes button[aria-pressed="true"] {
+  background: var(--la-defense-bg);
+  border-color: var(--la-defense);
+  color: var(--la-defense);
+}
+
+.la-steps {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.la-steps th,
+.la-steps td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--la-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.la-steps thead th {
+  border-bottom: 1.5px solid var(--la-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.la-steps tbody th {
+  width: 44px;
+  padding: 3px 4px;
+}
+
+.la-step-no {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--la-rule);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--la-ink);
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.la-step-no[aria-pressed="true"] {
+  background: var(--la-ink);
+  border-color: var(--la-ink);
+  color: var(--la-paper);
+}
+
+.la-steps tr.is-focus td {
+  background: var(--la-paper-deep);
+}
+
+/* 위험: 진한 먹빨강 바탕 + 흰 글자 표지. 차단: 밝은 파랑 바탕 + 진한 파랑 글자 → 색이 아니라 명도로도 갈린다 */
+.la-mark {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+
+.la-attack {
+  color: var(--la-attack);
+  font-weight: 700;
+}
+
+.la-attack .la-mark {
+  background: var(--la-attack);
+  color: #fff;
+}
+
+.la-steps tr td.la-blocked {
+  background: var(--la-defense-bg);
+  color: var(--la-defense);
+  font-weight: 700;
+}
+
+.la-blocked .la-mark {
+  border: 1.5px solid var(--la-defense);
+}
+
+.la-code {
+  display: block;
+  font-family: var(--font-num);
+  font-weight: 600;
+}
+
+.la-steps td.la-halt {
+  color: var(--la-ink-sub);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--la-rule) 6px 7px);
+}
+
+.la-fig figcaption {
+  color: var(--la-ink-sub);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.la-fig figcaption b {
+  color: var(--la-ink);
+}
+
+.la a:not(.la-btn):not(.la-word) {
+  color: var(--la-defense);
+  text-underline-offset: 3px;
+}
+
+/* 표제어 색인 */
+.la-index {
+  border-top: 3px double var(--la-ink);
+  padding-top: var(--sp-5);
+  scroll-margin-top: var(--sp-5);
+}
+
+.la-index-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.la-index-head h2,
+.la-bm-text h2 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.02em;
+  line-height: var(--lh-tight);
+}
+
+.la-index-head p {
+  margin: 0;
+  color: var(--la-ink-sub);
+}
+
+.la-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0 var(--sp-5);
+}
+
+.la-thumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.la-thumb[aria-pressed="true"] {
+  background: var(--la-ink);
+  color: var(--la-paper);
+}
+
+.la-thumb-count {
+  font-family: var(--font-num);
+  font-weight: 600;
+}
+
+.la-thumb-web-security,
+.la-group-web-security {
+  --tab: var(--la-tab-web-security);
+}
+
+.la-thumb-network,
+.la-group-network {
+  --tab: var(--la-tab-network);
+}
+
+.la-thumb-os,
+.la-group-os {
+  --tab: var(--la-tab-os);
+}
+
+.la-thumb-runtime,
+.la-group-runtime {
+  --tab: var(--la-tab-runtime);
+}
+
+.la-thumb[class*="la-thumb-"][aria-pressed="true"] {
+  background: var(--tab);
+  border-color: var(--tab);
+  color: #fff;
+}
+
+/* 넓은 화면: 엄지 색인을 페이지 오른쪽 가장자리에 세로 탭으로 */
+@media (min-width: 1340px) {
+  .la-thumbs {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    margin: 0;
+    z-index: 2;
+  }
+
+  .la-thumb {
+    writing-mode: vertical-rl;
+    min-height: 0;
+    padding: var(--sp-4) 10px;
+    border-right: 0;
+    border-radius: 6px 0 0 6px;
+    background: var(--la-paper);
+    letter-spacing: 0.06em;
+  }
+
+  /* 탭 전체를 분야색으로 칠하고(흰 글자 6.5:1 이상), 고른 탭은 더 튀어나온다 */
+  .la-thumb[class*="la-thumb-"] {
+    background: var(--tab);
+    border-color: var(--tab);
+    color: #fff;
+  }
+
+  .la-thumb[aria-pressed="true"] {
+    padding-right: 24px;
+    box-shadow: inset 0 0 0 3px var(--la-paper);
+  }
+
+  .la-thumb-count {
+    writing-mode: horizontal-tb;
+  }
+}
+
+.la-columns {
+  columns: 2 22rem;
+  column-gap: var(--la-gap);
+  column-rule: 1px solid var(--la-rule);
+}
+
+.la-group {
+  break-inside: avoid-column;
+  margin-bottom: var(--sp-6);
+}
+
+.la-group h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.la-group h3::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: var(--tab);
+}
+
+.la-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-group li {
+  break-inside: avoid;
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--la-rule);
+}
+
+.la-word {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: var(--la-ink);
+  text-decoration: none;
+  margin-right: var(--sp-2);
+}
+
+.la-word:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.la-en {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+  margin-right: var(--sp-2);
+}
+
+.la-meta {
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
+.la-def {
+  margin: 2px 0 0;
+  text-wrap: pretty;
+}
+
+/* 책갈피(가입) */
+.la-bookmark {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--la-gap);
+  padding: var(--sp-8) var(--la-gap) var(--sp-7);
+  background: var(--la-paper-deep);
+  border: 1px solid var(--la-rule);
+}
+
+.la-ribbon {
+  position: absolute;
+  top: -10px;
+  right: var(--la-gap);
+  width: 28px;
+  height: 84px;
+  background: var(--la-attack);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+
+.la-bm-text p {
+  max-width: 32em;
+}
+
+.la-bm-list {
+  margin: var(--sp-5) 0 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.la-bm-list div {
+  display: grid;
+  grid-template-columns: 8.5em 1fr;
+  gap: var(--sp-3);
+  border-top: 1px solid var(--la-rule);
+  padding-top: var(--sp-3);
+}
+
+.la-bm-list dt {
+  font-family: var(--font-sans);
+  font-weight: 800;
+}
+
+.la-bm-list dd {
+  margin: 0;
+}
+
+.la-ledger {
+  margin: 0;
+  align-self: center;
+  padding: var(--sp-5);
+  background: var(--la-paper);
+  border: 1px solid var(--la-rule);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}
+
+.la-ledger figcaption {
+  font-weight: 800;
+  margin-bottom: var(--sp-3);
+}
+
+.la-ledger ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.la-ledger li {
+  display: grid;
+  grid-template-columns: 8em 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.la-ledger-bar {
+  height: 8px;
+  border: 1px solid var(--tab);
+  border-left-width: 3px;
+}
+
+@media (max-width: 900px) {
+  .la-spread,
+  .la-bookmark {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .la-fig {
+    border-left: 0;
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .la-bookmark {
+    padding-inline: var(--sp-5);
+  }
+
+  .la-ribbon {
+    right: var(--sp-5);
+  }
+}
+
+@media (max-width: 520px) {
+  .la-runhead .la-guide {
+    display: none;
+  }
+
+  .la-bm-list div,
+  .la-ledger li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* 평가 뒤 보강: 5초 안에 "3D·보안·사전"이 읽히도록 부제, 가입 이점 한 줄, 그림 머리의 재생 버튼 */
+.la-gloss {
+  margin: var(--sp-4) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  letter-spacing: -0.015em;
+}
+
+.la-signup-note {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
+.la-fig-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+}
+
+.la-btn-sm {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 900px) {
+  .la-iso {
+    max-height: none;
+  }
+}

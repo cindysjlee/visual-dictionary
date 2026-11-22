@@ -1,6 +1,8 @@
 /* 디자인 토큰은 이 파일 한 곳에서만 정한다. 출처: docs/05-ui-design.md (Bento Glass), 시안 docs/design/C2-*.
    라이트 = :root, 다크 = [data-theme="dark"]. 기본 테마는 theme.ts가 prefers-color-scheme으로 정한다. */
-:root {
+:root,
+html[data-landing="a"] .topbar,
+html[data-landing="a"] .site-footer {
   color-scheme: light;
 
   --bg: #e8ebf4;
@@ -136,30 +138,56 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
-  /* ── Y2K 크롬·홀로그램·리퀴드 글래스(랜딩, docs/05) ── 장식 전용. 공격·방어 의미 색은 위의 --attack·--defense만 쓴다 */
-  /* 크롬 글자: 가장 옅은 띠(#4f5870)도 바탕 --bg 대비 5.4:1 */
-  --chrome-text: linear-gradient(180deg, #141824 0%, #4f5870 38%, #1b2030 52%, #39415a 78%, #10131d 100%);
-  /* 볼록한 크롬 버튼(위가 밝고 아래가 어두운 금속) */
-  --chrome-hi: #ffffff;
-  --chrome-lo: #c7cedc;
-  --chrome-edge: rgba(18, 22, 36, 0.22);
-  --chrome-shine: rgba(255, 255, 255, 0.95);
-  --chrome-shade: rgba(18, 22, 36, 0.18);
-  /* 홀로그램(무지개빛) 테두리 */
-  --holo: conic-gradient(from var(--holo-angle, 0deg), #ff8fcf, #8fd0ff, #b9a6ff, #ffe18a, #86e6c4, #ff8fcf);
-  /* 리퀴드 글래스 패널(배경이 휘어 보이는 유리): 글자가 올라가므로 바탕을 충분히 불투명하게 */
-  --liquid-bg: rgba(255, 255, 255, 0.58);
-  --liquid-border: rgba(255, 255, 255, 0.85);
-  --liquid-glint: rgba(255, 255, 255, 0.75);
-  --switch-track: rgba(18, 22, 36, 0.14);
-  /* 크롬 창 제목 막대: 두 테마 모두 밝은 은색(글자는 --scene-ink, 13:1 이상) */
-  --chrome-bar: linear-gradient(180deg, #ffffff 0%, #e3e7f0 45%, #b8c0d2 100%);
-  /* 글리치(색수차) 한 번: 장식 전용 분홍·하늘 */
-  --glitch-a: rgba(255, 79, 163, 0.75);
-  --glitch-b: rgba(41, 199, 255, 0.75);
+  /* ── 랜딩 시안 3개(docs/05 "랜딩 시안"). 시안마다 바탕이 고정이라 테마와 상관없이 한 벌. 하나로 정하면 나머지는 지운다 ── */
+  /* A 사전 지면: 차가운 흰 종이 + 먹. 보조 글자 7.9:1, 공격 먹빨강 6.1:1. 방어는 밝은 파랑 바탕 + 진한 파랑 글자(6.5:1)라 공격(진한 바탕)과 명도로 갈린다 */
+  --la-paper: #f2f4f7;
+  --la-paper-deep: #e4e9f0;
+  --la-ink: #141a28;
+  --la-ink-sub: #434c5f;
+  --la-rule: #c2cad6;
+  --la-attack: #a1341b;
+  --la-defense: #1d4a9e;
+  --la-defense-bg: #dbe5f6;
+  --la-tab-web-security: #a1341b;
+  --la-tab-network: #1d4a9e;
+  --la-tab-os: #1c6a4f;
+  --la-tab-runtime: #5a3ab6;
+  --font-myeongjo: "Nanum Myeongjo", "Noto Serif KR", serif;
+
+  /* B 학습 노선도: 밤 안내판. 보조 글자 8.8:1. 노선색은 선·점에만, 글자는 --lb-sign. 공격(밝은 주황 채움)과 방어(진한 파랑 채움 + 흰 글자)는 명도로 갈린다 */
+  --lb-night: #0d1626;
+  --lb-night-2: #15223b;
+  --lb-sign: #f3f6fb;
+  --lb-sign-sub: #a9b6cc;
+  --lb-board: #050a12;
+  --lb-amber: #ffc24a;
+  --lb-line-web-security: #ff8a3d;
+  --lb-line-network: #3fb8ff;
+  --lb-line-os: #3ddc97;
+  --lb-line-runtime: #c39bff;
+  --lb-attack: #ff8a3d;
+  --lb-defense: #2457c5;
+
+  /* C 극장: 자두색 객석 + 스포트라이트. 보조 글자 9:1. 스크린 안(플레이어)은 사용자 테마를 그대로 쓴다 */
+  --lc-house: #1b0d1f;
+  --lc-house-2: #2a1430;
+  --lc-curtain: #6e1630;
+  --lc-curtain-hi: #a12a4b;
+  --lc-spot: #ffe1b5;
+  --lc-text: #f7ecf2;
+  --lc-text-sub: #d2bccb;
+  --lc-gold: #e8b04b;
+  --lc-ticket: #f6e7cf;
+  --lc-ticket-ink: #2a1430;
+  --font-poster: "Black Han Sans", "Noto Sans KR", sans-serif;
 }
 
-[data-theme="dark"] {
+/* 랜딩 시안 B·C는 바탕이 늘 어두우므로 상단바·푸터도 사용자 테마와 상관없이 다크 값을 쓴다(A는 아래 :root 목록에서 늘 라이트) */
+[data-theme="dark"],
+html[data-landing="b"] .topbar,
+html[data-landing="b"] .site-footer,
+html[data-landing="c"] .topbar,
+html[data-landing="c"] .site-footer {
   color-scheme: dark;
 
   --bg: #090c17;
@@ -225,17 +253,6 @@
   --focus-ring: #8cc6ff;
   --selection: rgba(108, 182, 255, 0.3);
 
-  /* 가장 어두운 띠(#aab3ca)도 바탕 --bg 대비 9.6:1 */
-  --chrome-text: linear-gradient(180deg, #ffffff 0%, #c9d0e2 36%, #f4f6fb 50%, #aab3ca 76%, #e8ecf6 100%);
-  --chrome-hi: #4a5274;
-  --chrome-lo: #1c2136;
-  --chrome-edge: rgba(255, 255, 255, 0.22);
-  --chrome-shine: rgba(255, 255, 255, 0.35);
-  --chrome-shade: rgba(0, 0, 0, 0.45);
-  --liquid-bg: rgba(20, 26, 46, 0.72); /* 주황 배경 빛 위에서도 보조 글자 4.5:1 */
-  --liquid-border: rgba(255, 255, 255, 0.2);
-  --liquid-glint: rgba(255, 255, 255, 0.28);
-  --switch-track: rgba(255, 255, 255, 0.14);
 }
 
 /* 공격·방어 연한 바탕: 각 색의 12%(라이트)·16%(다크) */

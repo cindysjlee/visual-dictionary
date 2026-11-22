@@ -1219,7 +1219,7 @@ button:disabled {
 .google-note,
 .privacy-note {
   margin: 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -1228,7 +1228,7 @@ button:disabled {
   align-items: center;
   gap: 10px;
   margin: 4px 0 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -1501,7 +1501,7 @@ button:disabled {
   justify-content: center;
   align-items: center;
   gap: 8px 18px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
