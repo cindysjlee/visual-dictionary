@@ -1,25 +1,16 @@
 // 랜딩 "사전 지면": 종이 사전의 한 쪽을 펼친 것처럼 '시각화 사전'을 표제어로 풀이한다.
 // 쪽 머리(찾아보기) → 표제어 풀이 ①②③ + [그림 1](예시 용어의 공격/방어 단계, 행위자 등각 그림) → 가나다 색인(읽은 표제어에 형광펜 밑줄) → 책갈피(가입).
 // 밑줄: 로그인해 기록을 불러왔으면(/about) 실제로 읽은 표제어, 아니면 "미리보기" 표시를 단 두 표제어에만 긋는다(지어낸 진행률 없음)
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Form, Link } from "react-router";
-import type { Category, IndexEntry } from "@app/content-schema";
+import type { Category } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
-import "@fontsource/nanum-myeongjo/400.css";
-import "@fontsource/nanum-myeongjo/700.css";
-import "../../styles/landing.css";
+import { IndexColumns, Ledger, Thumbs, useInView } from "../dictionary/Dictionary.tsx";
 import { isRead, useProgress, useRecent } from "../progress/store.ts";
 import SketchFigure from "./SketchFigure.tsx";
 import { josa, type LandingData } from "./LandingPage.tsx";
 
 type Props = { data: LandingData | null; failed: boolean };
-
-// 첫소리 머리(ㄱ·ㄴ…): 겹자음은 홑자음 머리에 넣는다. 한글이 아니면 로마자 첫 글자
-const CHOSEONG = "ㄱㄱㄴㄷㄷㄹㅁㅂㅂㅅㅅㅇㅈㅈㅊㅋㅌㅍㅎ";
-export const initialOf = (name: string) => {
-  const code = name.charCodeAt(0) - 0xac00;
-  return code >= 0 && code <= 11171 ? CHOSEONG[Math.floor(code / 588)]! : name.charAt(0).toUpperCase();
-};
 
 export default function DictionaryPage({ data, failed }: Props) {
   const [cat, setCat] = useState<Category | "all">("all");
@@ -47,19 +38,9 @@ export default function DictionaryPage({ data, failed }: Props) {
     return (demoEntry ?? data.index[0])?.related.find((id) => byId.has(id) && !lined.has(id));
   }, [data, mine, recent, progress, demoEntry, byId, lined]);
 
-  // 가나다순 색인을 첫소리로 묶는다(고른 분야만)
-  const sections = useMemo(() => {
-    const list = (data?.index ?? []).filter((t) => cat === "all" || t.category === cat).sort((a, b) => a.name.localeCompare(b.name, "ko"));
-    const out: { head: string; terms: IndexEntry[] }[] = [];
-    for (const t of list) {
-      const head = initialOf(t.name);
-      if (out.at(-1)?.head === head) out.at(-1)!.terms.push(t);
-      else out.push({ head, terms: [t] });
-    }
-    return out;
-  }, [data, cat]);
+  const shown = (data?.index ?? []).filter((t) => cat === "all" || t.category === cat);
 
-  // 색인·책갈피가 화면에 들어오면 밑줄·장부를 한 번 긋는다(동작 줄이기면 처음부터 그어져 있다, landing.css)
+  // 색인·책갈피가 화면에 들어오면 밑줄·장부를 한 번 긋는다(동작 줄이기면 처음부터 그어져 있다, dictionary.css)
   const [indexRef, inView] = useInView(!!data);
   const [bookRef, bookInView] = useInView(!!data);
 
@@ -117,7 +98,7 @@ export default function DictionaryPage({ data, failed }: Props) {
             </Link>
             {mine ? (
               <Link className="la-btn" to="/me">
-                내 학습 보기
+                내 단어장 보기
               </Link>
             ) : (
               <Link className="la-btn la-btn-mark" to="/auth/signup">
@@ -148,68 +129,8 @@ export default function DictionaryPage({ data, failed }: Props) {
           </p>
         </div>
         {/* 엄지 색인: 분야별로 색인을 좁힌다 */}
-        <nav className="la-thumbs" aria-label="분야별 엄지 색인">
-          <button type="button" className="la-thumb" aria-pressed={cat === "all"} onClick={() => setCat("all")}>
-            전체 <span className="la-thumb-count">{total ?? ""}</span>
-          </button>
-          {data?.groups.map(([c, list]) => (
-            <button key={c} type="button" className={`la-thumb la-tab-${c}`} aria-pressed={cat === c} onClick={() => setCat(c)}>
-              {CATEGORY_LABELS[c]} <span className="la-thumb-count">{list.length}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="la-columns">
-          {sections.map(({ head, terms }) => (
-            <section key={head} className="la-letter" aria-label={`${head}(으)로 시작하는 표제어`}>
-              <h3 aria-hidden="true">{head}</h3>
-              <ul>
-                {terms.map((t) => {
-                  const on = lined.has(t.id);
-                  const see = t.related.map((id) => byId.get(id)).filter((r): r is IndexEntry => !!r);
-                  return (
-                    <li key={t.id}>
-                      <Link to={`/terms/${t.id}`} className="la-word">
-                        <span className={on ? "la-hl is-on" : "la-hl"}>{t.name}</span>
-                        {on && <span className="visually-hidden">{mine ? " (읽음)" : " (밑줄 미리보기)"}</span>}
-                      </Link>
-                      {t.englishName && (
-                        <span className="la-en" lang="en">
-                          {t.englishName}
-                        </span>
-                      )}
-                      <span className={`la-field la-tab-${t.category}`}>「{CATEGORY_LABELS[t.category]}」</span>
-                      {on && !mine && (
-                        <span className="la-preview" aria-hidden="true">
-                          미리보기
-                        </span>
-                      )}
-                      {t.id === resumeId && (
-                        <span className="la-resume">
-                          책갈피<span className="visually-hidden">: 읽다 만 쪽{mine ? "" : " (미리보기)"}</span>
-                          {!mine && <span aria-hidden="true"> · 미리보기</span>}
-                        </span>
-                      )}
-                      <p className="la-def">
-                        {t.summary}
-                        <span className="la-meta">
-                          {" "}
-                          〔<span className="la-num">{t.stepCount}</span>단계
-                          {t.defenseCount > 0 && (
-                            <>
-                              , 방어 <span className="la-num">{t.defenseCount}</span>
-                            </>
-                          )}
-                          〕
-                        </span>
-                      </p>
-                      {see.length > 0 && <SeeAlso list={see} />}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
+        {data && <Thumbs label="분야별 엄지 색인" groups={data.groups} total={data.index.length} value={cat} onChange={setCat} />}
+        <IndexColumns terms={shown} byId={byId} lined={lined} resumeId={resumeId} preview={!mine} />
       </section>
 
       <section ref={bookRef} className={bookInView ? "la-bookmark is-inview" : "la-bookmark"} aria-labelledby="la-bm-title">
@@ -238,7 +159,7 @@ export default function DictionaryPage({ data, failed }: Props) {
           <p className="la-actions">
             {mine ? (
               <Link className="la-btn la-btn-ink" to="/me">
-                내 학습 보기
+                내 단어장 보기
               </Link>
             ) : (
               <>
@@ -252,71 +173,17 @@ export default function DictionaryPage({ data, failed }: Props) {
             )}
           </p>
         </div>
-        {data && <Ledger groups={data.groups} lined={lined} mine={mine} byId={byId} resume={resumeId ? byId.get(resumeId) : undefined} />}
+        {data && (
+          <Ledger
+            groups={data.groups}
+            lined={lined}
+            caption={mine ? "분야별 진행률" : "미리보기"}
+            note={!mine && lined.size > 0 ? `색인에서 밑줄 친 ${[...lined].map((id) => byId.get(id)?.name).join("·")}를 읽었다면` : undefined}
+            resume={resumeId ? byId.get(resumeId) : undefined}
+            resumeNote={mine ? undefined : " (미리보기)"}
+          />
+        )}
       </section>
     </div>
-  );
-}
-
-/** 요소의 일부가 처음 화면에 들어왔는지(한 번 true가 되면 그대로) */
-function useInView(ready: boolean) {
-  const ref = useRef<HTMLElement>(null);
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || seen || !ready) return;
-    const io = new IntersectionObserver(([e]) => e?.isIntersecting && setSeen(true), { threshold: 0.15 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [seen, ready]);
-  return [ref, seen] as const;
-}
-
-/** 사전의 "→ 참조": 관련 표제어 링크 */
-const SeeAlso = ({ list }: { list: IndexEntry[] }) => (
-  <p className="la-see">
-    <span aria-hidden="true">→ </span>
-    <span className="visually-hidden">참조: </span>
-    {list.map((r, i) => (
-      <span key={r.id}>
-        {i > 0 && ", "}
-        <Link to={`/terms/${r.id}`}>{r.name}</Link>
-      </span>
-    ))}
-  </p>
-);
-
-/** 분야별 진행률 장부: 내 기록이면 실제 값, 아니면 색인의 밑줄 미리보기 두 개를 읽었다고 할 때의 모습 */
-function Ledger({ groups, lined, mine, byId, resume }: { groups: LandingData["groups"]; lined: Set<string>; mine: boolean; byId: Map<string, IndexEntry>; resume?: IndexEntry }) {
-  const names = [...lined].map((id) => byId.get(id)?.name).filter(Boolean);
-  return (
-    <figure className="la-ledger" aria-labelledby="la-ledger-cap">
-      <figcaption id="la-ledger-cap">
-        {mine ? "분야별 진행률" : "미리보기"}
-        {!mine && names.length > 0 && <span>색인에서 밑줄 친 {names.join("·")}를 읽었다면</span>}
-      </figcaption>
-      <ul>
-        {groups.map(([c, list]) => {
-          const read = list.filter((t) => lined.has(t.id)).length;
-          return (
-            <li key={c} className={`la-tab-${c}`}>
-              <span>{CATEGORY_LABELS[c]}</span>
-              <span className="la-ledger-bar" aria-hidden="true">
-                <span style={{ width: `${(read / list.length) * 100}%` }} />
-              </span>
-              <span className="la-num">
-                {read} / {list.length}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      {resume && (
-        <p className="la-ledger-resume">
-          <span className="la-resume">책갈피</span> 읽다 만 쪽: <Link to={`/terms/${resume.id}`}>{resume.name}</Link>
-          {!mine && " (미리보기)"}
-        </p>
-      )}
-    </figure>
   );
 }

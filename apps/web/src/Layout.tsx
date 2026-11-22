@@ -84,12 +84,6 @@ export default function Layout() {
   }, [landing]);
   return (
     <>
-      <div className="backdrop" aria-hidden="true">
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-        <div className="blob blob-3" />
-        <div className="blob blob-4" />
-      </div>
       <div className="page">
         <header className="glass topbar">
           <Link to={user.status === "user" ? "/terms" : "/"} className="logo">
@@ -98,10 +92,10 @@ export default function Layout() {
           </Link>
           <nav className="topbar-nav" aria-label="주 메뉴">
             <NavLink to="/terms" end>
-              용어
+              색인
             </NavLink>
             <NavLink to="/about">소개</NavLink>
-            {user.status === "user" && <NavLink to="/me">내 학습</NavLink>}
+            {user.status === "user" && <NavLink to="/me">내 단어장</NavLink>}
           </nav>
           <div className="spacer" />
           <AccountBar />
@@ -114,9 +108,12 @@ export default function Layout() {
           <Link to="/about">소개</Link>
           <Link to="/privacy">개인정보처리방침</Link>
           <span>문의 visualdict.help@gmail.com</span>
-          <span>
-            그림 1의 사람: <a href="https://www.openpeeps.com/" rel="noopener noreferrer">Open Peeps</a>(Pablo Stanley, CC0)
-          </span>
+          {/* 출처는 그 그림(랜딩 그림 1)이 있는 쪽에만 */}
+          {(landing || pathname === "/about") && (
+            <span>
+              첫 쪽 그림 1의 사람: <a href="https://www.openpeeps.com/" rel="noopener noreferrer">Open Peeps</a>(Pablo Stanley, CC0)
+            </span>
+          )}
         </footer>
       </div>
     </>

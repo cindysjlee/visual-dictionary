@@ -49,11 +49,6 @@
   --raised-shadow: rgba(40, 50, 90, 0.16);
   --tab-on: rgba(255, 255, 255, 0.9);
 
-  /* 배경 빛 (주황·파랑·보라·청록) */
-  --blob-1: rgba(255, 138, 92, 0.75);
-  --blob-2: rgba(77, 139, 255, 0.65);
-  --blob-3: rgba(167, 123, 255, 0.5);
-  --blob-4: rgba(79, 209, 197, 0.45);
 
   /* 3D 장면 면 색 (useSceneTokens가 런타임에 읽어 재질에 넣는다. 반드시 #rrggbb) */
   --scene-object: #e3e8f2;
@@ -226,10 +221,6 @@
   --raised-shadow: rgba(0, 0, 0, 0.45);
   --tab-on: rgba(255, 255, 255, 0.14);
 
-  --blob-1: rgba(255, 120, 70, 0.42);
-  --blob-2: rgba(60, 120, 255, 0.45);
-  --blob-3: rgba(150, 90, 255, 0.38);
-  --blob-4: rgba(40, 190, 180, 0.28);
 
   --scene-object: #3e4566;
   --scene-object-dim: #2c3250;
@@ -274,4 +265,55 @@
 [data-theme="dark"] {
   --attack-soft: color-mix(in srgb, var(--attack) var(--soft-mix), transparent);
   --defense-soft: color-mix(in srgb, var(--defense) var(--soft-mix), transparent);
+}
+
+/* ── 사이트 전체 "사전 지면"(2차, 2026-11-23 사용자 승인): 의미 토큰을 사전 지면(--la-*)에 잇는다 ──
+   라이트·다크 모두 --la-* 값을 따르므로 한 벌로 적는다(--la-*가 테마마다 다르다).
+   유리(블러·광택·그림자)는 쓰지 않는다: 카드는 종이 위에 괘선으로 나눈 면이다. 공격/방어 색(--attack·--defense)과 3D 장면 토큰은 그대로 */
+:root,
+[data-theme="dark"] {
+  --bg: var(--la-paper);
+  --text: var(--la-ink);
+  --text-sub: var(--la-ink-sub);
+  --text-muted: var(--la-ink-sub);
+  --attack-text: var(--la-attack);
+  --defense-text: var(--la-defense);
+  --line: var(--la-rule);
+  --line-strong: var(--la-ink-sub);
+  --soft: transparent;
+  --cta: var(--la-ink);
+  --cta-text: var(--la-paper);
+  --surface: var(--la-paper);
+  --surface-raised: var(--la-paper-deep);
+  --cat-web-security: var(--la-tab-web-security);
+  --cat-network: var(--la-tab-network);
+  --cat-runtime: var(--la-tab-runtime);
+  --cat-os: var(--la-tab-os);
+
+  --glass-bg: var(--la-paper);
+  --glass-border: var(--la-rule);
+  --glass-inset: 0 0 0 transparent;
+  --glass-shadow: 0 0 0 transparent;
+  --glass-sheen: transparent;
+  --glass-fallback: var(--la-paper);
+  --tint-attack-bg: var(--la-paper);
+  --tint-attack-border: var(--la-rule);
+  --tint-defense-bg: var(--la-defense-bg);
+  --tint-defense-border: var(--la-defense);
+
+  --field-bg: var(--la-paper);
+  --field-border: var(--la-ink-sub);
+  --field-inset: 0 0 0 transparent;
+  --stage-bg: var(--la-paper-deep);
+  --stage-inset: 0 0 0 transparent;
+  --tab-on: var(--la-paper);
+
+  /* 종이 사전: 모서리는 거의 각지게(누르는 것만 살짝) */
+  --radius-lg: 4px;
+  --radius: 4px;
+  --radius-btn: 2px;
+  --r-xl: 6px;
+  --r-lg: 4px;
+  --r-md: 3px;
+  --r-sm: 2px;
 }

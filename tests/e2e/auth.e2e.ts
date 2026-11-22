@@ -168,5 +168,5 @@ test("상세: 로그아웃 상태로 끝까지 보면 로그인 안내 → 로�
   await login(page, "viewer@example.com");
   await expect(page).toHaveURL(/\/terms\/csrf$/);
   // 로그인하면 학습 상태 카드가 기록 상태와 직접 전환 버튼을 보인다(6단계)
-  await expect(page.locator(".study-card").getByRole("button", { name: "읽음으로 표시" })).toBeVisible();
+  await expect(page.locator(".study-card").getByRole("button", { name: "밑줄 긋기" })).toBeVisible();
 });

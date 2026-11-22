@@ -1,16 +1,12 @@
-/* 랜딩 "사전 지면". 색은 tokens.css의 --la-*(라이트 = 낮의 종이, 다크 = 밤 지면). 표제어 Noto Sans KR 800, 본문 나눔명조, 숫자 Sora */
+/* 사이트 전체 "사전 지면"(랜딩에서 시작해 2차에 모든 화면으로). 색은 tokens.css의 --la-*(라이트 = 낮의 종이, 다크 = 밤 지면). 표제어 Noto Sans KR 800, 본문 나눔명조, 숫자 Sora */
 /* 그림 1 손글씨: 빌드 때 그림에 쓰는 글자만 남긴 Gaegu 700(scripts/subset-hand-font.ts) */
 @import "../../generated/hand-font/hand-font.css";
 
-html[data-landing] .backdrop {
-  display: none;
-}
-
-html[data-landing] body {
+body {
   background: var(--la-paper);
 }
 
-html[data-landing] ::selection {
+::selection {
   background: var(--la-defense-bg);
   color: var(--la-ink);
 }
@@ -706,12 +702,20 @@ html[data-landing] ::selection {
   margin-right: var(--sp-2);
 }
 
-/* 분야 표지: 품사 표시처럼 「」 안에 분야 이름 */
+/* 분야 표지: 품사 표시처럼 「」 안에 분야 이름(괄호는 장식이라 글자 내용에 넣지 않는다) */
 .la-field {
   font-weight: 700;
   font-size: var(--fs-sm);
   color: var(--la-t);
   white-space: nowrap;
+}
+
+.la-field::before {
+  content: "「";
+}
+
+.la-field::after {
+  content: "」";
 }
 
 .la-preview {
@@ -981,4 +985,398 @@ html[data-landing] ::selection {
   .la-fig-next[data-on="false"] {
     display: none;
   }
+}
+
+/* ════════ 2차: 사이트 전체 사전 지면(색인 /terms · 표제어 한 쪽 /terms/:id · 내 단어장 /me) ════════ */
+.la-page {
+  gap: var(--sp-6);
+  padding-bottom: var(--sp-6);
+}
+
+.la-loading {
+  padding: var(--sp-6) 0;
+  color: var(--la-ink-sub);
+}
+
+.la-runhead a {
+  color: var(--la-ink);
+  text-decoration: none;
+}
+
+.la-runhead a:hover {
+  text-decoration: underline;
+}
+
+/* 쪽 안의 큰 제목(h2)은 모두 같은 단계: 고딕 800 + 위 괘선 */
+.la-index-head h1,
+.la-term-sec h2,
+.la-words h2,
+.la-me-bookmarks h2,
+.la-account h2 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: var(--lh-tight);
+}
+
+.la-index-head h1 {
+  font-size: var(--fs-2xl);
+}
+
+.la-term-sec h2,
+.la-words h2,
+.la-me-bookmarks h2,
+.la-account h2 {
+  font-size: var(--fs-xl);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--la-ink);
+}
+
+/* ── 색인(/terms) ── */
+.la-index-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.la-index-head {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.la-mine {
+  padding-left: var(--sp-5);
+  border-left: 1px solid var(--la-rule);
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
+.la-mine .la-ledger {
+  margin: 0;
+}
+
+.recent-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.recent-links > span {
+  color: var(--la-ink-sub);
+}
+
+.la-index-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 var(--sp-6);
+}
+
+.la-index-tools .la-thumbs {
+  margin: 0;
+}
+
+/* 읽음 걸러 보기: 엄지 색인보다 한 단계 가볍게 */
+.la-read-filter .la-thumb {
+  border-top-width: 2px;
+  font-weight: 600;
+}
+
+.la-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-5) 0;
+  font-size: var(--fs-md);
+}
+
+/* ── 표제어 한 쪽(/terms/:id) ── */
+.la-term-head,
+.la-me-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.la-term .la-headword,
+.la-me .la-headword {
+  margin: 0;
+  font-size: clamp(2.25rem, 1.4rem + 2.6vw, 3.5rem);
+}
+
+.la-term .la-hanja {
+  display: block;
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-md);
+}
+
+.la-term .la-pos {
+  margin: var(--sp-3) 0 0;
+}
+
+.la-term-def {
+  margin: var(--sp-3) 0 0;
+  max-width: var(--measure);
+  font-family: var(--font-myeongjo);
+  font-size: var(--fs-md);
+  line-height: 1.85;
+  text-wrap: pretty;
+}
+
+/* 밑줄 메모(학습 상태): 표제어 옆 여백에 붙인 쪽지 */
+.la-margin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--la-rule);
+  border-top: 3px double var(--la-ink);
+  background: var(--la-paper-deep);
+  font-size: var(--fs-sm);
+}
+
+.la-margin h2 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.la-margin .study-status {
+  font-weight: 700;
+  color: var(--la-ink);
+}
+
+.la-margin .study-status.is-read {
+  align-self: flex-start;
+  background: linear-gradient(transparent var(--la-hl-from), var(--la-mark) var(--la-hl-from));
+}
+
+.la-margin .la-btn {
+  align-self: flex-start;
+}
+
+.la-term-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.la-term-fig > figcaption {
+  font-family: var(--font-myeongjo);
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
+.la-term-fig > figcaption b {
+  font-family: var(--font-sans);
+  color: var(--la-ink);
+}
+
+.la-term-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.la-defenses {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.la-defenses li::marker {
+  font-family: var(--font-num);
+  font-weight: 700;
+}
+
+.la-defenses .defense-title {
+  display: block;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.la-defenses p {
+  margin: var(--sp-1) 0 0;
+  max-width: var(--measure);
+  font-family: var(--font-myeongjo);
+  line-height: 1.8;
+}
+
+/* 막히는 단계: 이 사전의 핵심이라 본문 크기, 방어색 */
+.la-defenses .la-defense-at {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: var(--la-defense);
+}
+
+.la-refs {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.la-term-see {
+  font-size: var(--fs-md);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--la-rule);
+}
+
+/* ── 내 단어장(/me) ── */
+.la-me .la-gloss {
+  margin-top: var(--sp-2);
+}
+
+.la-me-sub {
+  margin: 0;
+  color: var(--la-ink-sub);
+  font-size: var(--fs-sm);
+}
+
+.la-me-bookmarks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.recent-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.recent-list li {
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+}
+
+.la-me-words {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-6);
+}
+
+.la-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.la-words-group h3 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+}
+
+.la-words-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+}
+
+.la-words-group .la-word {
+  font-size: var(--fs-md);
+}
+
+.la-words-empty {
+  margin: 0;
+  color: var(--la-ink-sub);
+}
+
+.la-account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.la-account-list {
+  margin: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.la-account-list div {
+  display: grid;
+  grid-template-columns: 6em 1fr;
+  align-items: center;
+}
+
+.la-account-list dt {
+  font-weight: 700;
+}
+
+.la-account-list dd {
+  margin: 0;
+}
+
+/* 회원 탈퇴: 계정 맨 아래, 위험 표지(공격색 괘선)로 학습 정보와 떨어뜨린다 */
+.la-withdraw {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 34rem;
+  padding: var(--sp-4);
+  border: 1px solid var(--la-rule);
+  border-left: 4px solid var(--la-attack);
+  font-size: var(--fs-sm);
+}
+
+.la-withdraw h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .la-index-top,
+  .la-term-head,
+  .la-me-head,
+  .la-me-words {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .la-mine {
+    padding-left: 0;
+    padding-top: var(--sp-4);
+    border-left: 0;
+    border-top: 1px solid var(--la-rule);
+  }
+}
+
+.la-me .la-gloss {
+  font-family: var(--font-myeongjo);
+  font-size: var(--fs-md);
+  font-weight: 400;
+  line-height: 1.8;
+  color: var(--la-ink-sub);
+}
+
+.la-me-h3 {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.la-me-marks {
+  margin: 0;
+  font-size: var(--fs-md);
 }

@@ -212,7 +212,7 @@ try {
   const a2 = await login(browser, users.A);
   await a2.page.goto(`${base}/`);
   const total = await a2.page.locator(".progress-total").textContent({ timeout: 30_000 });
-  check(/^1 \/ \d+ 용어를 읽었어요$/.test((total ?? "").trim()), `다른 브라우저에서 같은 진행률: ${total?.trim()}`);
+  check(/^1 \/ \d+ 표제어에 밑줄$/.test((total ?? "").trim()), `다른 브라우저에서 같은 진행률: ${total?.trim()}`);
   await a2.context.close();
 
   // 화면에서 탈퇴: 비밀번호 재확인(Cognito ChangePassword 같은 값) → 확인 대화상자 → 탈퇴

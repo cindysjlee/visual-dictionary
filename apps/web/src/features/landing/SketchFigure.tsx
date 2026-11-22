@@ -175,7 +175,7 @@ function Tx({ x, y, s = 13, c, a = "middle", plain, children }: { x: number; y: 
 const textW = (t: string, s: number) => [...t].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e80 ? s : s * 0.56), 0);
 
 /** 칸보다 긴 코드 줄(띄어쓰기 없는 주소)은 글자 간격을 줄여 칸에 맞춘다 */
-const CODE = 18; // .sk-code 글자 크기(landing.css와 같게)
+const CODE = 18; // .sk-code 글자 크기(dictionary.css와 같게)
 const fit = (t: string, max: number) => (textW(t, CODE) > max ? { textLength: max, lengthAdjust: "spacingAndGlyphs" as const } : {});
 
 /** 긴 줄을 칸 폭(max)에 맞춰 띄어쓰기에서, 그래도 길면 "/" 앞에서 나눈다(탭 안의 좁은 화면) */
@@ -730,7 +730,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
         </Link>
         {mine ? (
           <Link className="la-btn la-btn-sm" to="/me" tabIndex={finished ? undefined : -1}>
-            내 학습 보기
+            내 단어장 보기
           </Link>
         ) : (
           <>
