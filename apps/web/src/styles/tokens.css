@@ -158,6 +158,24 @@
   --la-tab-runtime: #5a3ab6;
   --la-on-tab: #ffffff;
   --font-myeongjo: "Nanum Myeongjo", "Noto Serif KR", serif;
+  /* 그림 1 카툰 삽화: 먹 외곽선 + 면 색. 삽화 안 글자(--la-ill-ink)는 도판 바탕 대비 12:1 이상 */
+  --la-ill-plate: #e9eef5;
+  --la-ill-plate-deep: #d6deea;
+  --la-ill-line: #141a28;
+  --la-ill-ink: #141a28;
+  --la-ill-browser: #ffffff;
+  --la-ill-paper: #fffdf6;
+  --la-ill-skin: #f2c9a5;
+  --la-ill-hair: #3b2f2a;
+  --la-ill-bank: #b9d0f2;
+  --la-ill-evil: #4a3550;
+  --la-ill-on-evil: #f6d965;
+  --la-ill-attacker: #7a8194;
+  --la-ill-cookie: #d9a066;
+  --la-ill-chip: #5a3820;
+  --la-ill-coin: #f2c14e;
+  --la-ill-coin-ink: #7a5300;
+  --la-ill-glass: #f4f8fd;
 }
 
 [data-theme="dark"] {
@@ -245,6 +263,24 @@
   --la-tab-os: #7fd6b0;
   --la-tab-runtime: #c7b2ff;
   --la-on-tab: #13161e;
+  /* 밤의 삽화: 어두운 도판 + 등불빛 외곽선 */
+  --la-ill-plate: #1b2030;
+  --la-ill-plate-deep: #2a3144;
+  --la-ill-line: #ece6d8;
+  --la-ill-ink: #ece6d8;
+  --la-ill-browser: #242a3b;
+  --la-ill-paper: #343b4f;
+  --la-ill-skin: #d9a57e;
+  --la-ill-hair: #1b1410;
+  --la-ill-bank: #2f4f80;
+  --la-ill-evil: #5a3e66;
+  --la-ill-on-evil: #f6d965;
+  --la-ill-attacker: #555c70;
+  --la-ill-cookie: #b97d48;
+  --la-ill-chip: #3a2412;
+  --la-ill-coin: #e0b04a;
+  --la-ill-coin-ink: #e0b04a;
+  --la-ill-glass: #2a3144;
 }
 
 /* 공격·방어 연한 바탕: 각 색의 12%(라이트)·16%(다크) */

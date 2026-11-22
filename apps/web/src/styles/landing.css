@@ -310,11 +310,11 @@ html[data-landing] ::selection {
   }
 }
 
-/* ── 그림 1 ── */
+/* ── 그림 1: 움직이는 카툰 삽화(CartoonFigure.tsx). 굵은 외곽선 + 단순한 면 색, 색은 --la-ill-* ── */
 .la-fig {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   margin: 0 0 0 calc(var(--la-gap) / -2);
   padding-left: var(--la-gap);
   border-left: 1px solid var(--la-rule);
@@ -322,102 +322,6 @@ html[data-landing] ::selection {
 
 .la-fig-wait {
   min-height: 560px;
-}
-
-.la-fig-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  font-family: var(--font-sans);
-  font-size: var(--fs-sm);
-}
-
-.la-iso {
-  width: 100%;
-  height: auto;
-  max-height: 330px;
-  background: var(--la-paper-deep);
-  border: 1px solid var(--la-rule);
-}
-
-.la-box path {
-  stroke: var(--la-ink);
-  stroke-width: 1.1;
-  stroke-linejoin: round;
-  transition: fill var(--dur-quick) var(--ease-out);
-}
-
-.la-face-t {
-  fill: var(--la-paper);
-}
-
-.la-face-l {
-  fill: var(--la-rule);
-}
-
-.la-face-r {
-  fill: var(--la-paper-deep);
-}
-
-.la-box.is-on .la-face-t {
-  fill: var(--la-ink);
-}
-
-.la-iso-label {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  font-weight: 500;
-  fill: var(--la-ink);
-  paint-order: stroke;
-  stroke: var(--la-paper-deep);
-  stroke-width: 5px;
-}
-
-.la-box.is-on .la-iso-label {
-  font-weight: 800;
-}
-
-.la-route {
-  fill: none;
-  stroke-width: 2.2;
-  stroke-dasharray: 5 4;
-  stroke: var(--la-ink);
-}
-
-.la-route.la-tone-attack {
-  stroke: var(--la-attack);
-  stroke-dasharray: none;
-}
-
-.la-route.la-tone-defense {
-  stroke: var(--la-defense);
-}
-
-.la-arrowhead {
-  fill: var(--la-ink);
-}
-
-.la-arrowhead.la-tone-attack {
-  fill: var(--la-attack);
-}
-
-.la-arrowhead.la-tone-defense {
-  fill: var(--la-defense);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .la-route {
-    animation: la-draw 520ms var(--ease-out) both;
-  }
-}
-
-@keyframes la-draw {
-  from {
-    opacity: 0;
-    stroke-dashoffset: 60;
-  }
 }
 
 .la-fig-modes {
@@ -441,42 +345,231 @@ html[data-landing] ::selection {
 }
 
 .la-fig-modes button[aria-pressed="true"] {
+  background: var(--la-ink);
+  color: var(--la-paper);
+}
+
+.la-fig-modes button.is-defense[aria-pressed="true"] {
   background: var(--la-defense-bg);
   border-color: var(--la-defense);
   color: var(--la-defense);
 }
 
-.la-steps {
+.la-toon {
   width: 100%;
-  border-collapse: collapse;
+  height: auto;
+  border: 1.5px solid var(--la-ink);
+  border-radius: 6px;
   font-family: var(--font-sans);
-  font-size: var(--fs-sm);
-  line-height: 1.45;
 }
 
-.la-steps th,
-.la-steps td {
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--la-rule);
-  text-align: left;
-  vertical-align: top;
+.t-plate {
+  fill: var(--la-ill-plate);
 }
 
-.la-steps thead th {
-  border-bottom: 1.5px solid var(--la-ink);
+.t-line {
+  stroke: var(--la-ill-line);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.t-line-thin {
+  stroke: var(--la-ill-line);
+  stroke-width: 1.5;
+}
+
+.t-stroke,
+.t-stroke-on-evil {
+  fill: none;
+  stroke: var(--la-ill-line);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.t-stroke-on-evil {
+  stroke: var(--la-ill-on-evil);
+}
+
+.t-thick {
+  stroke-width: 4;
+}
+
+.t-fill-line {
+  fill: var(--la-ill-line);
+}
+
+.t-fill-plate {
+  fill: var(--la-ill-plate-deep);
+}
+
+.t-fill-browser {
+  fill: var(--la-ill-browser);
+}
+
+.t-fill-paper {
+  fill: var(--la-ill-paper);
+}
+
+.t-fill-skin {
+  fill: var(--la-ill-skin);
+}
+
+.t-fill-hair {
+  fill: var(--la-ill-hair);
+}
+
+.t-fill-bank {
+  fill: var(--la-ill-bank);
+}
+
+.t-fill-evil {
+  fill: var(--la-ill-evil);
+}
+
+.t-fill-attacker {
+  fill: var(--la-ill-attacker);
+}
+
+.t-fill-cookie {
+  fill: var(--la-ill-cookie);
+}
+
+.t-fill-chip {
+  fill: var(--la-ill-chip);
+}
+
+.t-fill-coin {
+  fill: var(--la-ill-coin);
+}
+
+.t-fill-glass {
+  fill: var(--la-ill-glass);
+}
+
+.t-fill-attack {
+  fill: var(--la-attack);
+}
+
+.t-fill-defense {
+  fill: var(--la-defense);
+}
+
+.t-fill-defense-bg {
+  fill: var(--la-defense-bg);
+}
+
+.t-label {
+  fill: var(--la-ill-ink);
+  font-size: 15px;
   font-weight: 700;
-  white-space: nowrap;
 }
 
-.la-steps tbody th {
-  width: 44px;
-  padding: 3px 4px;
+.t-small {
+  font-size: 13px;
+}
+
+.t-on-evil {
+  fill: var(--la-ill-on-evil);
+}
+
+.t-env-label {
+  fill: var(--la-ill-ink);
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 움직이는 것: 평소에는 보이지 않고 단계마다 Web Animations가 꺼냈다 넣는다 */
+.t-move {
+  opacity: 0;
+}
+
+.t-tab {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 의성어: 두꺼운 글자 + 종이색 테두리. 슝(공격) = 공격색, 쾅(차단) = 방어색 */
+.t-word,
+.t-bang {
+  font-size: 30px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: var(--la-ill-plate);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+  fill: var(--la-ill-ink);
+}
+
+.t-word-attack {
+  fill: var(--la-attack);
+}
+
+.t-word-defense,
+.t-bang {
+  fill: var(--la-defense);
+}
+
+.t-word-coin {
+  fill: var(--la-ill-coin-ink);
+}
+
+.t-bar {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  transform: rotate(-60deg);
+  transition: transform var(--dur-enter) var(--ease-out);
+}
+
+.t-bar.is-shut {
+  transform: rotate(0deg);
+}
+
+.t-stamp-box {
+  fill: var(--la-ill-plate);
+  stroke: var(--la-defense);
+  stroke-width: 4;
+}
+
+.t-stamp-text {
+  fill: var(--la-defense);
+  font-family: var(--font-num);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .t-stamp {
+    animation: t-stamp 360ms var(--ease-out) both;
+  }
+}
+
+@keyframes t-stamp {
+  from {
+    opacity: 0;
+    scale: 1.6;
+  }
+}
+
+.la-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.la-steps-nav,
+.la-player-ctl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .la-step-no {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--la-rule);
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--la-rule);
   border-radius: 50%;
   background: transparent;
   color: var(--la-ink);
@@ -485,61 +578,58 @@ html[data-landing] ::selection {
   cursor: pointer;
 }
 
+/* 위험 단계는 공격색 테두리, 차단 단계는 방어색 테두리(색 + 화면 읽기 이름으로 전달) */
+.la-step-no.is-danger {
+  border-color: var(--la-attack);
+}
+
+.la-step-no.is-block {
+  border-color: var(--la-defense);
+  border-style: double;
+  border-width: 4px;
+}
+
 .la-step-no[aria-pressed="true"] {
   background: var(--la-ink);
   border-color: var(--la-ink);
   color: var(--la-paper);
 }
 
-.la-steps tr.is-focus td {
+/* 자막: 화면 읽기에도 같은 문장이 읽힌다(aria-live) */
+.la-subtitle {
+  min-height: 5.4em;
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
   background: var(--la-paper-deep);
+  border-left: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
 }
 
-/* 위험: 진한(밤에는 밝은) 공격색 바탕 표지. 차단: 밝은(밤에는 어두운) 파랑 바탕 → 두 테마 모두 명도로도 갈린다 */
-.la-mark {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 0 5px;
-  border-radius: 2px;
-  font-size: var(--fs-xs);
-  font-weight: 800;
+.la-subtitle b {
+  font-family: var(--font-sans);
 }
 
-.la-attack {
+.la-subtitle b.is-danger {
   color: var(--la-attack);
-  font-weight: 700;
 }
 
-.la-attack .la-mark {
-  background: var(--la-attack);
-  color: var(--la-on-attack);
-}
-
-.la-steps tr td.la-blocked {
-  background: var(--la-defense-bg);
+.la-subtitle b.is-block {
   color: var(--la-defense);
-  font-weight: 700;
-}
-
-.la-blocked .la-mark {
-  border: 1.5px solid var(--la-defense);
-}
-
-.la-code {
-  display: block;
-  font-family: var(--font-num);
-  font-weight: 600;
-}
-
-.la-steps td.la-halt {
-  color: var(--la-ink-sub);
-  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--la-rule) 6px 7px);
 }
 
 .la-fig figcaption {
   color: var(--la-ink-sub);
   font-size: var(--fs-sm);
   line-height: 1.7;
+}
+
+.la-fig figcaption b {
+  color: var(--la-ink);
+}
+
+.la-see-inline {
+  white-space: nowrap;
 }
 
 /* 사전의 "→ 참조" */
@@ -707,6 +797,26 @@ html[data-landing] ::selection {
   white-space: nowrap;
 }
 
+/* 이어 보기 책갈피: 표제어 줄 오른쪽 끝에 꽂힌 리본 */
+.la-resume {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0 8px 0 6px;
+  background: var(--la-ink);
+  color: var(--la-paper);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%);
+  white-space: nowrap;
+}
+
+.la-ledger-resume {
+  margin: var(--sp-4) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--la-rule);
+}
+
 .la-def {
   margin: 2px 0 0;
   text-wrap: pretty;
@@ -856,9 +966,6 @@ html[data-landing] ::selection {
     margin-left: 0;
   }
 
-  .la-iso {
-    max-height: none;
-  }
 
   .la-bookmark {
     padding-inline: var(--sp-5);
@@ -869,10 +976,37 @@ html[data-landing] ::selection {
   }
 }
 
+/* 좁은 화면: 첫 화면에 글만 보이지 않게 버튼을 부제 바로 아래로 올린다 */
+@media (max-width: 600px) {
+  .la-entry {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .la-actions {
+    order: 1;
+    margin-top: var(--sp-5);
+  }
+
+  .la-signup-note {
+    order: 2;
+  }
+
+  .la-pos,
+  .la-senses {
+    order: 3;
+  }
+}
+
 @media (max-width: 520px) {
   .la-bm-list div,
   .la-ledger li {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+.t-speed {
+  stroke-width: 2.5;
+  opacity: 0.7;
 }

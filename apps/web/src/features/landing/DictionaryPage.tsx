@@ -3,18 +3,16 @@
 // 밑줄: 로그인해 기록을 불러왔으면(/about) 실제로 읽은 표제어, 아니면 "미리보기" 표시를 단 두 표제어에만 긋는다(지어낸 진행률 없음)
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link } from "react-router";
-import type { Category, IndexEntry, Term } from "@app/content-schema";
+import type { Category, IndexEntry } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
-import { lastStepIndex, modeDefenses, stepView, zoneOf, type StepView } from "@app/content-schema/scene";
 import "@fontsource/nanum-myeongjo/400.css";
 import "@fontsource/nanum-myeongjo/700.css";
 import "../../styles/landing.css";
-import { isRead, useProgress } from "../progress/store.ts";
+import { isRead, useProgress, useRecent } from "../progress/store.ts";
+import CartoonFigure from "./CartoonFigure.tsx";
 import { josa, type LandingData } from "./LandingPage.tsx";
 
 type Props = { data: LandingData | null; failed: boolean };
-
-const steps = (term: Term, mode: number | null) => Array.from({ length: lastStepIndex(term, mode) + 1 }, (_, i) => stepView(term, mode, i));
 
 // 첫소리 머리(ㄱ·ㄴ…): 겹자음은 홑자음 머리에 넣는다. 한글이 아니면 로마자 첫 글자
 const CHOSEONG = "ㄱㄱㄴㄷㄷㄹㅁㅂㅂㅅㅅㅇㅈㅈㅊㅋㅌㅍㅎ";
@@ -40,6 +38,14 @@ export default function DictionaryPage({ data, failed }: Props) {
     const first = demoEntry ?? data.index[0];
     return new Set([first?.id, first?.related.find((id) => byId.has(id))].filter((id): id is string => !!id));
   }, [data, mine, progress, demoEntry, byId]);
+
+  // 이어 보기 책갈피: 내 기록이면 최근 본 것 중 아직 다 읽지 않은 표제어, 아니면 밑줄 미리보기와 겹치지 않는 참조 용어(미리보기)
+  const recent = useRecent();
+  const resumeId = useMemo(() => {
+    if (!data) return undefined;
+    if (mine) return (recent.find((r) => !isRead(progress, r.termId)) ?? recent[0])?.termId;
+    return (demoEntry ?? data.index[0])?.related.find((id) => byId.has(id) && !lined.has(id));
+  }, [data, mine, recent, progress, demoEntry, byId, lined]);
 
   // 가나다순 색인을 첫소리로 묶는다(고른 분야만)
   const sections = useMemo(() => {
@@ -127,7 +133,7 @@ export default function DictionaryPage({ data, failed }: Props) {
           )}
         </article>
 
-        <FigureOne demo={demo} byId={byId} />
+        {demo ? <CartoonFigure term={demo} /> : <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />}
       </div>
 
       <section ref={indexRef} id="la-index" className={inView ? "la-index is-inview" : "la-index"} aria-labelledby="la-index-title">
@@ -175,6 +181,12 @@ export default function DictionaryPage({ data, failed }: Props) {
                       {on && !mine && (
                         <span className="la-preview" aria-hidden="true">
                           미리보기
+                        </span>
+                      )}
+                      {t.id === resumeId && (
+                        <span className="la-resume">
+                          책갈피<span className="visually-hidden">: 읽다 만 쪽{mine ? "" : " (미리보기)"}</span>
+                          {!mine && <span aria-hidden="true"> · 미리보기</span>}
                         </span>
                       )}
                       <p className="la-def">
@@ -240,7 +252,7 @@ export default function DictionaryPage({ data, failed }: Props) {
             )}
           </p>
         </div>
-        {data && <Ledger groups={data.groups} lined={lined} mine={mine} byId={byId} />}
+        {data && <Ledger groups={data.groups} lined={lined} mine={mine} byId={byId} resume={resumeId ? byId.get(resumeId) : undefined} />}
       </section>
     </div>
   );
@@ -275,7 +287,7 @@ const SeeAlso = ({ list }: { list: IndexEntry[] }) => (
 );
 
 /** 분야별 진행률 장부: 내 기록이면 실제 값, 아니면 색인의 밑줄 미리보기 두 개를 읽었다고 할 때의 모습 */
-function Ledger({ groups, lined, mine, byId }: { groups: LandingData["groups"]; lined: Set<string>; mine: boolean; byId: Map<string, IndexEntry> }) {
+function Ledger({ groups, lined, mine, byId, resume }: { groups: LandingData["groups"]; lined: Set<string>; mine: boolean; byId: Map<string, IndexEntry>; resume?: IndexEntry }) {
   const names = [...lined].map((id) => byId.get(id)?.name).filter(Boolean);
   return (
     <figure className="la-ledger" aria-labelledby="la-ledger-cap">
@@ -299,154 +311,12 @@ function Ledger({ groups, lined, mine, byId }: { groups: LandingData["groups"]; 
           );
         })}
       </ul>
-    </figure>
-  );
-}
-
-/** [그림 1] 예시 용어를 공격만 / 방어를 켰을 때로 나란히 적고, 고른 단계의 출발·도착 행위자를 등각 그림에 표시한다 */
-function FigureOne({ demo, byId }: { demo: Term | null; byId: Map<string, IndexEntry> }) {
-  const [mode, setMode] = useState<number | null>(null);
-  const [focus, setFocus] = useState(0);
-  if (!demo) return <figure className="la-fig la-fig-wait" aria-busy="true" aria-label="그림을 불러오는 중" />;
-
-  const modes = modeDefenses(demo);
-  const defense = mode ?? modes[0] ?? null;
-  const attack = steps(demo, null);
-  const guarded = defense === null ? [] : steps(demo, defense);
-  const blockedAt = guarded.findIndex((v) => v.blocked);
-  const active = (focus === blockedAt ? guarded[focus] : attack[focus]) ?? attack[0]!;
-  const see = demo.related.map((id) => byId.get(id)).filter((r): r is IndexEntry => !!r);
-
-  return (
-    <figure className="la-fig" aria-labelledby="la-fig-cap">
-      <div className="la-fig-head">
-        <span>
-          <b>그림 1.</b> {demo.name}, {focus + 1}단계
-        </span>
-        <Link className="la-btn la-btn-ink la-btn-sm" to={`/terms/${demo.id}`}>
-          {demo.name} 3D 장면 재생
-        </Link>
-      </div>
-      <IsoPlate term={demo} view={active} />
-      {modes.length > 1 && (
-        <div className="la-fig-modes" role="group" aria-label="견줄 방어">
-          {modes.map((m) => (
-            <button key={m} type="button" aria-pressed={defense === m} onClick={() => setMode(m)}>
-              {demo.defenses[m]!.name}
-            </button>
-          ))}
-        </div>
+      {resume && (
+        <p className="la-ledger-resume">
+          <span className="la-resume">책갈피</span> 읽다 만 쪽: <Link to={`/terms/${resume.id}`}>{resume.name}</Link>
+          {!mine && " (미리보기)"}
+        </p>
       )}
-      <table className="la-steps">
-        <thead>
-          <tr>
-            <th scope="col">단계</th>
-            <th scope="col">공격만 있을 때</th>
-            {defense !== null && <th scope="col">방어: {demo.defenses[defense]!.name}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {attack.map((v, i) => {
-            const g = guarded[i];
-            return (
-              <tr key={i} className={focus === i ? "is-focus" : undefined}>
-                <th scope="row">
-                  <button type="button" className="la-step-no" aria-pressed={focus === i} onClick={() => setFocus(i)}>
-                    {i + 1}
-                    <span className="visually-hidden">단계를 그림에 표시</span>
-                  </button>
-                </th>
-                <td className={v.tone === "attack" ? "la-attack" : undefined}>
-                  {v.tone === "attack" && <span className="la-mark">위험</span>}
-                  {v.title}
-                </td>
-                {defense !== null && (
-                  <td className={g?.blocked ? "la-blocked" : g ? (g.tone === "attack" ? "la-attack" : undefined) : "la-halt"}>
-                    {g?.blocked ? (
-                      <>
-                        <span className="la-mark">차단</span>
-                        {g.title}
-                        {g.blockedLabel && <span className="la-code">{g.blockedLabel}</span>}
-                      </>
-                    ) : g ? (
-                      <>
-                        {g.tone === "attack" && <span className="la-mark">위험</span>}
-                        {g.title}
-                      </>
-                    ) : (
-                      "여기까지 오지 않는다"
-                    )}
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <figcaption id="la-fig-cap">
-        {demo.name}의 {attack.length}단계.
-        {blockedAt >= 0 && ` 방어를 켜면 ${blockedAt + 1}단계에서 막힌다.`} 단계 번호를 누르면 위 그림에 그 단계에서 누가 누구에게 보내는지 표시된다.
-      </figcaption>
-      {see.length > 0 && <SeeAlso list={see} />}
     </figure>
-  );
-}
-
-// 등각 그림: 구역(바깥·사용자 쪽·사이·서버·내부)을 가로 칸으로, 같은 구역 행위자를 세로로 쌓는다. 이름표는 상자 오른쪽
-const COL: Record<string, number> = { outside: 0, client: 1, between: 2, server: 3, internal: 4 };
-const W = 30; // 상자 윗면 반폭
-const H = 17; // 상자 윗면 반높이
-const D = 20; // 상자 옆면 높이
-
-function IsoPlate({ term, view }: { term: Term; view: StepView }) {
-  const actors = term.scenario.actors;
-  const rows: Record<number, number> = {};
-  const at = new Map(
-    actors.map((a) => {
-      const col = COL[zoneOf(a, actors)] ?? 1;
-      const row = (rows[col] = (rows[col] ?? -1) + 1);
-      return [a.id, { x: (col - row) * 96, y: (col + row) * 48, name: a.name }] as const;
-    }),
-  );
-  const pts = [...at.values()];
-  const minX = Math.min(...pts.map((p) => p.x)) - 44;
-  const maxX = Math.max(...pts.map((p) => p.x)) + 150;
-  const minY = Math.min(...pts.map((p) => p.y)) - 70;
-  const maxY = Math.max(...pts.map((p) => p.y)) + 52;
-  const from = at.get(view.from);
-  const to = at.get(view.to);
-  const tone = view.blocked ? "defense" : view.tone;
-
-  return (
-    <svg
-      className="la-iso"
-      viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`}
-      role="img"
-      aria-label={`${view.index + 1}단계: ${from?.name ?? ""}에서 ${to?.name ?? ""}(으)로. ${view.title}`}
-    >
-      <defs>
-        <marker id={`la-arrow-${tone}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 10 5 0 10z" className={`la-arrowhead la-tone-${tone}`} />
-        </marker>
-      </defs>
-      {[...at.entries()].map(([id, p]) => (
-        <g key={id} className={id === view.from || id === view.to ? "la-box is-on" : "la-box"}>
-          <path d={`M${p.x - W} ${p.y} L${p.x} ${p.y + H} L${p.x} ${p.y + H + D} L${p.x - W} ${p.y + D}Z`} className="la-face-l" />
-          <path d={`M${p.x} ${p.y + H} L${p.x + W} ${p.y} L${p.x + W} ${p.y + D} L${p.x} ${p.y + H + D}Z`} className="la-face-r" />
-          <path d={`M${p.x} ${p.y - H} L${p.x + W} ${p.y} L${p.x} ${p.y + H} L${p.x - W} ${p.y}Z`} className="la-face-t" />
-          <text x={p.x + W + 6} y={p.y + D / 2 + 6} className="la-iso-label">
-            {p.name}
-          </text>
-        </g>
-      ))}
-      {from && to && from !== to && (
-        <path
-          key={view.index}
-          d={`M${from.x} ${from.y - 6} Q${(from.x + to.x) / 2} ${Math.min(from.y, to.y) - 60} ${to.x} ${to.y - 6}`}
-          className={`la-route la-tone-${tone}`}
-          markerEnd={`url(#la-arrow-${tone})`}
-        />
-      )}
-    </svg>
   );
 }
