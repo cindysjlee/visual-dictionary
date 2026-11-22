@@ -68,6 +68,8 @@ export default function CartoonFigure({ term }: { term: Term }) {
   // i: 지금 단계(-1 = 시작 전), done: 그 단계의 움직임이 끝났는가
   const [cur, setCur] = useState({ i: -1, done: true });
   const [state, setState] = useState<"idle" | "playing" | "paused" | "ended">("idle");
+  // 자동 재생 중에는 자막을 낭독하지 않는다(1.7초마다 읽히면 시끄럽다). 사용자가 조작한 뒤부터 aria-live
+  const [touched, setTouched] = useState(false);
   const root = useRef<SVGSVGElement>(null);
   const run = useRef(0);
   const viewsRef = useRef(views);
@@ -157,7 +159,7 @@ export default function CartoonFigure({ term }: { term: Term }) {
   const modeName = mode === null ? "공격 흐름" : `방어: ${term.defenses[mode]!.name}`;
 
   return (
-    <figure className="la-fig" aria-labelledby="la-fig-cap">
+    <figure className="la-fig" aria-labelledby="la-fig-cap" onClickCapture={() => setTouched(true)} onKeyDownCapture={() => setTouched(true)}>
       <div className="la-fig-modes" role="group" aria-label="그림 1 장면 고르기">
         <button type="button" aria-pressed={mode === null} onClick={() => pickMode(null)}>
           공격 흐름
@@ -272,7 +274,7 @@ export default function CartoonFigure({ term }: { term: Term }) {
         </div>
       </div>
 
-      <p className="la-subtitle" aria-live="polite">
+      <p className="la-subtitle" aria-live={touched ? "polite" : "off"}>
         {view ? (
           <>
             <b className={view.blocked ? "is-block" : view.tone === "attack" ? "is-danger" : undefined}>
@@ -376,7 +378,7 @@ async function animateStep(svg: SVGSVGElement, v: StepView, pos: ReturnType<type
   const transfer = fx("transfer");
   if (transfer?.type === "transfer") {
     const c = part("coins");
-    void say("짤랑!", { x: at(transfer.to).x - 70, y: at(transfer.to).y - 70 }, "coin");
+    void say("짤랑!", { x: at(transfer.to).x + 92, y: at(transfer.to).y - 38 }, "coin");
     await go(c, arc(at(transfer.from), at(transfer.to), 40), { duration: 900 });
     c.getAnimations().forEach((a) => a.cancel());
   }
