@@ -410,12 +410,15 @@ function Pill({ text }: { text: string }) {
 /* ── 그림 1 ── */
 
 /** 좁은 화면 카메라: 행위자들을 담는 viewBox [x, y, w](높이는 그림판 비율로) */
-function frameOf(ids: (string | undefined)[], spots: Map<string, Spot>): [number, number, number] {
+type Focus = string | [number, number, number, number] | undefined; // 행위자 id, "gate", 또는 그림판 좌표의 상자
+
+function frameOf(ids: Focus[], spots: Map<string, Spot>): [number, number, number] {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const id of ids) {
     if (!id) continue;
     let b: [number, number, number, number] | undefined;
-    if (id === "gate") b = GATE_BOX;
+    if (Array.isArray(id)) b = id;
+    else if (id === "gate") b = GATE_BOX;
     else {
       const sp = spots.get(id);
       const box = sp && BOX[sp.kind === "server" && sp.actor.look === "bank" ? "bank" : sp.kind];
@@ -436,7 +439,7 @@ function frameOf(ids: (string | undefined)[], spots: Map<string, Spot>): [number
 
 /** 한 단계에 나오는 행위자(동작 줄이기의 정지 컷 카메라) */
 const stepIds = (v: StepView, spots: Map<string, Spot>) => {
-  const ids: (string | undefined)[] = [v.from, v.to];
+  const ids: Focus[] = [v.from, v.to];
   for (const e of v.effects) for (const k of ["into", "from", "to", "target", "at"] as const) if (k in e) ids.push((e as Record<string, unknown>)[k] as string);
   if (spots.get(v.to)?.actor.gate && !spots.get(v.from)?.actor.gate) ids.push("gate");
   return ids;
@@ -492,8 +495,11 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
       if (k >= n) clearInterval(camTimer.current);
     }, FRAME_MS);
   };
-  const look = (ids: (string | undefined)[]) => {
-    if (narrowRef.current) moveCam(frameOf(ids, spotsRef.current));
+  const camGoal = useRef<[number, number, number]>([0, 0, VW]); // 일시정지로 멈춘 카메라를 이어서 재생할 때 갈 곳
+  const look = (ids: Focus[]) => {
+    if (!narrowRef.current) return;
+    camGoal.current = frameOf(ids, spotsRef.current);
+    moveCam(camGoal.current);
   };
   useEffect(() => {
     const mq = matchMedia(narrowQuery);
@@ -566,11 +572,13 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
 
   const pause = () => {
     held.current = true;
+    clearInterval(camTimer.current); // 카메라도 그 자리에서 멈춘다
     for (const a of anims()) a.pause();
     setState("paused");
   };
   const resume = () => {
     held.current = false;
+    if (narrowRef.current) moveCam(camGoal.current);
     for (const a of anims()) a.play();
     setState("playing");
   };
@@ -804,7 +812,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
 
 /* ── 한 단계의 움직임(초당 12장 스톱모션). 끝나면 resolve, 취소되면 reject ── */
 
-type Ctx = { svg: SVGSVGElement; v: StepView; spots: Map<string, Spot>; look: (ids: (string | undefined)[]) => void; beat: (b: string) => Promise<void>; label: (t: string) => Promise<void> };
+type Ctx = { svg: SVGSVGElement; v: StepView; spots: Map<string, Spot>; look: (ids: Focus[]) => void; beat: (b: string) => Promise<void>; label: (t: string) => Promise<void> };
 
 async function animateStep({ svg, v, spots, look, beat, label }: Ctx) {
   const part = (n: string) => svg.querySelector<SVGGElement>(`[data-part="${n}"]`)!;
@@ -862,7 +870,9 @@ async function animateStep({ svg, v, spots, look, beat, label }: Ctx) {
   const attach = fx("attach");
   const toGate = gated(v.to) && !gated(v.from);
   // 카메라(좁은 화면): 출발지와 첫 목적지를 함께 담는다
-  look(attach ? [v.from, attach.from] : [v.from, toGate ? "gate" : v.to]);
+  // SameSite처럼 쿠키가 튕기면 보관함 아래 "안 붙어!" 자리까지 담는다
+  const nopeAt = attach?.refused ? at(attach.from) : undefined;
+  look(attach ? [v.from, attach.from, nopeAt && [nopeAt.x - 80, nopeAt.y + 84, 160, 44]] : [v.from, toGate ? "gate" : v.to]);
   if (attach) {
     const jar = at(attach.from);
     const inJar = { x: jar.x, y: jar.y + 47 };
