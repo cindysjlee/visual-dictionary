@@ -264,7 +264,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* ── 형광펜 밑줄: 글자 아래쪽 절반에 노란 띠. 색인이 보이면 왼쪽에서 오른쪽으로 한 번 그어진다 ── */
+/* ── 형광펜: 글자 아래쪽 절반에 노란 띠. 본문의 중요 문장(==문장==, Marked)에만 쓴다(다 읽음 표시는 完 도장) ── */
 .la-hl {
   padding: 0 2px;
   margin: 0 -2px;
@@ -280,34 +280,6 @@ body {
   background-size: 100% 100%;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .la-index .la-hl.is-on {
-    background-size: 0% 100%;
-    transition: background-size 700ms var(--ease-out);
-  }
-
-  .la-index.is-inview .la-hl.is-on {
-    background-size: 100% 100%;
-  }
-
-  /* 두 번째 머리 이후의 밑줄은 조금 늦게(한 번에 하나씩 긋는 느낌) */
-  .la-index.is-inview .la-letter:nth-of-type(n + 2) .la-hl.is-on {
-    transition-delay: 350ms;
-  }
-}
-
-/* 첫 화면 뜻풀이 ③의 "밑줄"은 페이지를 연 뒤 한 번 그어진다(장식, CSS) */
-@media (prefers-reduced-motion: no-preference) {
-  .la-senses .la-hl.is-on {
-    animation: la-stroke 800ms var(--ease-out) 700ms backwards;
-  }
-}
-
-@keyframes la-stroke {
-  from {
-    background-size: 0% 100%;
-  }
-}
 
 /* ── 그림 1: 움직이는 연필 스케치(SketchFigure.tsx). 색은 --la-sk-*, 글자는 손글씨(Gaegu) ── */
 .la-fig {
@@ -689,7 +661,7 @@ body {
   margin-right: var(--sp-2);
 }
 
-.la-word:hover .la-hl {
+.la-word:hover {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
@@ -847,7 +819,7 @@ body {
   gap: var(--sp-3);
 }
 
-/* 진행률 막대: 분야색 테두리 안을 형광펜으로 칠한다 */
+/* 진행률 막대: 분야색 테두리 안을 인주색으로 칠한다(형광펜은 본문의 "중요"에만) */
 .la-ledger-bar {
   height: 12px;
   border: 1px solid var(--la-t);
@@ -857,7 +829,7 @@ body {
 .la-ledger-bar span {
   display: block;
   height: 100%;
-  background: var(--la-mark);
+  background: color-mix(in srgb, var(--la-seal) 70%, transparent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1129,7 +1101,7 @@ body {
   text-wrap: pretty;
 }
 
-/* 밑줄 메모(학습 상태): 표제어 옆 여백에 붙인 쪽지 */
+/* 다 읽음 메모(학습 상태): 표제어 옆 여백에 붙인 쪽지 */
 .la-margin {
   display: flex;
   flex-direction: column;
@@ -1154,8 +1126,7 @@ body {
 }
 
 .la-margin .study-status.is-read {
-  align-self: flex-start;
-  background: linear-gradient(transparent var(--la-hl-from), var(--la-mark) var(--la-hl-from));
+  color: var(--la-seal);
 }
 
 .la-margin .la-btn {
@@ -1600,7 +1571,7 @@ body {
   padding: 0;
 }
 
-/* 밑줄 메모: 카드 속 카드가 아니라 여백의 쪽지(왼쪽 괘선만) */
+/* 다 읽음 메모: 카드 속 카드가 아니라 여백의 쪽지(왼쪽 괘선만) */
 .la-term .la-card .la-margin {
   padding: var(--sp-1) 0 var(--sp-1) var(--sp-4);
   border: 0;
@@ -1704,4 +1675,109 @@ body {
   border-left-color: var(--la-ink);
   color: var(--la-ink);
   font-weight: 700;
+}
+
+/* ════════ 다 읽음 = 完 인주 도장(2026-11-24, docs/05 "다 읽음 표시") ════════
+   인주색 --la-seal, 비스듬히 -10도. 표제어 한 쪽은 큰 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
+.la-seal {
+  display: block;
+  color: var(--la-seal);
+  overflow: visible;
+}
+
+/* 도장은 표제어 줄 오른쪽 위에 겹쳐 띄운다(줄 높이를 늘리지 않게). 긴 표제어가 도장 밑으로 들어가지 않게 오른쪽 여백 */
+.la-hw-row {
+  position: relative;
+}
+
+/* 도장(날짜 포함 약 110px)이 걸치는 표제어·원어 표기·분야 줄은 오른쪽을 비운다 */
+.la-hw-row:has(.la-seal-stamp) .la-headword,
+.la-hw-row:has(.la-seal-stamp) ~ .la-hanja,
+.la-hw-row:has(.la-seal-stamp) ~ .la-pos {
+  padding-right: 112px;
+}
+
+.la-seal-stamp {
+  position: absolute;
+  top: -10px;
+  right: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--la-seal);
+  transform: rotate(-10deg);
+}
+
+/* 날짜: 같은 인주색·기울기, 질감은 아주 약하게(숫자가 뭉개지지 않게) */
+.la-seal-date {
+  margin-top: -2px;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  -webkit-mask-image: radial-gradient(circle at 40% 50%, #000 70%, rgb(0 0 0 / 0.9) 100%);
+  mask-image: radial-gradient(circle at 40% 50%, #000 70%, rgb(0 0 0 / 0.9) 100%);
+}
+
+/* 보는 동안 다 읽음이 되면 쾅 찍힌다(장식이라 CSS: 상태는 버튼·글자가 이미 알린다. 동작 줄이기면 처음부터 찍힌 상태) */
+@media (prefers-reduced-motion: no-preference) {
+  .la-seal-stamp.is-press {
+    animation: la-press 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  }
+}
+
+@keyframes la-press {
+  0% {
+    opacity: 0;
+    transform: scale(1.9) rotate(-14deg);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-10deg);
+  }
+}
+
+/* 색인·내 단어장: 줄 끝의 작은 도장 */
+.la-seal-mark {
+  float: right;
+  margin: -2px 0 0 var(--sp-2);
+  transform: rotate(-10deg);
+}
+
+.la-words li .la-seal-mark {
+  float: none;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 0 0 var(--sp-1);
+}
+
+/* 분야별 장부의 "完 3/7" */
+.la-ledger-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.la-ledger-count .la-seal {
+  transform: rotate(-10deg);
+}
+
+/* 랜딩 뜻풀이 ③의 "完 도장" */
+.la-seal-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--la-seal);
+  font-weight: 700;
+  vertical-align: -0.35em;
+}
+
+.la-seal-word .la-seal {
+  transform: rotate(-10deg);
 }

@@ -1,12 +1,13 @@
 // 랜딩 "사전 지면": 종이 사전의 한 쪽을 펼친 것처럼 '시각화 사전'을 표제어로 풀이한다.
-// 쪽 머리(찾아보기) → 표제어 풀이 ①②③ + [그림 1](예시 용어의 공격/방어 단계, 행위자 등각 그림) → 가나다 색인(읽은 표제어에 형광펜 밑줄) → 책갈피(가입).
-// 밑줄: 로그인해 기록을 불러왔으면(/about) 실제로 읽은 표제어, 아니면 "미리보기" 표시를 단 두 표제어에만 긋는다(지어낸 진행률 없음)
+// 쪽 머리(찾아보기) → 표제어 풀이 ①②③ + [그림 1](예시 용어의 공격/방어 단계, 행위자 등각 그림) → 가나다 색인(다 읽은 표제어에 完 도장) → 책갈피(가입).
+// 完 도장: 로그인해 기록을 불러왔으면(/about) 실제로 다 읽은 표제어, 아니면 "미리보기" 표시를 단 두 표제어에만 찍는다(지어낸 진행률 없음)
 import { useMemo, useState } from "react";
 import { Form, Link } from "react-router";
 import type { Category } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
 import { IndexColumns, Ledger, Thumbs, useInView } from "../dictionary/Dictionary.tsx";
-import { isRead, useProgress, useRecent } from "../progress/store.ts";
+import { Seal } from "../dictionary/Seal.tsx";
+import { isRead, readAt, useProgress, useRecent } from "../progress/store.ts";
 import SketchFigure from "./SketchFigure.tsx";
 import { josa, type LandingData } from "./LandingPage.tsx";
 
@@ -22,7 +23,7 @@ export default function DictionaryPage({ data, failed }: Props) {
   const demoEntry = demo ? data?.index.find((t) => t.id === demo.id) : undefined;
   const byId = useMemo(() => new Map(data?.index.map((t) => [t.id, t])), [data]);
 
-  // 밑줄: 내 기록이면 읽은 표제어, 아니면 예시 용어와 그 첫 참조 용어(미리보기)
+  // 完 도장: 내 기록이면 다 읽은 표제어, 아니면 예시 용어와 그 첫 참조 용어(미리보기)
   const lined = useMemo(() => {
     if (!data) return new Set<string>();
     if (mine) return new Set(data.index.filter((t) => isRead(progress, t.id)).map((t) => t.id));
@@ -30,7 +31,7 @@ export default function DictionaryPage({ data, failed }: Props) {
     return new Set([first?.id, first?.related.find((id) => byId.has(id))].filter((id): id is string => !!id));
   }, [data, mine, progress, demoEntry, byId]);
 
-  // 책갈피: 내 기록이면 최근 본 것 중 아직 다 읽지 않은 표제어, 아니면 밑줄 미리보기와 겹치지 않는 참조 용어(미리보기)
+  // 책갈피: 내 기록이면 최근 본 것 중 아직 다 읽지 않은 표제어, 아니면 도장 미리보기와 겹치지 않는 참조 용어(미리보기)
   const recent = useRecent();
   const resumeId = useMemo(() => {
     if (!data) return undefined;
@@ -40,7 +41,7 @@ export default function DictionaryPage({ data, failed }: Props) {
 
   const shown = (data?.index ?? []).filter((t) => cat === "all" || t.category === cat);
 
-  // 색인·책갈피가 화면에 들어오면 밑줄·장부를 한 번 긋는다(동작 줄이기면 처음부터 그어져 있다, dictionary.css)
+  // 색인·책갈피가 화면에 들어오면 장부 막대를 한 번 채운다(동작 줄이기면 처음부터 채워져 있다, dictionary.css)
   const [indexRef, inView] = useInView(!!data);
   const [bookRef, bookInView] = useInView(!!data);
 
@@ -89,7 +90,12 @@ export default function DictionaryPage({ data, failed }: Props) {
               )}
             </li>
             <li>
-              읽은 표제어에 <span className="la-hl is-on">밑줄</span>을 긋고 분야별 진행률을 쌓아 가는, 나만의 사전. 로그인하면 남는다.
+              다 읽은 표제어에{" "}
+              <span className="la-seal-word">
+                <Seal size={26} light />
+                完 도장
+              </span>
+              을 찍고 분야별 진행률을 쌓아 가는, 나만의 사전. 로그인하면 남는다.
             </li>
           </ol>
           <p className="la-actions">
@@ -106,7 +112,7 @@ export default function DictionaryPage({ data, failed }: Props) {
               </Link>
             )}
           </p>
-          {!mine && <p className="la-signup-note">가입하면 내 사전에 밑줄이 남아요.</p>}
+          {!mine && <p className="la-signup-note">가입하면 다 읽은 표제어에 完 도장이 찍혀요.</p>}
           {failed && (
             <p className="la-note" role="alert">
               표제어 목록을 불러오지 못했습니다. 새로고침하거나 표제어 둘러보기로 가 주세요.
@@ -124,32 +130,32 @@ export default function DictionaryPage({ data, failed }: Props) {
             {total === undefined
               ? "표제어를 불러오는 중입니다."
               : mine
-                ? `가나다순 ${total}개. 밑줄은 내가 끝까지 읽은 표제어다.`
-                : `가나다순 ${total}개, 모두 로그인 없이 볼 수 있다. 「미리보기」 표지가 붙은 밑줄은 가입하면 생기는 모습이다.`}
+                ? `가나다순 ${total}개. 完 도장은 내가 끝까지 읽은 표제어다.`
+                : `가나다순 ${total}개, 모두 로그인 없이 볼 수 있다. 「미리보기」 표지가 붙은 完 도장은 가입하면 생기는 모습이다.`}
           </p>
         </div>
         {/* 엄지 색인: 분야별로 색인을 좁힌다 */}
         {data && <Thumbs label="분야별 엄지 색인" groups={data.groups} total={data.index.length} value={cat} onChange={setCat} />}
-        <IndexColumns terms={shown} byId={byId} lined={lined} resumeId={resumeId} preview={!mine} />
+        <IndexColumns terms={shown} byId={byId} lined={lined} readAt={mine ? (id) => readAt(progress, id) : undefined} resumeId={resumeId} preview={!mine} />
       </section>
 
       <section ref={bookRef} className={bookInView ? "la-bookmark is-inview" : "la-bookmark"} aria-labelledby="la-bm-title">
         <span className="la-ribbon" aria-hidden="true" />
         <div className="la-bm-text">
-          <h2 id="la-bm-title">{mine ? "내 사전의 밑줄" : "읽은 만큼 밑줄이 쌓이는 사전"}</h2>
+          <h2 id="la-bm-title">{mine ? "내 사전의 完 도장" : "읽은 만큼 完 도장이 쌓이는 사전"}</h2>
           <p>
             {mine
-              ? "끝까지 본 표제어에 밑줄이 그어지고, 분야마다 몇 개를 읽었는지 쌓인다. 다른 브라우저에서도 같다."
-              : "종이 사전에 형광펜을 긋듯, 끝까지 본 표제어에 밑줄이 남습니다. 기록은 계정에 저장되어 다른 브라우저에서 열어도 같은 곳에서 이어집니다."}
+              ? "끝까지 본 표제어에 完 도장이 찍히고, 분야마다 몇 개를 다 읽었는지 쌓인다. 다른 브라우저에서도 같다."
+              : "다 읽은 책에 도장을 찍듯, 끝까지 본 표제어에 完 도장이 남습니다. 찍은 날짜도 함께 남고, 기록은 계정에 저장되어 다른 브라우저에서 열어도 같은 곳에서 이어집니다."}
           </p>
           <dl className="la-bm-list">
             <div>
-              <dt>밑줄</dt>
-              <dd>끝까지 본 표제어에 형광펜 밑줄이 그어진다.</dd>
+              <dt>完 도장</dt>
+              <dd>끝까지 본 표제어에 다 읽은 날짜와 함께 도장이 찍힌다.</dd>
             </div>
             <div>
               <dt>분야별 진행률</dt>
-              <dd>분야마다 밑줄 친 표제어가 몇 개인지 쌓인다.</dd>
+              <dd>분야마다 도장 찍힌 표제어가 몇 개인지 쌓인다.</dd>
             </div>
             <div>
               <dt>책갈피</dt>
@@ -178,7 +184,7 @@ export default function DictionaryPage({ data, failed }: Props) {
             groups={data.groups}
             lined={lined}
             caption={mine ? "분야별 진행률" : "미리보기"}
-            note={!mine && lined.size > 0 ? `색인에서 밑줄 친 ${[...lined].map((id) => byId.get(id)?.name).join("·")}를 읽었다면` : undefined}
+            note={!mine && lined.size > 0 ? `색인에서 도장이 찍힌 ${[...lined].map((id) => byId.get(id)?.name).join("·")}를 다 읽었다면` : undefined}
             resume={resumeId ? byId.get(resumeId) : undefined}
             resumeNote={mine ? undefined : " (미리보기)"}
           />

@@ -24,19 +24,30 @@ async function playToEnd(page: Page) {
   await expect(page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".play-btn")).toHaveAttribute("aria-label", "재생", { timeout: 60_000 });
 }
 
-test("끝까지 보면 읽음으로 저장되고, 새로고침해도 유지되며, 직접 안 읽음으로 되돌릴 수 있다(read:false로 남음)", tag, async ({ page }) => {
+test("끝까지 보면 다 읽음으로 저장되어 完 도장이 찍히고(날짜·화면 읽기 이름), 새로고침해도 유지되며, 직접 취소할 수 있다(read:false로 남음)", tag, async ({ page }) => {
   await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
   await signedIn(page, "reader@example.com");
   await page.goto("/terms/csrf");
   await expect(card(page)).toContainText("아직 안 읽음");
+  await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
+  await expect(card(page).getByRole("button", { name: "다 읽음으로 표시" })).toHaveAttribute("aria-pressed", "false");
   await playToEnd(page);
-  await expect(card(page)).toContainText("읽음");
+  await expect(card(page)).toContainText("完 다 읽음");
   await expect(card(page)).not.toContainText("아직 안 읽음");
+  // 보는 동안 다 읽음이 되면 표제어 오른쪽에 도장이 찍힌다(움직임 클래스), 아래에 오늘 날짜
+  const stamp = page.locator(".la-hw-row .la-seal-stamp");
+  await expect(stamp).toHaveClass(/is-press/);
+  await expect(stamp.locator(".la-seal-date")).toHaveText(/^\d{4}\.\d{2}\.\d{2}$/);
+  await expect(stamp.locator(".visually-hidden")).toHaveText(/^다 읽음, \d{4}년 \d{1,2}월 \d{1,2}일$/);
 
   await page.reload();
-  await expect(card(page)).toContainText("밑줄 그음 · 읽음");
-  await card(page).getByRole("button", { name: "밑줄 지우기" }).click();
+  await expect(card(page)).toContainText("完 다 읽음");
+  await expect(page.locator(".la-hw-row .la-seal-stamp")).not.toHaveClass(/is-press/); // 이미 다 읽은 쪽을 열 때는 그대로
+  const undo = card(page).getByRole("button", { name: "다 읽음 취소" });
+  await expect(undo).toHaveAttribute("aria-pressed", "true");
+  await undo.click();
   await expect(card(page)).toContainText("아직 안 읽음");
+  await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
   await page.reload();
   await expect(card(page)).toContainText("아직 안 읽음");
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("fake-progress") ?? "{}"));
@@ -68,21 +79,24 @@ async function seedRecords(page: Page, email: string, records: Record<string, bo
 const list = (page: Page) => page.getByRole("region", { name: "용어 목록" }).or(page.locator('section[aria-label="용어 목록"]'));
 const cardNames = (page: Page) => list(page).locator(".term-card-name").allTextContents();
 
-test("색인: 읽은 표제어 밑줄, 읽음 걸러 보기(분야·검색과 함께), 전체·분야별 밑줄 장부", tag, async ({ page }) => {
+test("색인: 다 읽은 표제어 줄 끝 完 도장(날짜는 화면 읽기·title), 읽음 걸러 보기(분야·검색과 함께), 전체·분야별 다 읽음 장부", tag, async ({ page }) => {
   await signedIn(page, "home@example.com");
   await seedRecords(page, "home@example.com", { csrf: true, xss: false });
   await page.goto("/terms");
   const index = await page.evaluate(async () => (await (await fetch("/content/index.json")).json()) as { id: string; category: string; name: string }[]);
   const web = index.filter((t) => t.category === "web-security").length;
-  await expect(page.locator(".progress-total")).toHaveText(`1 / ${index.length} 표제어에 밑줄`);
+  await expect(page.locator(".progress-total")).toHaveText(`1 / ${index.length} 표제어 다 읽음`);
   await expect(page.locator(".progress-cats li").filter({ hasText: "웹 보안" })).toContainText(`1/${web}`);
 
   // → 참조에도 다른 표제어 이름이 나오므로 표제어 이름으로 고른다
   const entry = (name: string) => list(page).locator(".term-card", { has: page.locator(".term-card-name", { hasText: new RegExp("^" + name + "$") }) });
   const csrfCard = entry("CSRF");
-  await expect(csrfCard.locator(".tag-read")).toHaveText("(읽음)");
-  await expect(csrfCard.locator(".la-hl.is-on")).toHaveText("CSRF");
+  await expect(csrfCard.locator(".tag-read")).toHaveText("(다 읽음, 2026년 1월 1일)");
+  await expect(csrfCard.getByRole("link", { name: "CSRF (다 읽음, 2026년 1월 1일)" })).toBeVisible();
+  await expect(csrfCard.locator(".la-seal-mark")).toHaveAttribute("title", "다 읽음, 2026년 1월 1일");
+  await expect(csrfCard.locator(".la-seal-mark svg")).toBeVisible();
   await expect(entry("XSS").locator(".tag-read")).toHaveCount(0);
+  await expect(entry("XSS").locator(".la-seal-mark")).toHaveCount(0);
 
   const readGroup = page.getByRole("group", { name: "읽음 상태" });
   await readGroup.getByRole("button", { name: "읽음", exact: true }).click();
@@ -98,7 +112,7 @@ test("색인: 읽은 표제어 밑줄, 읽음 걸러 보기(분야·검색과 �
   expect(await cardNames(page)).toHaveLength(index.length);
 });
 
-test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로그인하면 밑줄 장부·밑줄 친/안 친 표제어를 보인다(axe)", tag, async ({ page }) => {
+test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로그인하면 분야별 完 장부·다 읽은/안 읽은 표제어(작은 도장)를 보인다(axe)", tag, async ({ page }) => {
   await page.goto("/me");
   await expect(page).toHaveURL(/\/auth\/login\?next=%2Fme$/);
 
@@ -106,7 +120,11 @@ test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로�
   await seedRecords(page, "me@example.com", { deadlock: true });
   await page.goto("/me");
   await expect(page.getByRole("heading", { level: 1, name: "내 단어장" })).toBeVisible();
-  await expect(page.getByRole("region", { name: /^밑줄 친 표제어/ })).toContainText("데드락");
+  const done = page.getByRole("region", { name: /^다 읽은 표제어/ });
+  await expect(done.getByRole("link", { name: "데드락 (다 읽음, 2026년 1월 1일)" })).toBeVisible();
+  await expect(done.locator(".la-seal-mark svg")).toHaveCount(1);
+  await expect(page.getByRole("region", { name: /^아직 안 읽은 표제어/ }).locator(".la-seal-mark")).toHaveCount(0);
+  await expect(page.locator(".progress-cats li").filter({ hasText: "운영체제" }).locator(".la-ledger-count")).toHaveText(/^다 읽음 1\/\d+$/);
   await expect(page.locator(".progress-total")).toContainText("1 / ");
   await expect(page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "내 단어장" })).toHaveAttribute("aria-current", "page");
   const { default: AxeBuilder } = await import("@axe-core/playwright");

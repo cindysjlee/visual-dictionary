@@ -1101,7 +1101,7 @@ button:disabled {
 }
 
 .study-status.is-read {
-  color: var(--defense-text);
+  color: var(--la-seal);
 }
 
 .filters {

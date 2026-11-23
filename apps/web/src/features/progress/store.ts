@@ -4,7 +4,8 @@ import { useSyncExternalStore } from "react";
 import { subscribeAuth, type AuthState } from "../auth/store.ts";
 import { progressApi, type ReadSource, type ViewRecord } from "./api.ts";
 
-export type ProgressEntry = { read: boolean; source: ReadSource };
+/** at = 마지막으로 저장한 시각(API updatedAt). 다 읽음이면 "다 읽은 날"로 도장 아래에 쓴다 */
+export type ProgressEntry = { read: boolean; source: ReadSource; at?: string };
 export type ProgressState =
   | { status: "anon" }
   | { status: "loading" }
@@ -50,7 +51,7 @@ async function load(email: string) {
   try {
     const list = await (await progressApi()).list();
     if (owner !== email) return; // 그사이 로그아웃·다른 사용자
-    set({ status: "ready", records: Object.fromEntries(list.map((r) => [r.termId, { read: r.read, source: r.source }])) });
+    set({ status: "ready", records: Object.fromEntries(list.map((r) => [r.termId, { read: r.read, source: r.source, at: r.updatedAt }])) });
   } catch {
     if (owner === email) set({ status: "error" });
   }
@@ -85,6 +86,8 @@ export const useProgress = () =>
   );
 
 export const isRead = (s: ProgressState, termId: string) => s.status === "ready" && s.records[termId]?.read === true;
+/** 다 읽은 날(ISO). 안 읽었거나 기록이 없으면 undefined */
+export const readAt = (s: ProgressState, termId: string) => (isRead(s, termId) && s.status === "ready" ? s.records[termId]?.at : undefined);
 
 export const progress = {
   /** 다시 불러오기(불러오기 실패 뒤 "다시 시도") */
@@ -95,7 +98,7 @@ export const progress = {
   async setRead(termId: string, read: boolean, source: ReadSource) {
     if (state.status !== "ready") throw new Error("not-ready");
     const before = state.records;
-    set({ status: "ready", records: { ...before, [termId]: { read, source } } });
+    set({ status: "ready", records: { ...before, [termId]: { read, source, at: new Date().toISOString() } } }); // 서버 updatedAt과 같은 뜻(저장 시각)
     try {
       await (await progressApi()).put(termId, read, source);
     } catch (e) {

@@ -1,5 +1,5 @@
 // 로고 만들기(한 번 돌려 결과를 커밋한다. 빌드 때마다 돌지 않는다). 기준 시안: docs/design/logo-icons.html "2. ¶ 문단 기호"
-//   1) Noto Serif KR(@fontsource, woff)에서 글리프를 윤곽선으로 뽑아 apps/web/src/logo/logoPaths.ts 를 만든다(글꼴 없이도 똑같이 보이게)
+//   1) Noto Serif KR(@fontsource, woff)에서 글리프를 윤곽선으로 뽑아 apps/web/src/logo/logoPaths.ts 를 만든다(글꼴 없이도 똑같이 보이게). 다 읽음 도장의 "完"도 여기서
 //   2) 파비콘: apps/web/static/favicon.svg(작은 크기 전용 판, 다크 탭 대응), favicon.ico(16·32), apple-touch-icon.png(180)
 // opentype.js는 프로젝트 의존성이 아니다. 임시 폴더에 받아 경로를 넘긴다:
 //   npm i --prefix <임시 폴더> opentype.js@1.3.4
@@ -113,6 +113,15 @@ const icon = { pil: pilcrow(82, 80), hl: "M14 64L86 50L88 70L16 84Z", ul: "M14 9
 // 작은 크기(16·32px) 전용: ¶를 칸에 꽉 차게 키우고 형광펜·밑줄을 두껍게(가는 획이 뭉개지지 않게)
 const small = { pil: pilcrowFit(2, 86), hl: "M6 58L94 40L96 72L8 90Z", ul: "M6 92L94 88L94 99L6 100Z" };
 
+// ── 다 읽음 도장의 "完"(0~100 낙관 안, 900, 가운데 50): 시안 docs/design/readmark.html A ──
+function wan(): string {
+  const font = fontFor(900, "完".codePointAt(0)!);
+  const glyph = font.charToGlyph("完");
+  const size = 50;
+  const adv = (glyph.advanceWidth * size) / font.unitsPerEm;
+  return compact(glyph.getPath(50 - adv / 2, 68, size).commands);
+}
+
 const W = Math.ceil(104 + Math.max(word.end, sub.end) + 6); // 아이콘(104) + 글자 로고
 mkdirSync(join(root, "apps/web/src/logo"), { recursive: true });
 writeFileSync(
@@ -125,6 +134,8 @@ export const COMPACT_W = ${Math.ceil(104 + word.end + 6)};
 export const ICON = ${JSON.stringify(icon, null, 2)};
 /** 글자 로고(가로 조합에서는 x 104만큼 옮긴다): 글자, 낮 형광펜 띠, 밤 밑줄. 원어 표기는 logoSub.ts(따로 불러온다) */
 export const WORD = ${JSON.stringify({ text: word.d, hl: wordHl, ul: wordUl }, null, 2)};
+/** 다 읽음 도장(features/dictionary/Seal.tsx)의 "完" 윤곽(0~100) */
+export const SEAL_WAN = ${JSON.stringify(wan())};
 `,
 );
 // 원어 표기(한자가 무거워 gzip 약 2KB): 넓은 화면의 가로 조합에서만 쓰는 장식이라 홈 묶음에서 빼고 동적 import

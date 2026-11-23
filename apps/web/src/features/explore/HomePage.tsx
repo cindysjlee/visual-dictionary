@@ -1,5 +1,5 @@
-// 표제어 색인(/terms): 사전의 색인 쪽. 쪽 머리(찾아보기) → 표제어 색인 머리 + 내 밑줄 장부 → 엄지 색인(분야)·읽음 걸러 보기 → 가나다순 첫소리 색인.
-// 읽은 표제어에는 형광펜 밑줄, 읽다 만 표제어(최근 본 것 중 안 읽은 것)에는 책갈피. 검색어(?q=)와 분야(?field=)는 주소에 남는다
+// 표제어 색인(/terms): 사전의 색인 쪽. 쪽 머리(찾아보기) → 표제어 색인 머리 + 내 다 읽음 장부 → 엄지 색인(분야)·읽음 걸러 보기 → 가나다순 첫소리 색인.
+// 다 읽은 표제어에는 줄 끝에 完 도장, 읽다 만 표제어(최근 본 것 중 안 읽은 것)에는 책갈피. 검색어(?q=)와 분야(?field=)는 주소에 남는다
 import { useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import type { Category, IndexEntry } from "@app/content-schema";
@@ -9,7 +9,7 @@ import { loginPath } from "../auth/safeNext.ts";
 import { useAuth } from "../auth/store.ts";
 import { groupByCategory, IndexColumns, Ledger, Thumbs } from "../dictionary/Dictionary.tsx";
 import { recentTerms } from "../progress/recent.ts";
-import { isRead, progress, useProgress, useRecent } from "../progress/store.ts";
+import { isRead, progress, readAt, useProgress, useRecent } from "../progress/store.ts";
 import { passesReadFilter, type ReadFilter } from "../progress/summary.ts";
 
 const READ_FILTERS: [ReadFilter, string][] = [
@@ -70,7 +70,7 @@ export default function HomePage() {
   const user = useAuth();
   const recent = useRecent();
   const state = useProgress();
-  const records = state.status === "ready"; // 기록이 있을 때만 밑줄·걸러 보기·장부를 쓴다
+  const records = state.status === "ready"; // 기록이 있을 때만 도장·걸러 보기·장부를 쓴다
 
   const terms = load.state === "ok" ? load.data : null;
   const byId = useMemo(() => new Map((terms ?? []).map((t) => [t.id, t])), [terms]);
@@ -134,17 +134,17 @@ export default function HomePage() {
           <h1>표제어 색인</h1>
           <p>
             가나다순 <span className="la-num">{terms.length}</span>개.{" "}
-            {records ? "밑줄은 끝까지 본 표제어, 책갈피는 읽다 만 표제어다." : "모두 로그인 없이 볼 수 있다."}
+            {records ? "完 도장은 다 읽은 표제어, 책갈피는 읽다 만 표제어다." : "모두 로그인 없이 볼 수 있다."}
           </p>
         </div>
-        <aside className="la-mine" aria-label="내 밑줄">
+        <aside className="la-mine" aria-label="내 다 읽음">
           {user.status !== "user" ? (
             <p>
-              로그인하면 끝까지 본 표제어에 밑줄이 그어지고 분야별 진행률이 쌓인다. <Link to={loginPath("/terms")}>로그인</Link>
+              로그인하면 끝까지 본 표제어에 完 도장이 찍히고 분야별 진행률이 쌓인다. <Link to={loginPath("/terms")}>로그인</Link>
             </p>
           ) : state.status === "ready" ? (
             <>
-              <Ledger groups={groups} lined={lined} caption="내 밑줄" resume={resumeId ? byId.get(resumeId) : undefined} />
+              <Ledger groups={groups} lined={lined} caption="내 다 읽음" resume={resumeId ? byId.get(resumeId) : undefined} />
               <RecentLinks index={terms} />
             </>
           ) : state.status === "error" ? (
@@ -187,7 +187,7 @@ export default function HomePage() {
             </button>
           </div>
         ) : (
-          <IndexColumns terms={shown} byId={byId} lined={lined} resumeId={resumeId} headingLevel={2} />
+          <IndexColumns terms={shown} byId={byId} lined={lined} readAt={(id) => readAt(state, id)} resumeId={resumeId} headingLevel={2} />
         )}
       </section>
     </div>

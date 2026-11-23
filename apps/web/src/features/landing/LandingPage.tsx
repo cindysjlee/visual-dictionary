@@ -1,5 +1,5 @@
 // 랜딩(/, /about): "보안·CS 개념을 3D 시각화로 정리한 용어 사전"을 알리고 가입으로 잇는다.
-// 콘셉트는 "사전 지면"(DictionaryPage): 표제어 풀이 → 그림 1(공격/방어 단계) → 가나다 색인(밑줄 = 읽은 용어) → 책갈피(가입).
+// 콘셉트는 "사전 지면"(DictionaryPage): 표제어 풀이 → 그림 1(공격/방어 단계) → 가나다 색인(完 도장 = 다 읽은 용어) → 책갈피(가입).
 // 숫자·용어·분야는 /content/index.json, 예시 장면은 /content/terms/csrf.json에서 읽는다(하드코딩·지어낸 수치 금지)
 import type { Category, IndexEntry, Term } from "@app/content-schema";
 import { useJson } from "../../useJson.ts";

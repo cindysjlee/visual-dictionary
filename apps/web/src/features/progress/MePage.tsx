@@ -1,4 +1,4 @@
-// 내 단어장(/me): 분야별 밑줄 장부(진행률) → 책갈피(읽다 만 쪽·최근 본 표제어) → 밑줄 친/아직 밑줄 없는 표제어(분야별) → 계정(로그아웃, 회원 탈퇴). docs/05 내 단어장
+// 내 단어장(/me): 분야별 다 읽음 장부(完 도장 수) → 책갈피(읽다 만 쪽·최근 본 표제어) → 다 읽은/아직 안 읽은 표제어(분야별) → 계정(로그아웃, 회원 탈퇴). docs/05 내 단어장
 // 탈퇴(FR-AUTH-06): 비밀번호를 Cognito로 다시 확인해야 탈퇴 버튼이 켜지고, 확인 대화상자에서 한 번 더 묻는다
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
@@ -11,10 +11,11 @@ import { auth, useAuth } from "../auth/store.ts";
 import { ProgressError } from "./api.ts";
 import { Field as FieldMark, groupByCategory, Ledger } from "../dictionary/Dictionary.tsx";
 import { daysAgoLabel, recentTerms } from "./recent.ts";
-import { isRead, progress, useProgress, useRecent } from "./store.ts";
+import { isRead, progress, readAt, useProgress, useRecent } from "./store.ts";
+import { Seal, sealLabel } from "../dictionary/Seal.tsx";
 
-/** 분야별로 묶은 표제어 목록. 밑줄 친 쪽은 형광펜 밑줄, 기록은 있지만 안 읽은 표제어에는 책갈피 */
-function WordList({ id, title, terms, lined, bookmarked, empty }: { id: string; title: string; terms: IndexEntry[]; lined: boolean; bookmarked: ReadonlySet<string>; empty: ReactNode }) {
+/** 분야별로 묶은 표제어 목록. 다 읽은 쪽(at이 있으면)은 작은 完 도장, 기록은 있지만 안 읽은 표제어에는 책갈피 */
+function WordList({ id, title, terms, at, bookmarked, empty }: { id: string; title: string; terms: IndexEntry[]; at?: (id: string) => string | undefined; bookmarked: ReadonlySet<string>; empty: ReactNode }) {
   const groups = groupByCategory(terms);
   return (
     <section className="la-words" aria-labelledby={id}>
@@ -35,8 +36,14 @@ function WordList({ id, title, terms, lined, bookmarked, empty }: { id: string; 
                 .map((t) => (
                   <li key={t.id}>
                     <Link to={`/terms/${t.id}`} className="la-word">
-                      <span className={lined ? "la-hl is-on" : "la-hl"}>{t.name}</span>
+                      {t.name}
+                      {at && <span className="visually-hidden"> ({sealLabel(at(t.id))})</span>}
                     </Link>
+                    {at && (
+                      <span className="la-seal-mark" title={sealLabel(at(t.id))}>
+                        <Seal size={28} light />
+                      </span>
+                    )}
                     {bookmarked.has(t.id) && (
                       <span className="la-resume">
                         책갈피<span className="visually-hidden">: 읽다 만 쪽</span>
@@ -231,7 +238,7 @@ export default function MePage() {
   const terms = index.state === "ok" ? index.data : [];
   const ready = state.status === "ready" && index.state === "ok";
   const lined = new Set(ready ? terms.filter((t) => isRead(state, t.id)).map((t) => t.id) : []);
-  // 책갈피: 기록은 있지만 아직 밑줄이 없는 표제어 + 최근 본 것 중 안 읽은 것(맨 앞이 읽다 만 쪽)
+  // 책갈피: 기록은 있지만 아직 다 읽지 않은 표제어 + 최근 본 것 중 안 읽은 것(맨 앞이 읽다 만 쪽)
   const recentUnread = recentTerms(recent, terms, 10).filter(({ term }) => !lined.has(term.id));
   const bookmarked = new Set([...(ready ? Object.keys(state.records).filter((id) => !lined.has(id)) : []), ...recentUnread.map(({ term }) => term.id)]);
   const resume = recentUnread[0]?.term;
@@ -243,20 +250,20 @@ export default function MePage() {
         <span className="la-runhead-name">시각화 사전 · 내 단어장</span>
         <span />
         <span className="la-guide">
-          밑줄 <span className="la-num">{lined.size}</span> / <span className="la-num">{terms.length}</span>
+          完 <span className="la-num">{lined.size}</span> / <span className="la-num">{terms.length}</span>
         </span>
       </header>
 
       <div className="la-me-head">
         <div>
           <h1 className="la-headword">내 단어장</h1>
-          <p className="la-gloss">끝까지 본 표제어에 밑줄을 긋고, 읽다 만 표제어에 책갈피를 꽂아 둔 나만의 사전.</p>
+          <p className="la-gloss">끝까지 본 표제어에 完 도장을 찍고, 읽다 만 표제어에 책갈피를 꽂아 둔 나만의 사전.</p>
         </div>
         {ready ? (
           <Ledger
             groups={groupByCategory(terms)}
             lined={lined}
-            caption="분야별 밑줄 장부"
+            caption="분야별 다 읽음 장부"
             resume={resume}
           />
         ) : state.status === "error" ? (
@@ -296,13 +303,13 @@ export default function MePage() {
         <div className="la-me-words">
           <WordList
             id="me-read"
-            title="밑줄 친 표제어"
+            title="다 읽은 표제어"
             terms={terms.filter((t) => lined.has(t.id))}
-            lined
+            at={(id) => readAt(state, id)}
             bookmarked={new Set()}
             empty={
               <>
-                아직 밑줄 친 표제어가 없다. 그림을 끝까지 보면 밑줄이 그어진다.
+                아직 다 읽은 표제어가 없다. 그림을 끝까지 보면 完 도장이 찍힌다.
                 {first && (
                   <>
                     {" "}
@@ -312,7 +319,7 @@ export default function MePage() {
               </>
             }
           />
-          <WordList id="me-unread" title="아직 밑줄 없는 표제어" terms={terms.filter((t) => !lined.has(t.id))} lined={false} bookmarked={bookmarked} empty="모든 표제어에 밑줄을 그었다." />
+          <WordList id="me-unread" title="아직 안 읽은 표제어" terms={terms.filter((t) => !lined.has(t.id))} bookmarked={bookmarked} empty="모든 표제어에 完 도장을 찍었다." />
         </div>
       )}
 

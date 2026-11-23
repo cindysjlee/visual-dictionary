@@ -734,7 +734,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
           </Link>
         ) : (
           <>
-            <span>가입하면 읽은 표제어에 밑줄이 남아요</span>
+            <span>가입하면 다 읽은 표제어에 完 도장이 찍혀요</span>
             <Link className="la-btn la-btn-sm la-btn-mark" to="/auth/signup" tabIndex={finished ? undefined : -1}>
               회원가입
             </Link>

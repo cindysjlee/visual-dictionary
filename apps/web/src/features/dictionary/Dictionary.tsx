@@ -1,9 +1,10 @@
 // 사전 지면의 공통 부품(랜딩·색인 /terms·내 단어장 /me가 함께 쓴다): 가나다 색인(첫소리 머리), 엄지 색인(분야), 표제어 줄,
-// → 참조, 분야별 밑줄 장부, 〔n단계, 방어 n〕 표기. 모양은 styles/dictionary.css, 색은 tokens.css의 --la-*
+// → 참조, 분야별 다 읽음 장부(完 도장 수), 〔n단계, 방어 n〕 표기. 모양은 styles/dictionary.css, 색은 tokens.css의 --la-*
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { Category, IndexEntry } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
+import { Seal, sealLabel } from "./Seal.tsx";
 
 // 첫소리 머리(ㄱ·ㄴ…): 겹자음은 홑자음 머리에 넣는다. 한글이 아니면 로마자 첫 글자
 const CHOSEONG = "ㄱㄱㄴㄷㄷㄹㅁㅂㅂㅅㅅㅇㅈㅈㅊㅋㅌㅍㅎ";
@@ -91,11 +92,13 @@ export const SeeAlso = ({ list, className = "la-see" }: { list: IndexEntry[]; cl
 );
 
 type Marks = {
-  /** 밑줄 그을 표제어(읽음, 또는 랜딩 미리보기) */
+  /** 完 도장을 찍을 표제어(다 읽음, 또는 랜딩 미리보기) */
   lined: ReadonlySet<string>;
+  /** 다 읽은 날(ISO). 화면 읽기 글자·title에만 쓴다(색인 도장에는 날짜를 새기지 않는다) */
+  readAt?: (id: string) => string | undefined;
   /** 책갈피(읽다 만 쪽) */
   resumeId?: string;
-  /** 랜딩 미리보기: 밑줄·책갈피에 "미리보기" 표지를 단다 */
+  /** 랜딩 미리보기: 도장·책갈피에 "미리보기" 표지를 단다 */
   preview?: boolean;
 };
 
@@ -105,6 +108,7 @@ export function IndexColumns({
   byId,
   lined,
   resumeId,
+  readAt,
   preview = false,
   headingLevel = 3,
 }: { terms: IndexEntry[]; byId: ReadonlyMap<string, IndexEntry>; /** 첫소리 머리의 제목 단계(바로 위 제목 + 1) */ headingLevel?: 2 | 3 } & Marks) {
@@ -124,8 +128,8 @@ export function IndexColumns({
               return (
                 <li key={t.id} className="term-card">
                   <Link to={`/terms/${t.id}`} className="la-word">
-                    <span className={on ? "la-hl is-on term-card-name" : "la-hl term-card-name"}>{t.name}</span>
-                    {on && <span className="visually-hidden tag-read">{preview ? " (밑줄 미리보기)" : " (읽음)"}</span>}
+                    <span className="term-card-name">{t.name}</span>
+                    {on && <span className="visually-hidden tag-read">{preview ? " (다 읽음 미리보기)" : ` (${sealLabel(readAt?.(t.id))})`}</span>}
                   </Link>
                   {t.englishName && (
                     <span className="la-en" lang="en">
@@ -133,6 +137,11 @@ export function IndexColumns({
                     </span>
                   )}
                   <Field category={t.category} />
+                  {on && (
+                    <span className="la-seal-mark" title={preview ? "다 읽음(미리보기)" : sealLabel(readAt?.(t.id))}>
+                      <Seal size={34} light />
+                    </span>
+                  )}
                   {on && preview && (
                     <span className="la-preview" aria-hidden="true">
                       미리보기
@@ -163,8 +172,8 @@ export function IndexColumns({
 }
 
 /**
- * 분야별 밑줄 장부(진행률): 분야마다 밑줄 친 표제어 수를 형광펜 막대로 채운다. 숫자를 글자로도 보인다(막대는 장식).
- * 랜딩 미리보기면 캡션에 "미리보기"를 단다(지어낸 진행률이 아니라 색인의 밑줄 미리보기를 센다)
+ * 분야별 다 읽음 장부(진행률): 분야마다 完 도장을 찍은 표제어 수를 인주색 막대로 채운다. 숫자를 글자로도 보인다(막대·도장은 장식).
+ * 랜딩 미리보기면 캡션에 "미리보기"를 단다(지어낸 진행률이 아니라 색인의 도장 미리보기를 센다)
  */
 export function Ledger({
   groups,
@@ -194,7 +203,7 @@ export function Ledger({
         <strong className="la-num">
           {read} / {all}
         </strong>{" "}
-        표제어에 밑줄
+        표제어 다 읽음
       </p>
       <ul className="progress-cats">
         {groups.map(([c, list]) => {
@@ -205,7 +214,9 @@ export function Ledger({
               <span className="la-ledger-bar" aria-hidden="true">
                 <span style={{ width: `${(n / list.length) * 100}%` }} />
               </span>
-              <span className="la-num">
+              <span className="la-num la-ledger-count">
+                <Seal size={22} light />
+                <span className="visually-hidden">다 읽음 </span>
                 {n}/{list.length}
               </span>
             </li>
