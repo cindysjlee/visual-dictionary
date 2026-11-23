@@ -11,24 +11,24 @@
 ```mermaid
 flowchart TB
   root["보안·CS 개념 시각화 사전"]
-  root --> S1["<b>S1 공통</b><br/>레이아웃·상단바·푸터<br/>라우팅·없는 페이지<br/>디자인 토큰·테마<br/>옛 청크 1회 새로고침"]
+  root --> S1["<b>S1 공통</b><br/>레이아웃·상단바·로고·푸터<br/>라우팅·랜딩 로그인 분기<br/>디자인 토큰(사전 지면)·테마<br/>옛 청크 1회 새로고침"]
   root --> S2["<b>S2 콘텐츠</b><br/>용어 JSON·Zod 스키마<br/>장면 검증(checkScene)<br/>인덱스 생성·draft 분리"]
-  root --> S3["<b>S3 탐색</b><br/>용어 목록·카테고리<br/>검색·결과 없음<br/>읽음 표시·필터"]
+  root --> S3["<b>S3 탐색</b><br/>랜딩(첫 화면)·용어 색인<br/>분야 거르기·검색·결과 없음<br/>完 도장·책갈피 표시·읽음 필터"]
   root --> S4["<b>S4 시각화</b><br/>상세 페이지<br/>PlaybackEngine·컨트롤·자막·속도<br/>3D Flow·Stack·Lock 장면<br/>방어·해결 모드, 2D 대체"]
   root --> S5["<b>S5 인증</b><br/>가입·이메일 인증·로그인<br/>비밀번호 재설정<br/>Google 로그인·콜백<br/>탈퇴(재확인)·개인정보처리방침"]
-  root --> S6["<b>S6 학습 진행</b><br/>읽음 기록·진행률<br/>최근 본 용어·내 학습<br/>탈퇴 정리·고아 기록 정리"]
+  root --> S6["<b>S6 학습 진행</b><br/>완독 기록(完 도장)·진행률<br/>최근 본 용어·책갈피·내 단어장<br/>탈퇴 정리·고아 기록 정리"]
 ```
 
 예전 제출본 그림은 1.6절에 있다.
 
 | 서브시스템 | 책임 | 관련 요구사항 |
 | --- | --- | --- |
-| S1 공통 | 모든 화면이 함께 쓰는 레이아웃, 라우팅, 오류 페이지, API 호출 방식 | FR-EXP-05, FR-DTL-04, FR-AUTH-04 |
+| S1 공통 | 모든 화면이 함께 쓰는 레이아웃·로고, 라우팅(랜딩 로그인 분기 포함), 오류 페이지, API 호출 방식 | FR-EXP-05, FR-EXP-07, FR-DTL-04, FR-AUTH-04 |
 | S2 콘텐츠 | 용어 데이터 파일의 형식 정의와 검증, 목록·검색용 인덱스 생성 | SS-06 (FR-CNT-01~05) |
-| S3 탐색 | 용어 목록, 카테고리 필터, 키워드 검색 | SS-01 |
+| S3 탐색 | 첫 화면(랜딩), 용어 색인, 카테고리 필터, 키워드 검색 | SS-01 |
 | S4 시각화 | 용어 상세 페이지와 애니메이션 플레이어, 재생 제어, 방어 모드 | SS-02, SS-03 |
 | S5 인증 | 회원가입, 로그인, 비밀번호 재설정, 회원 탈퇴 | SS-04 |
-| S6 학습 진행 | 읽음 기록, 진행률, 읽음 상태 필터, 최근 본 용어 | SS-05 |
+| S6 학습 진행 | 완독 기록(完 도장), 진행률, 읽음 상태 필터, 최근 본 용어, 책갈피 | SS-05 |
 
 요구사항과 달라진 점은 세 가지다. 용어 상세 조회(SS-02)와 애니메이션 재생(SS-03)은 한 화면에서 같은 데이터를 쓰며 함께 동작하므로 S4 하나로 합쳤다. 여러 서브시스템이 함께 쓰는 화면 틀과 API 호출 코드는 S1 공통으로 따로 뺐다. 배포·운영(SS-07)은 코드 모듈이 아니라 실행 환경에 관한 내용이므로 모듈뷰에서 빼고 2장의 할당뷰에서 다룬다.
 
@@ -38,12 +38,12 @@ flowchart TB
 
 | | Frontend(브라우저, React) | Backend(Lambda·관리형·빌드) | Database(DynamoDB·S3·Cognito) |
 | --- | --- | --- | --- |
-| S1 공통 | `Layout`·`main.tsx` 라우터·`NotFoundPage`·`useJson`·디자인 토큰 | API Gateway JWT 인가(토큰 확인), 핸들러별 입력 검증·공통 응답 형식 | 없음(정적 파일만) |
+| S1 공통 | `Layout`·`Logo`·`main.tsx` 라우터(랜딩 분기 `hasStoredSession`)·`NotFoundPage`·`useJson`·디자인 토큰 | API Gateway JWT 인가(토큰 확인), 핸들러별 입력 검증·공통 응답 형식 | 없음(정적 파일만) |
 | S2 콘텐츠 | `content-schema`(스키마·타입 공유) | `validate-content`·`build-index`(빌드 시) | `content/terms/*.json`(원본), `/content/index.json`·`/content/terms/{id}.json`(배포본, S3) |
-| S3 탐색 | `HomePage`(카테고리·검색·카드·읽음 필터) | 없음 | `index.json` 읽기 |
+| S3 탐색 | `LandingPage`(`DictionaryPage`·`SketchFigure`), `HomePage`(용어 색인: 분야·검색·읽음 필터), 사전 지면 부품(`features/dictionary/`) | 없음(손글씨 글꼴 조각은 빌드 때 생성) | `index.json` 읽기 |
 | S4 시각화 | `TermPage`, `PlaybackEngine`(`engine.ts`), `PlayerShell`, `FlowScene`·`StackScene`·`LockScene`, `StepList2D` | 없음 | `terms/{id}.json` 읽기 |
 | S5 인증 | `LoginPage`·`SignupPage`·`ConfirmPage`·`ResetPage`·`CallbackPage`, 인증 저장소(`auth/store.ts`), `PrivacyPage` | Cognito 사용자 풀(Essentials, 로그인 도메인, Google IdP), Account API(탈퇴, 재인증 5분) | Cognito 사용자 저장소, Secrets Manager(Google 클라이언트) |
-| S6 학습 진행 | `StudyCard`·`ProgressSummary`·`MePage`, 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
+| S6 학습 진행 | `StudyCard`(完 도장)·`Ledger`(진행률)·`MePage`, 책갈피 규칙(`bookmarks.ts`), 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
 
 예전 제출본 그림은 1.6절에 있다.
 
@@ -56,8 +56,8 @@ flowchart TB
 | 사용하는 쪽 | 사용되는 쪽 | 내용 |
 | --- | --- | --- |
 | S3 탐색, S4 시각화 | S2 콘텐츠 | 빌드된 `/content/index.json`, `/content/terms/{id}.json`을 읽는다 |
-| S3 탐색 | S6 학습 진행 | 로그인 시 카드의 읽음 표시, 읽음 필터, 진행률을 보여준다 |
-| S4 시각화 | S6 학습 진행 | 마지막 단계까지 재생하면 읽음 기록을 저장한다 |
+| S3 탐색 | S6 학습 진행 | 로그인 시 용어 줄의 完 도장·책갈피, 읽음 필터, 진행률을 보여준다 |
+| S4 시각화 | S6 학습 진행 | 마지막 단계까지 재생하면 완독 기록을 저장한다 |
 | S6 학습 진행 | S5 인증 | 로그인 토큰으로 본인 기록만 조회·수정한다 |
 | 모든 서브시스템 | S1 공통 | 화면 틀, 라우팅, API 클라이언트 |
 
@@ -101,9 +101,18 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 설계 이름 | 코드 위치 |
 | --- | --- |
 | 화면 틀·테마 전환 | `Layout.tsx`, `theme.ts` |
+| 로고(윤곽선 SVG, 폭별 변형)·파비콘 | `logo/Logo.tsx` `Logo`, `logo/logoPaths.ts`·`logoSub.ts`(생성), `apps/web/static/favicon.*`, 생성기 `scripts/build-logo.ts` |
+| 라우트 표(랜딩 `/`·`/about`, 색인 `/terms`, 상세 `/terms/:id`, 계정·`/me`·`/privacy`는 lazy) | `main.tsx` `router` |
+| 랜딩 로그인 분기(로그인 기록이 있으면 `/` → `/terms`) | `features/auth/session.ts` `hasStoredSession()`, `main.tsx` index `loader` |
+| 정적 파일(robots.txt·파비콘)을 배포 폴더로 복사 | `scripts/build-index.ts`(`apps/web/static/` 전체) |
 | 정적 JSON 읽기 (JSON이 아닌 응답은 `notfound`로 처리) | `useJson.ts` `useJson()` |
-| 용어 목록·검색·카테고리 필터 | `features/explore/HomePage.tsx` `HomePage`, `termMeta()` |
-| 용어 상세 페이지 | `features/term/TermPage.tsx` (플레이어는 동적 import) |
+| 첫 화면(랜딩): 용어 풀이 ①②③, 그림 1, 색인 미리보기, 책갈피(가입) | `features/landing/LandingPage.tsx` `LandingPage`, `pickDemo()`, `DictionaryPage.tsx` |
+| 랜딩 그림 1(연필 스케치, three.js 없음) | `features/landing/SketchFigure.tsx` `SketchFigure`, 상태 `sketchScene.ts` `sceneAt()`·`sceneDuring()`, 손글씨 글꼴 조각 `scripts/subset-hand-font.ts` |
+| 용어 색인(목록)·검색·분야 거르기·읽음 필터 | `features/explore/HomePage.tsx` `HomePage`, `matches()`, `features/progress/summary.ts` `passesReadFilter()` |
+| 사전 지면 공통 부품(첫소리 묶기·분야 버튼·색인 줄·관련 용어·진행률·"6단계 · 방어 2개") | `features/dictionary/Dictionary.tsx` `byInitial()`, `Thumbs`, `IndexColumns`, `SeeAlso`, `Ledger`, `entryMeta()` |
+| 용어 상세 페이지(카드·옆 목차·참고 자료 출처) | `features/term/TermPage.tsx` (플레이어는 동적 import), `Toc`, `sourceOf()` |
+| 본문 표시 문법(==형광펜==·`코드`) 파싱·그리기 | `packages/content-schema/src/marks.ts` `parseMarks()`, `plainText()`(검증은 `termSchema`), 화면 `features/dictionary/Marked.tsx` `Marked` |
+| "¶ n단계" → 그 방어 모드의 n단계로 | `TermPage.tsx` `showDefense()`, `players/Player.tsx` `jump`(`PlayerJump`) |
 
 **S4 플레이어 (공통)**
 
@@ -168,7 +177,10 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | CloudFront `/api/*`·SPA 라우팅 함수 | `infra/lib/web-stack.ts` `SPA_ROUTER_CODE`, `additionalBehaviors` |
 | 브라우저 기록 상태(실제 `/api`·가짜) | `features/progress/store.ts` `useProgress()`, `progress`, `features/progress/http.ts`, `features/progress/fake.ts` |
 | 진행률 계산 | `features/progress/summary.ts` `summarize()` |
-| 상세 학습 상태 카드·홈 진행률·내 학습 | `features/progress/StudyCard.tsx`, `ProgressSummary.tsx`, `MePage.tsx` |
+| 상세 완독 메모(完 도장·날짜·완독으로 표시/취소, 찍히는 움직임) | `features/progress/StudyCard.tsx` `StudyCard`(`press`), 도장 `features/dictionary/Seal.tsx` `Seal`·`sealDate()`·`sealLabel()`, "完" 윤곽 `logo/logoPaths.ts` `SEAL_WAN` |
+| 완독한 날(기록 저장 시각 `updatedAt`) | `features/progress/store.ts` `readAt()` |
+| 진행률(색인 "내 진행률", 내 단어장 "분야별 진행률") | `features/dictionary/Dictionary.tsx` `Ledger`, 계산 `features/progress/summary.ts` `summarize()` |
+| 내 단어장(/me) | `features/progress/MePage.tsx` |
 | 배포 후 권한·탈퇴 확인 | `scripts/smoke-progress.ts` (`npm run smoke:progress`) |
 
 **S6 최근 본 용어·자동 배포 (7단계)**
@@ -177,7 +189,8 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | --- | --- |
 | 최근 본 용어 조회·기록(사용자는 sub로만, 탈퇴 표시면 403) | `services/api/src/activity.ts` `getActivity()`, `putActivity()`, `RECENT_LIMIT`, `VIEW_TTL_DAYS` |
 | RecentView 저장소(두 테이블 트랜잭션), 정리 시 함께 삭제 | `services/api/src/dynamo.ts` `dynamoActivityRepo()`, `deleteActivity()`, `services/api/src/cleanup.ts` |
-| 최근 본 용어 표시(홈 이어서 볼 용어·3개, 내 학습 10개) | `features/progress/store.ts` `useRecent()`, `progress.recordView()`, `features/progress/recent.ts` |
+| 최근 본 용어 표시(색인 3개, 내 단어장 10개) | `features/progress/store.ts` `useRecent()`, `progress.recordView()`, `features/progress/recent.ts` |
+| 책갈피 규칙(최근 본 용어 중 완독이 아니고 마지막 완독 표시·취소보다 나중에 연 용어) | `features/progress/bookmarks.ts` `bookmarkIds()`(색인·내 단어장·랜딩이 함께 씀) |
 | 관련 용어 카드(JSON 순서, published만) | `features/term/TermPage.tsx`, 자기 참조 금지는 `packages/content-schema` `termSchema` |
 | 자동 배포 역할(GitHub OIDC) | `infra/lib/ci-stack.ts` `CiStack` (테스트 `infra/test/ci-stack.test.ts`) |
 | 배포 관문(보안 변경·삭제/교체) | `scripts/ci-gate.ts` |
@@ -196,10 +209,11 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | --- | --- | --- | --- |
 | S1 Backend | 토큰 확인 미들웨어·입력 검증·공통 오류 응답 형식 | 공통 미들웨어 모듈 없이 나눠 맡는다. 토큰 확인: API Gateway JWT 인가(`api-stack.ts` `HttpJwtAuthorizer`)가 Lambda 앞에서 서명·만료를 검사하고, 핸들러는 인가된 토큰의 `sub`만 쓴다(`handlers.ts`). 입력 검증: 각 핸들러(`progress.ts` 용어 ID·본문, `activity.ts` 본문 거부, `account.ts` 재인증 시각). 공통 오류 형식: `ApiResult`(`{ status, body: { error } }`)와 `handlers.ts`의 `respond()` | CH-47 |
 | S1 Frontend | apiClient | 기능별 호출(`progress/http.ts`)과 같은 출처 `/api/*` | CH-26 |
+| S1·S3 Frontend | 홈(`/`) = 용어 카드 목록, Bento Glass 디자인 | `/` 랜딩(로그인 기록이 있으면 `/terms`로), `/terms` 용어 색인, "사전 지면" 디자인, 로고 ¶ | CH-52, CH-56, CH-57 |
 | S4 Frontend | FlowPlayer·StackPlayer·LockPlayer(SVG), DefenseToggle | 3D 장면 `FlowScene`·`StackScene`·`LockScene`(R3F), 방어·해결 모드 탭, 재생 속도, 2D 대체 화면 | CH-08, CH-18, CH-21 |
 | S5 Frontend | AuthProvider(토큰 관리) | 인증 저장소(`auth/store.ts`, Amplify는 동적 import), Google 콜백, 개인정보처리방침 | CH-35, CH-38 |
 | S5 Backend | Cognito User Pool, Account API | Cognito(Essentials, 로그인 도메인, Google IdP), Account API가 재인증(`auth_time` 5분)을 검사 | CH-35, CH-36, CH-37 |
-| S6 Frontend | ReadToggle·ReadFilter·ProgressSummary·RecentList·progressApi | `StudyCard`·`ProgressSummary`·`MePage`, 학습 기록 저장소(`useSyncExternalStore`, TanStack Query 아님) | CH-25 |
+| S6 Frontend | ReadToggle·ReadFilter·ProgressSummary·RecentList·progressApi | `StudyCard`(完 도장)·`Ledger`(진행률)·`MePage`, 책갈피 규칙 `bookmarks.ts`, 학습 기록 저장소(`useSyncExternalStore`, TanStack Query 아님) | CH-25, CH-53, CH-54 |
 | S6 Backend | Progress API, Activity API, 탈퇴 이벤트 처리 | 탈퇴 이벤트 처리 → SQS 정리 큐와 정리 Lambda 하나, 고아 기록 정리(Scheduler) 추가 | CH-29, CH-39 |
 | S2 | content-schema, validate-content, build-index | 같음. 개발용(draft 포함)·배포용 콘텐츠를 폴더로 나눔 | CH-03 |
 
@@ -347,7 +361,7 @@ flowchart TB
 
 1. 로그인: `/auth/login`에서 "Google로 계속하기" → 구글 계정 선택 → 돌아와 상단바에 구글 이메일
 2. 새로고침해도 로그인 유지
-3. 학습 기록: 용어 하나를 읽음으로 → 진행률 1 / 8, 내 학습의 최근 본 용어에 표시
+3. 학습 기록: 용어 하나를 완독으로 표시 → 진행률 "1 / 14 완독", 내 단어장의 최근 본 용어에 표시
 4. 로그아웃: 로그인 도메인을 거쳐 첫 화면, 상단바에 "로그인"
 5. 탈퇴: 다시 로그인 → `/me`에 비밀번호 칸 없음·"탈퇴하기" 꺼짐 → "Google로 다시 확인"을 누르면 **구글 계정 선택 화면이 반드시 나온다**(바로 돌아오면 실패: managed login·`prompt=select_account` 전달 확인) → 돌아와 "Google 계정을 다시 확인했어요" 후 "탈퇴하기" 켜짐 → 대화상자에서 탈퇴 → 첫 화면에 탈퇴 안내
 6. 탈퇴 후: Cognito에 그 이메일 사용자 0명, `LearningRecord` 기록 0건(탈퇴 표시 `#deleted`는 2시간 TTL로 남는 것이 정상), `RecentView` 0건, 정리 DLQ 0건

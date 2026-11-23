@@ -1,6 +1,6 @@
 # 요구사항 추적 매트릭스
 
-`01-requirements.md`의 요구사항(FR 41개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-21(콘텐츠 1차 공개 뒤, 용어 14개)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
+`01-requirements.md`의 요구사항(FR 47개, NFR 3개, DC 3개)을 설계 문서 위치, 코드 위치, 테스트와 잇는다. 기준 시점은 2026-11-24(디자인 개편: 랜딩·용어 색인·사전 지면·로고·完 도장 뒤, 용어 14개)이다. 테스트 이름·개수와 최근 결과는 `10-test-report.md`에 있다.
 
 **상태**
 - **완료**: 구현됐고, 요구사항의 핵심 동작을 자동 테스트(단위·E2E·smoke 중 하나 이상)가 확인한다.
@@ -8,6 +8,7 @@
 - **테스트 없음**: 구현됐지만 이 요구사항을 직접 확인하는 자동 테스트가 없다.
 - **문서와 다름**: 구현이 요구사항 문장과 다르다(`07-change-log.md` 3절).
 - **미구현**: 구현하지 않았다.
+- **계획**: 요구사항으로 정했지만 아직 만들지 않았다(설계 전).
 
 **테스트 종류 약어**: 단(Vitest 단위), 인(infra CDK 테스트), E(Playwright E2E, 태그), S(배포 후 smoke), C(check:aws), 사(사람 확인)
 
@@ -15,11 +16,13 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-EXP-01 용어 목록 | docs/05 화면 구조, docs/03 1.1 S3 | `features/explore/HomePage.tsx` | E `explore.e2e.ts` @explore(모든 카드의 이름·요약·카테고리 배지), E `a11y.e2e.ts` | 완료 | |
+| FR-EXP-01 용어 목록 | docs/05 화면 구조·사전 지면, docs/03 1.1 S3 | `features/explore/HomePage.tsx`, `features/dictionary/Dictionary.tsx` `IndexColumns` | E `explore.e2e.ts` @explore(모든 용어 줄의 이름·요약·분야 표지), E `a11y.e2e.ts` | 완료 | 화면 이름 "용어 색인"(`/terms`), 예전 "홈 카드 목록"(CH-56·57) |
 | FR-EXP-02 카테고리 필터 | docs/05 | `HomePage.tsx` | E `explore.e2e.ts`(비회원, 기본 "전체", 카테고리마다 그 용어만), E `progress.e2e.ts`(읽음 필터와 함께) | 완료 | |
 | FR-EXP-03 키워드 검색 | docs/05 | `HomePage.tsx`(이름·영문명·요약·별칭, 소문자 비교) | E `explore.e2e.ts`(별칭 대문자 입력·영문명 소문자·한글 별칭·요약 일부, 카테고리와 함께) | 완료 | |
 | FR-EXP-04 결과 없음 안내 | docs/05 | `HomePage.tsx`("전체 목록 보기") | E `explore.e2e.ts`(안내 문구·버튼, 누르면 검색어·카테고리 초기화) | 완료 | |
 | FR-EXP-05 상세 진입·고유 URL | docs/03 1.1 | `main.tsx` 라우트, `features/term/TermPage.tsx` | E `player.e2e.ts`(모든 용어 `/terms/<id>` 직접 열기), S smoke:prod(published 전부 200) | 완료 | |
+| FR-EXP-06 첫 화면(랜딩) | docs/05 랜딩, docs/03 1.5 | `features/landing/LandingPage.tsx`·`DictionaryPage.tsx`·`SketchFigure.tsx` | 단 `sketchScene.test.ts`·`josa.test.ts`, E `a11y.e2e.ts`(`/` 라이트·다크), E `perf.e2e.ts`(랜딩 LCP·CLS), E `viewport.e2e.ts`(360·1920) | 완료 | CH-56 |
+| FR-EXP-07 로그인 분기 | docs/03 1.5 | `features/auth/session.ts` `hasStoredSession()`, `main.tsx` index `loader` | 단 `auth.test.ts`(저장된 로그인 판정 5가지), E `auth.e2e.ts`(로그인 뒤 `/` → 색인) | 완료 | CH-56. 토큰이 만료됐으면 색인이 비로그인으로 보인다 |
 
 ## 2. 상세(FR-DTL)
 
@@ -62,13 +65,14 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-PRG-01 완료 자동 기록 | docs/03 2.5 | `TermPage.tsx`, `progress/store.ts`, `progress.ts` | 단 `api.test.ts`, E `progress.e2e.ts`, S smoke:progress | 완료 | |
-| FR-PRG-02 읽음 직접 변경 | docs/02 규칙 | `StudyCard.tsx` | E `progress.e2e.ts`(read:false로 남김) | 완료 | |
-| FR-PRG-03 목록 상태 표시 | docs/05 | `HomePage.tsx` | E `progress.e2e.ts` | 완료 | |
+| FR-PRG-01 완료 자동 기록 | docs/03 2.5, docs/05 완독 표시 | `TermPage.tsx`, `progress/store.ts`(`readAt()`), `StudyCard.tsx`·`Seal.tsx`(完 도장·날짜), `progress.ts` | 단 `api.test.ts`, E `progress.e2e.ts`(끝까지 보면 도장·날짜·화면 읽기 이름·찍히는 움직임), S smoke:progress | 완료 | "읽음" → "완독"(CH-53·54) |
+| FR-PRG-02 완독 직접 변경 | docs/02 규칙, docs/05 완독 표시 | `StudyCard.tsx`([완독으로 표시]/[완독 취소]) | E `progress.e2e.ts`(read:false로 남김, aria-pressed 없음), E `auth.e2e.ts` | 완료 | CH-55 |
+| FR-PRG-03 목록 상태 표시 | docs/05 완독 표시 | `Dictionary.tsx` `IndexColumns`(줄 끝 完 도장), `HomePage.tsx` | E `progress.e2e.ts`(도장·title·화면 읽기 "완독, 날짜") | 완료 | |
 | FR-PRG-04 읽음 필터 | docs/05 | `summary.ts`, `HomePage.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts` | 완료 | |
-| FR-PRG-05 진행률 | docs/02 규칙 | `summary.ts`, `ProgressSummary.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts`, S smoke:progress(다른 브라우저 같은 진행률) | 완료 | |
-| FR-PRG-06 이어서 보기 | docs/03 2.5 | `activity.ts`, `progress/recent.ts`, `HomePage.tsx`, `MePage.tsx` | 단 `api.test.ts`·`recent.test.ts`, E `progress.e2e.ts` @activity, S smoke:progress | 완료 | |
+| FR-PRG-05 진행률 | docs/02 규칙, docs/05 완독 표시 | `summary.ts`, `Dictionary.tsx` `Ledger`("n / m 완독", 분야별 "n/m 완독") | 단 `summary.test.ts`, E `progress.e2e.ts`, S smoke:progress(다른 브라우저 같은 진행률 "1 / 14 완독") | 완료 | |
+| FR-PRG-06 이어서 보기 | docs/03 2.5, docs/05 책갈피 | `activity.ts`, `progress/recent.ts`, `progress/bookmarks.ts` `bookmarkIds()`, `HomePage.tsx`, `MePage.tsx`, `DictionaryPage.tsx` | 단 `api.test.ts`·`recent.test.ts`·`bookmarks.test.ts`(완독 → 없음, 취소 → 없음, 다시 열기 → 책갈피), E `progress.e2e.ts` @activity(책갈피 규칙: 색인·내 단어장), S smoke:progress | 완료 | 책갈피 규칙 CH-54 |
 | FR-PRG-07 비회원 기록 이전 | 없음 | 없음 | 없음 | **미구현(범위 제외)** | 이번 과제 범위에서 구현하지 않는 선택 기능. 이유는 9절 |
+| FR-PRG-08 퀴즈 | 없음(설계 전) | 없음 | 없음 | **계획** | 단계 순서·막히는 단계·방어 고르기를 용어 JSON에서 자동 생성할 예정. 방어 이름이 용어끼리 구분되는지는 2차 용어 계획 때 함께 본다 |
 
 ## 6. 콘텐츠(FR-CNT)
 
@@ -95,13 +99,16 @@
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | NFR-01 보안 | docs/03 2.4~2.6 | API(액세스 토큰의 sub로만 대상, `accessSubject()`), Cognito, CSP, OIDC 역할(배포 job에만) | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료·ID 토큰 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | 알고 있는 한계 5개는 docs/03 2.4(DF-49 남은 위험 포함) |
-| NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(홈·상세 LCP ≤ 2.5초, CLS ≤ 0.1), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), S smoke:progress(기록 GET·PUT 각 10회 최대 ≤ 1초), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 완료 | LCP·CLS 기준 초과는 로컬 배포 전 전체 E2E에서만 실패(CI는 측정만), LCP는 로컬 빌드 기준(CDN 거리 제외), API 시간은 콜드 스타트 제외(docs/10) |
-| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드, 3D 캔버스 글자 전용 토큰(`--scene-ink` 계열, DF-48) | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 홈·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 캔버스 글자 대비는 axe가 못 봐 토큰 값으로 계산(ecc:accessibility, 11-21 60개 조합 미달 0) |
+| NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(랜딩·색인·상세 LCP ≤ 2.5초, CLS ≤ 0.1), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), S smoke:progress(기록 GET·PUT 각 10회 최대 ≤ 1초), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 완료 | LCP·CLS 기준 초과는 로컬 배포 전 전체 E2E에서만 실패(CI는 측정만), LCP는 로컬 빌드 기준(CDN 거리 제외), API 시간은 콜드 스타트 제외(docs/10) |
+| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드, 3D 캔버스 글자 전용 토큰(`--scene-ink` 계열, DF-48) | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 랜딩·색인·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 캔버스 글자 대비는 axe가 못 봐 토큰 값으로 계산(ecc:accessibility, 11-21 60개 조합 미달 0) |
 | DC-01 프론트엔드 기술 | docs/06, CLAUDE.md 원칙 8 | R3F 장면, PlaybackEngine | S/검사 `check:bundle`(홈 묶음에 three 없음) | 완료 | |
 | DC-02 인프라·백엔드 | docs/03 2.2~2.3 | `infra/lib/*.ts` | 인 테스트 4개, C check:aws | 완료 | |
 | DC-03 콘텐츠 제작 방식 | docs/04, CLAUDE.md 원칙 1 | 용어 JSON + 플레이어 3종 | 단 `simulate.test.ts`(모든 용어×모드가 데이터만으로 끝까지) | 완료 | 콘텐츠 1차(11-21): 플레이어 3종에 일반 어휘만 더하고 용어 6개를 JSON으로 추가(CH-48) |
 
 ## 9. 따로 모은 항목
+
+**계획(아직 구현하지 않음)**
+- FR-PRG-08 퀴즈(선택). 용어 2차 묶음 계획과 함께 문제 생성 규칙을 정한 뒤 설계한다.
 
 **미구현(이번 과제 범위 제외)**
 - FR-PRG-07 비회원 기록 이전(선택). 구현하지 않는 이유:
