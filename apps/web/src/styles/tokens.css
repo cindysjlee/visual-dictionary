@@ -42,7 +42,6 @@
   --field-bg: rgba(255, 255, 255, 0.7);
   --field-border: rgba(255, 255, 255, 0.75);
   --field-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --stage-bg: rgba(255, 255, 255, 0.35);
   --stage-inset: inset 0 2px 12px rgba(40, 50, 90, 0.06);
   --actor-on: rgba(255, 255, 255, 0.85);
   --actor-off: rgba(255, 255, 255, 0.4);
@@ -51,14 +50,8 @@
 
 
   /* 3D 장면 면 색 (useSceneTokens가 런타임에 읽어 재질에 넣는다. 반드시 #rrggbb) */
-  --scene-object: #e3e8f2;
-  --scene-object-dim: #b7c0d4;
-  --scene-object-attack: #3a2f3a;
-  --scene-villain: #2a2e3e;
-  --scene-grid: #9aa3bf;
   --scene-paper: #ffffff;
   --scene-gold: #d99a1e;
-  --scene-island: #cdd4e4;
 
   /* 3D 장면 글자(캔버스 텍스처, DF-48). 판 바탕(--scene-paper)이 두 테마 모두 밝으므로 글자도 두 테마 모두 어두운 같은 값.
      글자 4.5:1 이상, 기호(↩·▶)·도장 테두리 3:1 이상(두 테마의 판 바탕과 연한 판 기준) */
@@ -221,7 +214,6 @@
   --field-bg: rgba(0, 0, 0, 0.25);
   --field-border: rgba(255, 255, 255, 0.14);
   --field-inset: inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  --stage-bg: rgba(0, 0, 0, 0.22);
   --stage-inset: inset 0 2px 12px rgba(0, 0, 0, 0.35);
   --actor-on: rgba(255, 255, 255, 0.12);
   --actor-off: rgba(255, 255, 255, 0.04);
@@ -229,14 +221,8 @@
   --tab-on: rgba(255, 255, 255, 0.14);
 
 
-  --scene-object: #3e4566;
-  --scene-object-dim: #2c3250;
-  --scene-object-attack: #3a2a33;
-  --scene-villain: #6a7190;
-  --scene-grid: #3b4366;
   --scene-paper: #e9edf7;
   --scene-gold: #f2c14e;
-  --scene-island: #20263d;
   --scene-paper-dim: #d9dfec;
   --attack-solid: var(--attack);
 
@@ -314,11 +300,6 @@
   --field-bg: var(--la-paper);
   --field-border: var(--la-ink-sub);
   --field-inset: 0 0 0 transparent;
-  --stage-bg: var(--la-paper-deep);
-  /* 장면의 공격·방어·중립 색(기본 = 지면 UI와 같은 값). 종이 장면은 아래 html[data-scene="paper"]에서 바꾼다 */
-  --scene-attack: var(--attack);
-  --scene-defense: var(--defense);
-  --scene-neutral: var(--neutral);
   --stage-inset: 0 0 0 transparent;
   --tab-on: var(--la-paper);
 
@@ -332,9 +313,9 @@
   --r-sm: 2px;
 }
 
-/* 종이 장면(?scene=paper, 시험 중. docs/06 "종이 장면"): 3D 렌더링(재질·빛·배치)은 그대로 두고 장면 바탕과 색 토큰만 지면 팔레트에 맞춰 채도를 살짝 낮춘다.
+/* 종이 장면(docs/06 "종이 장면", 2026-11-23 확정): 3D 렌더링(재질·빛·배치)은 그대로 두고 무대 바탕과 장면 색(면·공격·방어·중립)을 지면 팔레트에 맞춰 채도를 살짝 낮춘다.
    판 글자(--scene-paper·--scene-ink*)는 DF-48 그대로 */
-html[data-scene="paper"] {
+:root {
   --stage-bg: var(--la-paper);
   --scene-object: #e3e6eb;
   --scene-object-dim: #c3c9d2;
@@ -347,7 +328,7 @@ html[data-scene="paper"] {
   --scene-neutral: #687083;
 }
 
-html[data-scene="paper"][data-theme="dark"] {
+[data-theme="dark"] {
   --scene-object: #454c5e;
   --scene-object-dim: #323849;
   --scene-object-attack: #4a2f34;

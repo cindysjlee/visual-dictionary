@@ -26,18 +26,6 @@ const hasHandedNotice = () => {
 
 // 첫 렌더 전에 테마를 정한다 (CSP가 인라인 스크립트를 막으므로 index.html에서 할 수 없다)
 applyTheme(initialTheme());
-// 모양 비교(미리보기): ?scene=plain|paper(3D 장면, 기본 paper). html[data-scene]에 두고 이 탭 동안 기억한다. 고르면 이 코드는 지운다
-for (const [key, options, fallback] of [["scene", ["plain", "paper"], "paper"]] as const) {
-  const pick = new URLSearchParams(location.search).get(key);
-  let value: string | null = pick && (options as readonly string[]).includes(pick) ? pick : null;
-  try {
-    if (value) sessionStorage.setItem(`vd-${key}`, value);
-    else value = sessionStorage.getItem(`vd-${key}`);
-  } catch {
-    // 저장소를 못 쓰면 주소에 있을 때만
-  }
-  document.documentElement.dataset[key] = value ?? fallback;
-}
 installStaleChunkReload();
 
 const router = createBrowserRouter([
