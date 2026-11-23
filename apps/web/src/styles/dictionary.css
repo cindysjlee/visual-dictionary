@@ -535,6 +535,10 @@ body {
   color: var(--la-ink-sub);
 }
 
+.la-see-label {
+  font-weight: 700;
+}
+
 /* ── 표제어 색인 ── */
 .la-index {
   border-top: 3px double var(--la-ink);
@@ -729,6 +733,11 @@ body {
 .la-meta {
   font-size: var(--fs-sm);
   color: var(--la-ink-sub);
+}
+
+/* 색인 줄의 "6단계 · 방어 2개": 괄호 없이도 설명 문장과 갈리게 다음 줄로 */
+.la-def .la-meta {
+  display: block;
 }
 
 /* ── 책갈피(가입) ── */

@@ -30,7 +30,8 @@ test("끝까지 보면 완독으로 저장되어 옆 칸에 完 도장이 찍히
   await page.goto("/terms/csrf");
   await expect(card(page)).toContainText("아직 안 읽음");
   await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
-  await expect(card(page).getByRole("button", { name: "완독으로 표시" })).toHaveAttribute("aria-pressed", "false");
+  // 상태는 버튼 글자가 알린다(aria-pressed를 함께 쓰면 상태가 두 번 읽힌다)
+  await expect(card(page).getByRole("button", { name: "완독으로 표시" })).not.toHaveAttribute("aria-pressed");
   await playToEnd(page);
   await expect(card(page)).not.toContainText("아직 안 읽음");
   // 보는 동안 완독이 되면 옆 칸(완독 메모)에 도장이 찍힌다(움직임 클래스), 아래에 오늘 날짜
@@ -44,7 +45,7 @@ test("끝까지 보면 완독으로 저장되어 옆 칸에 完 도장이 찍히
   await expect(card(page).locator(".la-seal-stamp")).not.toHaveClass(/is-press/); // 이미 완독한 쪽을 열 때는 그대로
   await expect(card(page)).toContainText("다시 읽고 싶으면 완독을 취소할 수 있어요.");
   const undo = card(page).getByRole("button", { name: "완독 취소" });
-  await expect(undo).toHaveAttribute("aria-pressed", "true");
+  await expect(undo).not.toHaveAttribute("aria-pressed");
   await undo.click();
   await expect(card(page)).toContainText("아직 안 읽음");
   await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
@@ -79,7 +80,7 @@ async function seedRecords(page: Page, email: string, records: Record<string, bo
 const list = (page: Page) => page.getByRole("region", { name: "용어 목록" }).or(page.locator('section[aria-label="용어 목록"]'));
 const cardNames = (page: Page) => list(page).locator(".term-card-name").allTextContents();
 
-test("색인: 완독한 용어 줄 끝 完 도장(날짜는 화면 읽기·title), 읽음 걸러 보기(분야·검색과 함께), 전체·분야별 완독 장부", tag, async ({ page }) => {
+test("색인: 완독한 용어 줄 끝 完 도장(날짜는 화면 읽기·title), 읽음 걸러 보기(분야·검색과 함께), 전체·분야별 진행률", tag, async ({ page }) => {
   await signedIn(page, "home@example.com");
   await seedRecords(page, "home@example.com", { csrf: true, xss: false });
   await page.goto("/terms");
@@ -112,7 +113,7 @@ test("색인: 완독한 용어 줄 끝 完 도장(날짜는 화면 읽기·title
   expect(await cardNames(page)).toHaveLength(index.length);
 });
 
-test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로그인하면 분야별 완독 장부·완독한/안 읽은 용어(작은 도장)를 보인다(axe)", tag, async ({ page }) => {
+test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로그인하면 분야별 진행률(n/m 완독)·완독한/안 읽은 용어(작은 도장)를 보인다(axe)", tag, async ({ page }) => {
   await page.goto("/me");
   await expect(page).toHaveURL(/\/auth\/login\?next=%2Fme$/);
 
@@ -124,7 +125,7 @@ test("/me 내 단어장: 로그아웃 상태면 로그인으로 보내고, 로�
   await expect(done.getByRole("link", { name: "데드락 (완독, 2026년 1월 1일)" })).toBeVisible();
   await expect(done.locator(".la-seal-mark svg")).toHaveCount(1);
   await expect(page.getByRole("region", { name: /^아직 안 읽은 용어/ }).locator(".la-seal-mark")).toHaveCount(0);
-  await expect(page.locator(".progress-cats li").filter({ hasText: "운영체제" }).locator(".la-ledger-count")).toHaveText(/^완독 1\/\d+$/);
+  await expect(page.locator(".progress-cats li").filter({ hasText: "운영체제" }).locator(".la-ledger-count")).toHaveText(/^1\/\d+ 완독$/);
   await expect(page.locator(".progress-total")).toContainText("1 / ");
   await expect(page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "내 단어장" })).toHaveAttribute("aria-current", "page");
   const { default: AxeBuilder } = await import("@axe-core/playwright");

@@ -28,9 +28,9 @@ export function byInitial(terms: IndexEntry[]) {
   return out;
 }
 
-/** 〔6단계, 방어 2〕의 안쪽. 보안이 아닌 분야는 "해결" */
+/** "6단계 · 방어 2개". 보안이 아닌 분야는 "해결"(플레이어 모드 이름 "해결 방법"과 맞춘다) */
 export const entryMeta = (t: Pick<IndexEntry, "stepCount" | "defenseCount" | "category">) =>
-  `${t.stepCount}단계${t.defenseCount > 0 ? `, ${t.category === "web-security" ? "방어" : "해결"} ${t.defenseCount}` : ""}`;
+  `${t.stepCount}단계${t.defenseCount > 0 ? ` · ${t.category === "web-security" ? "방어" : "해결"} ${t.defenseCount}개` : ""}`;
 
 /** 「분야」 표지. 괄호는 CSS(::before/::after)라 글자는 분야 이름만 */
 export const Field = ({ category }: { category: Category }) => <span className={`la-field la-tab-${category} tag-${category}`}>{CATEGORY_LABELS[category]}</span>;
@@ -77,11 +77,10 @@ export function Thumbs({
   );
 }
 
-/** 사전의 "→ 참조": 관련 표제어 링크 */
+/** 관련 용어 링크("관련 용어: A, B") */
 export const SeeAlso = ({ list, className = "la-see" }: { list: IndexEntry[]; className?: string }) => (
   <p className={className}>
-    <span aria-hidden="true">→ </span>
-    <span className="visually-hidden">참조: </span>
+    <span className="la-see-label">관련 용어: </span>
     {list.map((r, i) => (
       <span key={r.id}>
         {i > 0 && ", "}
@@ -149,7 +148,7 @@ export function IndexColumns({
                   )}
                   {t.id === resumeId && (
                     <span className="la-resume">
-                      책갈피<span className="visually-hidden">: 읽다 만 쪽{preview ? " (미리보기)" : ""}</span>
+                      책갈피<span className="visually-hidden">: 이어 볼 용어{preview ? " (미리보기)" : ""}</span>
                       {preview && <span aria-hidden="true"> · 미리보기</span>}
                     </span>
                   )}
@@ -157,7 +156,7 @@ export function IndexColumns({
                     <span className="term-card-desc">{t.summary}</span>
                     <span className="la-meta">
                       {" "}
-                      〔<span className="la-num">{entryMeta(t)}</span>〕
+                      <span className="la-num">{entryMeta(t)}</span>
                     </span>
                   </p>
                   {see.length > 0 && <SeeAlso list={see} />}
@@ -216,8 +215,7 @@ export function Ledger({
               </span>
               <span className="la-num la-ledger-count">
                 <Seal size={22} light />
-                <span className="visually-hidden">완독 </span>
-                {n}/{list.length}
+                {n}/{list.length} 완독
               </span>
             </li>
           );
@@ -225,7 +223,7 @@ export function Ledger({
       </ul>
       {resume && (
         <p className="la-ledger-resume">
-          <span className="la-resume">책갈피</span> 읽다 만 쪽: <Link to={`/terms/${resume.id}`}>{resume.name}</Link>
+          <span className="la-resume">책갈피</span> · 이어 볼 용어: <Link to={`/terms/${resume.id}`}>{resume.name}</Link>
           {resumeNote}
         </p>
       )}

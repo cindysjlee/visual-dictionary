@@ -51,7 +51,7 @@ export default function DictionaryPage({ data, failed }: Props) {
       <header className="la-runhead">
         <span className="la-runhead-name">시각화 사전</span>
         <Form method="get" action="/terms" role="search" className="la-lookup">
-          <label htmlFor="la-q">찾아보기</label>
+          <label htmlFor="la-q">검색</label>
           <input id="la-q" name="q" type="search" placeholder="예: XSS, 데드락" autoComplete="off" />
           <button type="submit">찾기</button>
         </Form>
@@ -132,11 +132,11 @@ export default function DictionaryPage({ data, failed }: Props) {
               ? "용어를 불러오는 중입니다."
               : mine
                 ? `가나다순 ${total}개. 完 도장은 내가 끝까지 읽은 용어다.`
-                : `가나다순 ${total}개, 모두 로그인 없이 볼 수 있다. 「미리보기」 표지가 붙은 完 도장은 가입하면 생기는 모습이다.`}
+                : `가나다순 ${total}개, 모두 로그인 없이 볼 수 있다. 「미리보기」가 붙은 도장은 가입하면 이렇게 찍힌다는 예시예요.`}
           </p>
         </div>
         {/* 엄지 색인: 분야별로 색인을 좁힌다 */}
-        {data && <Thumbs label="분야별 엄지 색인" groups={data.groups} total={data.index.length} value={cat} onChange={setCat} />}
+        {data && <Thumbs label="분야로 걸러 보기" groups={data.groups} total={data.index.length} value={cat} onChange={setCat} />}
         <IndexColumns terms={shown} byId={byId} lined={lined} readAt={mine ? (id) => readAt(progress, id) : undefined} resumeId={resumeId} preview={!mine} />
       </section>
 

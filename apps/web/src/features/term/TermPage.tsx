@@ -55,7 +55,7 @@ function Toc({ items }: { items: { id: string; label: string }[] }) {
     return () => io.disconnect();
   }, [items]);
   return (
-    <nav className="la-toc" aria-label="이 쪽 차례">
+    <nav className="la-toc" aria-label="이 페이지 목차">
       <ol>
         {items.map((i) => (
           <li key={i.id}>
@@ -111,8 +111,8 @@ function TermDetail({ term }: { term: Term }) {
     document.getElementById("term-fig")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   };
   const toc = useState(() => [
-    { id: "term-def", label: "뜻풀이" },
-    { id: "term-fig", label: "그림" },
+    { id: "term-def", label: "설명" },
+    { id: "term-fig", label: "애니메이션" },
     ...(term.defenses.length > 0 ? [{ id: "term-defense", label: isSecurity ? "방어" : "해결" }] : []),
     { id: "term-refs", label: "참고" },
   ])[0];
@@ -121,7 +121,7 @@ function TermDetail({ term }: { term: Term }) {
     <div className="la la-page la-term">
       <header className="la-runhead">
         <span className="la-runhead-name">
-          <Link to="/terms">시각화 사전 · 색인</Link>
+          <Link to="/terms">← 용어 색인으로</Link>
         </span>
         <span />
         <span className="la-guide">
@@ -143,7 +143,7 @@ function TermDetail({ term }: { term: Term }) {
                 </p>
               )}
               <p className="la-pos">
-                <Field category={term.category} /> 〔<span className="la-num">{meta}</span>〕
+                <Field category={term.category} /> <span className="la-num">{meta}</span>
               </p>
               <p className="la-term-def term-desc">
                 <Marked text={term.description} />

@@ -69,8 +69,8 @@ export function StudyCard({ termId, saveError, press = false }: { termId: string
           ) : (
             <p className="study-status">아직 안 읽음</p>
           )}
-          <p>{read ? "다시 읽고 싶으면 완독을 취소할 수 있어요." : "그림 1을 끝까지 보면 完 도장이 찍혀요."}</p>
-          <button type="button" className="la-btn la-btn-sm study-login" aria-pressed={read} onClick={toggle} disabled={busy}>
+          <p>{read ? "다시 읽고 싶으면 완독을 취소할 수 있어요." : "애니메이션을 끝까지 보면 完 도장이 찍혀요."}</p>
+          <button type="button" className="la-btn la-btn-sm study-login" onClick={toggle} disabled={busy}>
             {read ? "완독 취소" : "완독으로 표시"}
           </button>
         </>

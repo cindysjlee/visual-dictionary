@@ -47,7 +47,7 @@ function WordList({ id, title, terms, at, bookmarked, empty }: { id: string; tit
                     )}
                     {bookmarked.has(t.id) && (
                       <span className="la-resume">
-                        책갈피<span className="visually-hidden">: 읽다 만 쪽</span>
+                        책갈피<span className="visually-hidden">: 이어 볼 용어</span>
                       </span>
                     )}
                   </li>
@@ -264,7 +264,7 @@ export default function MePage() {
           <Ledger
             groups={groupByCategory(terms)}
             lined={lined}
-            caption="분야별 완독 장부"
+            caption="분야별 진행률"
             resume={resume}
           />
         ) : state.status === "error" ? (

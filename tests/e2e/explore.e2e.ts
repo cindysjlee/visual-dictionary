@@ -9,7 +9,7 @@ const tag = { tag: "@explore" };
 const list = (page: Page) => page.getByRole("region", { name: "용어 목록" });
 const cardNames = (page: Page) => list(page).locator(".term-card-name");
 const names = (ts: typeof terms) => ts.map((t) => t.name).sort();
-const search = (page: Page) => page.getByRole("searchbox", { name: "찾아보기" });
+const search = (page: Page) => page.getByRole("searchbox", { name: "검색" });
 
 /** 요구사항 FR-EXP-03의 검색 대상: 이름·영문명·별칭·요약, 대소문자 무시 */
 const expectedFor = (q: string) =>

@@ -122,7 +122,7 @@ export default function HomePage() {
           시각화 사전 <span aria-hidden="true">·</span> 색인
         </span>
         <form role="search" className="la-lookup" onSubmit={(e) => e.preventDefault()}>
-          <label htmlFor="terms-q">찾아보기</label>
+          <label htmlFor="terms-q">검색</label>
           <input id="terms-q" name="q" type="search" placeholder="예: XSS, 데드락, forgery" autoComplete="off" value={query} onChange={(e) => changeQuery(e.target.value)} />
         </form>
         <span className="la-guide">
@@ -138,14 +138,14 @@ export default function HomePage() {
             {records ? "完 도장은 완독한 용어, 책갈피는 읽다 만 용어다." : "모두 로그인 없이 볼 수 있다."}
           </p>
         </div>
-        <aside className="la-mine" aria-label="내 완독">
+        <aside className="la-mine" aria-label="내 진행률">
           {user.status !== "user" ? (
             <p>
               로그인하면 끝까지 본 용어에 完 도장이 찍히고 분야별 진행률이 쌓인다. <Link to={loginPath("/terms")}>로그인</Link>
             </p>
           ) : state.status === "ready" ? (
             <>
-              <Ledger groups={groups} lined={lined} caption="내 완독" resume={resumeId ? byId.get(resumeId) : undefined} />
+              <Ledger groups={groups} lined={lined} caption="내 진행률" resume={resumeId ? byId.get(resumeId) : undefined} />
               <RecentLinks index={terms} />
             </>
           ) : state.status === "error" ? (
