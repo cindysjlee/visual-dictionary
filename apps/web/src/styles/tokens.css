@@ -150,10 +150,10 @@
   /* 분야 표지·엄지 탭(채운 바탕 위 --la-on-tab 6.5:1 이상, 종이 위 글자 6:1 이상) */
   --la-tab-web-security: #a1341b;
   --la-tab-network: #1d4a9e;
-  --la-tab-os: #1c6a4f;
+  --la-tab-os: #0b5d6e; /* 청록: 웹 보안(붉은색)과 빨강·초록 짝이 되지 않게 */
   --la-tab-runtime: #5a3ab6;
   --la-on-tab: #ffffff;
-  /* modern 모양(?style=modern, 시험 중): 종이색 카드·아주 옅은 그림자 */
+  /* 표제어 한 쪽의 종이색 카드·아주 옅은 그림자 */
   --la-card: #fcfcfd;
   --la-card-line: #dde2ea;
   --la-card-shadow: 0 1px 2px rgba(20, 26, 40, 0.05), 0 10px 28px -14px rgba(20, 26, 40, 0.16);
@@ -262,7 +262,7 @@
   --la-hl-from: 80%;
   --la-tab-web-security: #ff9e82;
   --la-tab-network: #9cc3ff;
-  --la-tab-os: #7fd6b0;
+  --la-tab-os: #7fd0e0;
   --la-tab-runtime: #c7b2ff;
   --la-on-tab: #13161e;
   --la-card: #1a1e28;

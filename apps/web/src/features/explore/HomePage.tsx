@@ -187,7 +187,7 @@ export default function HomePage() {
             </button>
           </div>
         ) : (
-          <IndexColumns terms={shown} byId={byId} lined={lined} resumeId={resumeId} />
+          <IndexColumns terms={shown} byId={byId} lined={lined} resumeId={resumeId} headingLevel={2} />
         )}
       </section>
     </div>

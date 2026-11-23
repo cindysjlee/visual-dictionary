@@ -1,6 +1,6 @@
 // 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 표제어(읽었으면 형광펜 밑줄) + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이 + 밑줄 메모(학습 상태)
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
-// 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 모양 비교(?style=page|modern): modern이면 내용 묶음이 카드가 되고 옆에 차례(TOC)가 붙는다
+// 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
 import { Link, useLocation, useParams } from "react-router";
 import type { IndexEntry, Term } from "@app/content-schema";
 import { defenseCounts } from "@app/content-schema/scene";
@@ -13,6 +13,7 @@ import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
 import { Marked } from "../dictionary/Marked.tsx";
 import { SAVE_FAILED, StudyCard } from "../progress/StudyCard.tsx";
 import { isRead, progress, useProgress } from "../progress/store.ts";
+import type { PlayerJump } from "../../players/Player.tsx"; // 타입만이라 묶음에 들어가지 않는다
 
 // 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
 const Player = lazy(() => import("../../players/Player.tsx"));
@@ -38,7 +39,7 @@ export function sourceOf(url: string) {
   return known.find(([re]) => re.test(host))?.[1] ?? host;
 }
 
-/** 이 쪽 차례(modern에서만 보인다): 화면에 들어온 구역을 aria-current로 표시 */
+/** 이 쪽 차례(넓은 화면에서만 보인다): 화면에 들어온 구역을 aria-current로 표시 */
 function Toc({ items }: { items: { id: string; label: string }[] }) {
   const [current, setCurrent] = useState(items[0]?.id);
   useEffect(() => {
@@ -94,6 +95,13 @@ function TermDetail({ term }: { term: Term }) {
   }, [term.id]);
   const meta = entryMeta({ stepCount: term.scenario.steps.length, defenseCount: defenseCounts(term).defenseCount, category: term.category });
   const original = [term.englishName, ...term.aliases].filter(Boolean).join(" · ");
+  // "¶ n단계"를 누르면 그림 1로 올라가 그 방어 모드의 n단계를 보인다
+  const [jump, setJump] = useState<PlayerJump>();
+  const showDefense = (defense: number, step: number) => {
+    setJump((j) => ({ defense, step, n: (j?.n ?? 0) + 1 }));
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById("term-fig")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  };
   const toc = useState(() => [
     { id: "term-def", label: "뜻풀이" },
     { id: "term-fig", label: "그림" },
@@ -138,7 +146,7 @@ function TermDetail({ term }: { term: Term }) {
 
           <figure id="term-fig" className="la-term-fig la-card" aria-labelledby="term-fig-cap">
             <Suspense fallback={<PlayerSkeleton />}>
-              <Player term={term} onComplete={onComplete} />
+              <Player term={term} onComplete={onComplete} jump={jump} />
             </Suspense>
             <figcaption id="term-fig-cap">
               <b>그림 1.</b> {term.name}의 단계별 장면. 무대를 끌면 돌려 볼 수 있다.
@@ -159,28 +167,28 @@ function TermDetail({ term }: { term: Term }) {
             <section id="term-defense" className="la-term-sec la-card la-card-defense" aria-labelledby="term-def-h">
               <h2 id="term-def-h">{isSecurity ? "방어 방법" : "해결 방법"}</h2>
               <ol className="la-defenses">
-                {term.defenses.map((d) => (
-                  <li key={d.name}>
-                    <h3 className="defense-title">{d.name}</h3>
-                    {(d.blockedAtStep || d.branchAtStep) && (
-                      <p className="la-defense-at">
-                        ¶{" "}
-                        {d.blockedAtStep ? (
-                          <>
-                            <span className="la-num">{d.blockedAtStep}</span>단계에서 막힌다.
-                          </>
-                        ) : (
-                          <>
-                            <span className="la-num">{d.branchAtStep}</span>단계부터 다른 흐름으로 간다.
-                          </>
-                        )}
+                {term.defenses.map((d, i) => {
+                  const at = d.blockedAtStep ?? d.branchAtStep;
+                  return (
+                    <li key={d.name}>
+                      <h3 className="defense-title">{d.name}</h3>
+                      {at && (
+                        <p className="la-defense-at">
+                          ¶{" "}
+                          {/* 누르면 그림 1이 이 방어의 모드로 그 단계를 보여 준다 */}
+                          <button type="button" className="la-defense-jump" onClick={() => showDefense(i, at)}>
+                            <span className="la-num">{at}</span>
+                            {d.blockedAtStep ? "단계에서 막힌다." : "단계부터 다른 흐름으로 간다."}
+                            <span className="visually-hidden"> 그림 1에서 보기</span>
+                          </button>
+                        </p>
+                      )}
+                      <p>
+                        <Marked text={d.description} />
                       </p>
-                    )}
-                    <p>
-                      <Marked text={d.description} />
-                    </p>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ol>
             </section>
           )}

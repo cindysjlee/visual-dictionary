@@ -650,7 +650,7 @@ body {
 }
 
 /* 첫소리 머리: 큰 글자 + 오른쪽으로 이어지는 괘선 */
-.la-letter h3 {
+.la-letter-head {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -662,7 +662,7 @@ body {
   line-height: 1.2;
 }
 
-.la-letter h3::after {
+.la-letter-head::after {
   content: "";
   flex: 1;
   border-top: 1px solid var(--la-ink);
@@ -1566,17 +1566,12 @@ html[data-scene="paper"] .scene-label.tone-neutral {
   color: var(--la-ink-sub);
 }
 
-/* 이 쪽 차례: 지면 모양(page)에서는 쓰지 않는다 */
-.la-toc {
-  display: none;
-}
-
-/* ════════ modern 모양(?style=modern, 시험 중): 사전 요소는 그대로, 내용 묶음을 종이색 카드로 ════════ */
-html[data-style="modern"] .la-term-page {
+/* ════════ 표제어 한 쪽: 사전 요소는 그대로, 내용 묶음을 종이색 카드로(2026-11-23, modern 채택. 색인은 괘선 지면 그대로) ════════ */
+.la-term-page {
   gap: var(--sp-5);
 }
 
-html[data-style="modern"] .la-card {
+.la-term .la-card {
   padding: clamp(20px, 2.6vw, 32px);
   border: 1px solid var(--la-card-line);
   border-radius: 18px;
@@ -1584,40 +1579,63 @@ html[data-style="modern"] .la-card {
   box-shadow: var(--la-card-shadow);
 }
 
-html[data-style="modern"] .la-card-defense {
+/* 방어 카드: 방어색을 섞은 바탕 + 왼쪽 굵은 방어색 괘선(색만이 아니라 모양으로도 구역이 갈린다) */
+.la-term .la-card-defense {
   background: color-mix(in srgb, var(--la-defense-bg) 55%, var(--la-card));
   border-color: color-mix(in srgb, var(--la-defense) 25%, var(--la-card-line));
+  border-left: 4px solid var(--la-defense);
 }
 
 /* 카드가 구역을 나누므로 카드 안 제목에는 괘선을 긋지 않는다 */
-html[data-style="modern"] .la-card h2 {
+.la-term .la-card h2 {
   padding-top: 0;
   border-top: 0;
 }
 
-html[data-style="modern"] .la-term-fig .player {
+/* 도판 틀은 카드 하나만(플레이어 자체 테두리·이중 괘선은 뺀다) */
+.la-term .la-term-fig .player {
   border: 0;
   box-shadow: none;
   background: transparent;
   padding: 0;
 }
 
-html[data-style="modern"] .la-margin {
-  border-radius: 14px;
-  border-top: 1px solid var(--la-card-line);
-  border-color: var(--la-card-line);
+/* 밑줄 메모: 카드 속 카드가 아니라 여백의 쪽지(왼쪽 괘선만) */
+.la-term .la-card .la-margin {
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-4);
+  border: 0;
+  border-left: 1px solid var(--la-rule);
+  background: none;
 }
 
-/* 참고 자료 = 출처가 보이는 작은 카드 */
-html[data-style="modern"] .la-refs {
+/* "¶ n단계에서 막힌다" = 방어 모드의 그 단계로 가는 단추 */
+.la-defense-jump {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.la-defense-jump:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* 참고 자료 = 출처가 보이는 작은 카드(2열이라 4개도 홀로 남지 않는다) */
+.la-term .la-refs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: var(--sp-3);
   padding: 0;
   list-style: none;
 }
 
-html[data-style="modern"] .la-refs li {
+.la-term .la-refs li {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1627,24 +1645,38 @@ html[data-style="modern"] .la-refs li {
   background: var(--la-paper);
 }
 
-html[data-style="modern"] .la-term-see {
+/* → 참조: 다음에 볼 표제어라 본문보다 크게, 표제어 글꼴로 */
+.la-term .la-term-see {
   padding-top: 0;
   border-top: 0;
+  font-family: var(--font-title);
+  font-size: var(--fs-lg);
 }
 
-/* 넓은 화면: 옆에 차례를 고정(지금 위치 표시) */
+/* 이 쪽 차례: 좁은 화면에서는 숨긴다. 넓으면 옆에 고정(지금 위치 표시) */
+.la-toc {
+  display: none;
+}
+
 @media (min-width: 1100px) {
-  html[data-style="modern"] .la-term-layout {
+  .la-term-layout {
     display: grid;
-    grid-template-columns: 132px minmax(0, 1fr);
-    gap: var(--sp-6);
+    grid-template-columns: 96px minmax(0, 1fr);
+    column-gap: var(--sp-5);
     align-items: start;
   }
 
-  html[data-style="modern"] .la-toc {
+  .la-toc {
     display: block;
     position: sticky;
     top: var(--sp-5);
+  }
+}
+
+/* 여백이 넉넉하면 차례를 본문 왼쪽 바깥 여백에 걸어 본문 폭을 그대로 둔다(본문이 오른쪽으로 밀리지 않게) */
+@media (min-width: 1440px) {
+  .la-term-layout {
+    margin-left: calc(-96px - var(--sp-5));
   }
 }
 
@@ -1660,7 +1692,7 @@ html[data-style="modern"] .la-term-see {
 
 .la-toc a {
   display: block;
-  padding: 6px 12px;
+  padding: 6px 10px;
   margin-left: -2px;
   border-left: 2px solid transparent;
   color: var(--la-ink-sub);
@@ -1672,18 +1704,4 @@ html[data-style="modern"] .la-term-see {
   border-left-color: var(--la-ink);
   color: var(--la-ink);
   font-weight: 700;
-}
-
-/* 색인 modern: 표제어 줄을 카드로 */
-html[data-style="modern"] .la-columns {
-  column-rule: 0;
-}
-
-html[data-style="modern"] .la-letter li {
-  margin-bottom: var(--sp-3);
-  padding: 16px 18px;
-  border: 1px solid var(--la-card-line);
-  border-radius: 14px;
-  background: var(--la-card);
-  box-shadow: var(--la-card-shadow);
 }

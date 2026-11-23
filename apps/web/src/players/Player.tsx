@@ -1,5 +1,5 @@
 // 플레이어 진입점: 엔진·공통 UI는 항상, 3D 장면은 WebGL이 있을 때만 동적 import한다(홈 묶음에 three.js가 들어가지 않게)
-import { Component, Suspense, lazy, useCallback, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import type { Term } from "@app/content-schema";
 import { stepView } from "@app/content-schema/scene";
@@ -38,7 +38,10 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 }
 
-export default function Player({ term, onComplete }: { term: Term; onComplete?: () => void }) {
+/** 본문의 "¶ n단계에서 막힌다"를 눌렀을 때: 그 방어(term.defenses 번호)의 방어 모드로 n단계(1부터)에 간다. n이 바뀔 때마다 한 번 */
+export type PlayerJump = { defense: number; step: number; n: number };
+
+export default function Player({ term, onComplete, jump }: { term: Term; onComplete?: () => void; jump?: PlayerJump }) {
   const reducedMotion = useReducedMotionPref();
   const Scene = SCENES[term.scenario.playerType as keyof typeof SCENES] as (typeof SCENES)[keyof typeof SCENES] | undefined;
   const [use3d] = useState(() => Scene !== undefined && canUseWebGL());
@@ -46,6 +49,12 @@ export default function Player({ term, onComplete }: { term: Term; onComplete?: 
   const [freeView, setFreeView] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const { state, dispatch } = playback;
+  useEffect(() => {
+    if (!jump) return;
+    dispatch({ type: "setDefense", defense: jump.defense });
+    dispatch({ type: "goTo", step: jump.step - 1 });
+    stageRef.current?.focus({ preventScroll: true });
+  }, [jump, dispatch]);
   const view = useMemo(() => stepView(term, state.defense, state.step), [term, state.defense, state.step]);
   const onStepDone = useCallback(() => dispatch({ type: "stepDone" }), [dispatch]);
 

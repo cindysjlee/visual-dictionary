@@ -100,15 +100,23 @@ type Marks = {
 };
 
 /** 가나다 색인: 첫소리 머리 아래 표제어 줄(표제어 + 원어 + 「분야」 + 풀이 〔단계, 방어〕 + → 참조) */
-export function IndexColumns({ terms, byId, lined, resumeId, preview = false }: { terms: IndexEntry[]; byId: ReadonlyMap<string, IndexEntry> } & Marks) {
+export function IndexColumns({
+  terms,
+  byId,
+  lined,
+  resumeId,
+  preview = false,
+  headingLevel = 3,
+}: { terms: IndexEntry[]; byId: ReadonlyMap<string, IndexEntry>; /** 첫소리 머리의 제목 단계(바로 위 제목 + 1) */ headingLevel?: 2 | 3 } & Marks) {
+  const Head = headingLevel === 2 ? "h2" : "h3";
   return (
     <div className="la-columns">
       {byInitial(terms).map(({ head, terms: list }) => (
         <div key={head} className="la-letter">
-          <h3>
+          <Head className="la-letter-head">
             <span className="visually-hidden">첫소리 </span>
             {head}
-          </h3>
+          </Head>
           <ul>
             {list.map((t) => {
               const on = lined.has(t.id);
