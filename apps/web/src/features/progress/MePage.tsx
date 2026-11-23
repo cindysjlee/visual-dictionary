@@ -10,6 +10,7 @@ import { loginPath } from "../auth/safeNext.ts";
 import { auth, useAuth } from "../auth/store.ts";
 import { ProgressError } from "./api.ts";
 import { Field as FieldMark, groupByCategory, Ledger } from "../dictionary/Dictionary.tsx";
+import { bookmarkIds } from "./bookmarks.ts";
 import { daysAgoLabel, recentTerms } from "./recent.ts";
 import { isRead, progress, readAt, useProgress, useRecent } from "./store.ts";
 import { Seal, sealLabel } from "../dictionary/Seal.tsx";
@@ -208,7 +209,7 @@ function Withdraw({ leave }: { leave: () => void }) {
 function RecentList({ index }: { index: IndexEntry[] }) {
   const items = recentTerms(useRecent(), index, 10);
   return items.length === 0 ? (
-    <p>아직 없어요. 표제어를 열어 보면 30일 동안 여기에 남아요.</p>
+    <p>아직 없어요. 용어를 열어 보면 30일 동안 여기에 남아요.</p>
   ) : (
     <ul className="recent-list">
       {items.map(({ term, viewedAt }) => (
@@ -239,9 +240,9 @@ export default function MePage() {
   const ready = state.status === "ready" && index.state === "ok";
   const lined = new Set(ready ? terms.filter((t) => isRead(state, t.id)).map((t) => t.id) : []);
   // 책갈피: 기록은 있지만 아직 다 읽지 않은 표제어 + 최근 본 것 중 안 읽은 것(맨 앞이 읽다 만 쪽)
-  const recentUnread = recentTerms(recent, terms, 10).filter(({ term }) => !lined.has(term.id));
-  const bookmarked = new Set([...(ready ? Object.keys(state.records).filter((id) => !lined.has(id)) : []), ...recentUnread.map(({ term }) => term.id)]);
-  const resume = recentUnread[0]?.term;
+  const marks = ready ? bookmarkIds(state.records, recent).filter((id) => terms.some((t) => t.id === id)) : [];
+  const bookmarked = new Set(marks);
+  const resume = terms.find((t) => t.id === marks[0]);
   const first = terms.find((t) => t.id === "csrf") ?? terms[0];
 
   return (
@@ -257,13 +258,13 @@ export default function MePage() {
       <div className="la-me-head">
         <div>
           <h1 className="la-headword">내 단어장</h1>
-          <p className="la-gloss">끝까지 본 표제어에 完 도장을 찍고, 읽다 만 표제어에 책갈피를 꽂아 둔 나만의 사전.</p>
+          <p className="la-gloss">끝까지 본 용어에 完 도장을 찍고, 읽다 만 용어에 책갈피를 꽂아 둔 나만의 사전.</p>
         </div>
         {ready ? (
           <Ledger
             groups={groupByCategory(terms)}
             lined={lined}
-            caption="분야별 다 읽음 장부"
+            caption="분야별 완독 장부"
             resume={resume}
           />
         ) : state.status === "error" ? (
@@ -282,7 +283,7 @@ export default function MePage() {
         <h2 id="me-bm">책갈피</h2>
         {bookmarked.size > 0 ? (
           <p className="la-me-marks">
-            읽다 만 표제어:{" "}
+            읽다 만 용어:{" "}
             {terms
               .filter((t) => bookmarked.has(t.id))
               .map((t, i) => (
@@ -293,9 +294,9 @@ export default function MePage() {
               ))}
           </p>
         ) : (
-          <p className="la-me-sub">읽다 만 표제어가 없다. 열어 보고 끝까지 보지 않은 표제어에 책갈피가 꽂힌다.</p>
+          <p className="la-me-sub">읽다 만 용어가 없다. 열어 보고 끝까지 보지 않은 용어에 책갈피가 꽂힌다.</p>
         )}
-        <h3 className="la-me-h3">최근 본 표제어</h3>
+        <h3 className="la-me-h3">최근 본 용어</h3>
         <RecentList index={terms} />
       </section>
 
@@ -303,13 +304,13 @@ export default function MePage() {
         <div className="la-me-words">
           <WordList
             id="me-read"
-            title="다 읽은 표제어"
+            title="완독한 용어"
             terms={terms.filter((t) => lined.has(t.id))}
             at={(id) => readAt(state, id)}
             bookmarked={new Set()}
             empty={
               <>
-                아직 다 읽은 표제어가 없다. 그림을 끝까지 보면 完 도장이 찍힌다.
+                아직 완독한 용어가 없다. 그림을 끝까지 보면 完 도장이 찍힌다.
                 {first && (
                   <>
                     {" "}
@@ -319,7 +320,7 @@ export default function MePage() {
               </>
             }
           />
-          <WordList id="me-unread" title="아직 안 읽은 표제어" terms={terms.filter((t) => !lined.has(t.id))} bookmarked={bookmarked} empty="모든 표제어에 完 도장을 찍었다." />
+          <WordList id="me-unread" title="아직 안 읽은 용어" terms={terms.filter((t) => !lined.has(t.id))} bookmarked={bookmarked} empty="모든 용어에 完 도장을 찍었다." />
         </div>
       )}
 

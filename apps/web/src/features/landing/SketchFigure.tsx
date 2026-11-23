@@ -726,7 +726,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
       {/* 자리를 미리 잡아 두고(레이아웃이 밀리지 않게) 끝까지 재생하면 보인다 */}
       <p className="la-fig-next" data-on={finished}>
         <Link className="la-btn la-btn-sm la-btn-ink" to={`/terms/${term.id}`} tabIndex={finished ? undefined : -1}>
-          3D로 자세히 보기 → {term.name} 표제어
+          3D로 자세히 보기 → {term.name} 용어
         </Link>
         {mine ? (
           <Link className="la-btn la-btn-sm" to="/me" tabIndex={finished ? undefined : -1}>
@@ -734,7 +734,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
           </Link>
         ) : (
           <>
-            <span>가입하면 다 읽은 표제어에 完 도장이 찍혀요</span>
+            <span>가입하면 완독한 용어에 完 도장이 찍혀요</span>
             <Link className="la-btn la-btn-sm la-btn-mark" to="/auth/signup" tabIndex={finished ? undefined : -1}>
               회원가입
             </Link>
@@ -803,7 +803,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
       <figcaption id="la-fig-cap">
         <b>그림 1.</b> {term.name} {modeName}.{mode !== null && views.at(-1)?.blocked && ` ${views.length}단계에서 막힌다.`}{" "}
         <span className="la-see-inline">
-          → 3D 장면: <Link to={`/terms/${term.id}`}>{term.name} 표제어</Link>
+          → 3D 장면: <Link to={`/terms/${term.id}`}>{term.name} 용어</Link>
         </span>
       </figcaption>
     </figure>

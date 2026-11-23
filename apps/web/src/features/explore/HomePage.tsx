@@ -8,6 +8,7 @@ import { useJson } from "../../useJson.ts";
 import { loginPath } from "../auth/safeNext.ts";
 import { useAuth } from "../auth/store.ts";
 import { groupByCategory, IndexColumns, Ledger, Thumbs } from "../dictionary/Dictionary.tsx";
+import { bookmarkIds } from "../progress/bookmarks.ts";
 import { recentTerms } from "../progress/recent.ts";
 import { isRead, progress, readAt, useProgress, useRecent } from "../progress/store.ts";
 import { passesReadFilter, type ReadFilter } from "../progress/summary.ts";
@@ -26,7 +27,7 @@ function RecentLinks({ index }: { index: IndexEntry[] }) {
   if (!items.length) return null;
   return (
     <nav className="recent-links" aria-label="최근 본 용어">
-      <span>최근 본 표제어</span>
+      <span>최근 본 용어</span>
       {items.map(({ term }) => (
         <Link key={term.id} to={`/terms/${term.id}`}>
           {term.name}
@@ -77,10 +78,10 @@ export default function HomePage() {
   const groups = useMemo(() => groupByCategory(terms ?? []), [terms]);
   const lined = useMemo(() => new Set(records ? (terms ?? []).filter((t) => isRead(state, t.id)).map((t) => t.id) : []), [records, terms, state]);
   // 책갈피: 최근 본 것 중 아직 다 읽지 않은 표제어(로그인했을 때만)
-  const resumeId = records ? recentTerms(recent, terms ?? [], 10).find(({ term }) => !lined.has(term.id))?.term.id : undefined;
+  const resumeId = state.status === "ready" ? bookmarkIds(state.records, recent).find((id) => byId.has(id)) : undefined;
 
   if (load.state === "loading") return <p className="la-loading">불러오는 중…</p>;
-  if (!terms) return <p role="alert">표제어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
+  if (!terms) return <p role="alert">용어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
 
   const sync = (q: string, c: Category | "all") => {
     const next = new URLSearchParams();
@@ -125,31 +126,31 @@ export default function HomePage() {
           <input id="terms-q" name="q" type="search" placeholder="예: XSS, 데드락, forgery" autoComplete="off" value={query} onChange={(e) => changeQuery(e.target.value)} />
         </form>
         <span className="la-guide">
-          표제어 <span className="la-num">{terms.length}</span>, 분야 <span className="la-num">{groups.length}</span>
+          용어 <span className="la-num">{terms.length}</span>, 분야 <span className="la-num">{groups.length}</span>
         </span>
       </header>
 
       <div className="la-index-top">
         <div className="la-index-head">
-          <h1>표제어 색인</h1>
+          <h1>용어 색인</h1>
           <p>
             가나다순 <span className="la-num">{terms.length}</span>개.{" "}
-            {records ? "完 도장은 다 읽은 표제어, 책갈피는 읽다 만 표제어다." : "모두 로그인 없이 볼 수 있다."}
+            {records ? "完 도장은 완독한 용어, 책갈피는 읽다 만 용어다." : "모두 로그인 없이 볼 수 있다."}
           </p>
         </div>
-        <aside className="la-mine" aria-label="내 다 읽음">
+        <aside className="la-mine" aria-label="내 완독">
           {user.status !== "user" ? (
             <p>
-              로그인하면 끝까지 본 표제어에 完 도장이 찍히고 분야별 진행률이 쌓인다. <Link to={loginPath("/terms")}>로그인</Link>
+              로그인하면 끝까지 본 용어에 完 도장이 찍히고 분야별 진행률이 쌓인다. <Link to={loginPath("/terms")}>로그인</Link>
             </p>
           ) : state.status === "ready" ? (
             <>
-              <Ledger groups={groups} lined={lined} caption="내 다 읽음" resume={resumeId ? byId.get(resumeId) : undefined} />
+              <Ledger groups={groups} lined={lined} caption="내 완독" resume={resumeId ? byId.get(resumeId) : undefined} />
               <RecentLinks index={terms} />
             </>
           ) : state.status === "error" ? (
             <p>
-              기록을 불러오지 못했어요. 표제어는 그대로 볼 수 있어요.{" "}
+              기록을 불러오지 못했어요. 용어는 그대로 볼 수 있어요.{" "}
               <button type="button" className="la-btn la-btn-sm" onClick={() => progress.reload()}>
                 다시 불러오기
               </button>
@@ -173,14 +174,14 @@ export default function HomePage() {
         )}
       </div>
       <p className="visually-hidden" role="status">
-        표제어 {shown.length}개
+        용어 {shown.length}개
       </p>
 
       <section className="la-index is-inview" aria-label="용어 목록">
         {shown.length === 0 ? (
           <div className="la-empty">
             <p>
-              찾는 표제어가 없어요{why && <> · {why}</>}
+              찾는 용어가 없어요{why && <> · {why}</>}
             </p>
             <button type="button" className="la-btn la-btn-ink" onClick={reset}>
               전체 목록 보기

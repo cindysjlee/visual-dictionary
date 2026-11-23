@@ -38,7 +38,7 @@ test("비회원 카테고리 필터: 기본은 전체, 고르면 그 카테고�
     await chips.getByRole("button", { name: label }).click();
     await expect(chips.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
     if (expected.length) await expect.poll(() => shownNames(page)).toEqual(names(expected));
-    else await expect(list(page)).toContainText("찾는 표제어가 없어요");
+    else await expect(list(page)).toContainText("찾는 용어가 없어요");
   }
   await chips.getByRole("button", { name: "전체" }).click();
   await expect(cardNames(page)).toHaveCount(terms.length);
@@ -62,7 +62,7 @@ test("검색은 카테고리 필터와 함께 적용되고, 결과가 없으면 
   await expect.poll(() => shownNames(page)).toEqual(names(expectedFor("forgery")));
   // 같은 검색어에 다른 카테고리: 결과 없음
   await page.getByRole("group", { name: "카테고리" }).getByRole("button", { name: CATEGORY_LABELS.network }).click();
-  await expect(list(page)).toContainText("찾는 표제어가 없어요 · ‘forgery’");
+  await expect(list(page)).toContainText("찾는 용어가 없어요 · ‘forgery’");
   await list(page).getByRole("button", { name: "전체 목록 보기" }).click();
   await expect(search(page)).toHaveValue("");
   await expect(page.getByRole("group", { name: "카테고리" }).getByRole("button", { name: "전체" })).toHaveAttribute("aria-pressed", "true");
@@ -73,7 +73,7 @@ test("검색 결과 없음: 안내 문구와 '전체 목록 보기' 버튼", tag
   await page.goto("/terms");
   await search(page).fill("없는용어zz");
   await expect(cardNames(page)).toHaveCount(0);
-  await expect(list(page)).toContainText("찾는 표제어가 없어요 · ‘없는용어zz’");
+  await expect(list(page)).toContainText("찾는 용어가 없어요 · ‘없는용어zz’");
   await list(page).getByRole("button", { name: "전체 목록 보기" }).click();
   await expect(cardNames(page)).toHaveCount(terms.length);
 });

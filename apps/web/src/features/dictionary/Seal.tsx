@@ -11,7 +11,7 @@ export function sealDate(iso: string) {
   return { short: `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`, long: `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일` };
 }
 /** 숨긴 글자·title에 쓰는 "다 읽음, 2026년 11월 24일"(날짜를 모르면 "다 읽음") */
-export const sealLabel = (at?: string) => (at ? `다 읽음, ${sealDate(at).long}` : "다 읽음");
+export const sealLabel = (at?: string) => (at ? `완독, ${sealDate(at).long}` : "완독");
 
 /** 完 도장 그림. light = 작은 크기(색인·목록·장부)용: 잔 얼룩 없이 가장자리 번짐만(작으면 얼룩이 "完"을 뭉갠다) */
 export function Seal({ size, light = false }: { size: number; light?: boolean }) {

@@ -1678,30 +1678,17 @@ body {
 }
 
 /* ════════ 다 읽음 = 完 인주 도장(2026-11-24, docs/05 "다 읽음 표시") ════════
-   인주색 --la-seal, 비스듬히 -10도. 표제어 한 쪽은 큰 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
+   인주색 --la-seal, 비스듬히 -10도. 용어 쪽은 옆 칸에 큰 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
 .la-seal {
   display: block;
   color: var(--la-seal);
   overflow: visible;
 }
 
-/* 도장은 표제어 줄 오른쪽 위에 겹쳐 띄운다(줄 높이를 늘리지 않게). 긴 표제어가 도장 밑으로 들어가지 않게 오른쪽 여백 */
-.la-hw-row {
-  position: relative;
-}
-
-/* 도장(날짜 포함 약 110px)이 걸치는 표제어·원어 표기·분야 줄은 오른쪽을 비운다 */
-.la-hw-row:has(.la-seal-stamp) .la-headword,
-.la-hw-row:has(.la-seal-stamp) ~ .la-hanja,
-.la-hw-row:has(.la-seal-stamp) ~ .la-pos {
-  padding-right: 112px;
-}
-
+/* 용어 쪽 옆 칸(완독 메모)의 큰 도장 + 아래 작은 날짜 */
 .la-seal-stamp {
-  position: absolute;
-  top: -10px;
-  right: 0;
-  margin: 0;
+  align-self: flex-start;
+  margin: var(--sp-1) 0 0 var(--sp-2);
   display: flex;
   flex-direction: column;
   align-items: center;

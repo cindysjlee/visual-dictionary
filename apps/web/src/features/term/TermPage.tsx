@@ -1,4 +1,4 @@
-// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 표제어(다 읽었으면 오른쪽에 完 도장 + 날짜) + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이 + 다 읽음 메모(학습 상태)
+// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이 + 오른쪽 완독 메모(完 도장 + 완독한 날, 학습 상태)
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
 // 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
 import { Link, useLocation, useParams } from "react-router";
@@ -12,8 +12,7 @@ import { useAuth } from "../auth/store.ts";
 import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
 import { Marked } from "../dictionary/Marked.tsx";
 import { SAVE_FAILED, StudyCard } from "../progress/StudyCard.tsx";
-import { isRead, progress, readAt, useProgress } from "../progress/store.ts";
-import { Seal, sealDate, sealLabel } from "../dictionary/Seal.tsx";
+import { isRead, progress, useProgress } from "../progress/store.ts";
 import type { PlayerJump } from "../../players/Player.tsx"; // 타입만이라 묶음에 들어가지 않는다
 
 // 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
@@ -78,7 +77,6 @@ function TermDetail({ term }: { term: Term }) {
   const auth = useAuth();
   const state = useProgress();
   const read = auth.status === "user" && isRead(state, term.id);
-  const at = read ? readAt(state, term.id) : undefined;
   // 이 쪽을 보는 동안 안 읽음 → 다 읽음이 되면(끝까지 봄·직접 표시) 도장이 쾅 찍힌다. 이미 다 읽은 쪽을 열 때는 그대로
   const wasRead = useRef<boolean>(undefined);
   const [press, setPress] = useState(false);
@@ -136,22 +134,9 @@ function TermDetail({ term }: { term: Term }) {
         <article className="la-term-page" aria-labelledby="term-hw">
           <div id="term-def" className="la-term-head la-card">
             <div>
-              <div className="la-hw-row">
-                <h1 id="term-hw" className="la-headword term-title">
-                  {term.name}
-                </h1>
-                {read && (
-                  <p className={press ? "la-seal-stamp is-press" : "la-seal-stamp"} title={sealLabel(at)}>
-                    <Seal size={88} />
-                    {at && (
-                      <span className="la-seal-date" aria-hidden="true">
-                        {sealDate(at).short}
-                      </span>
-                    )}
-                    <span className="visually-hidden">{sealLabel(at)}</span>
-                  </p>
-                )}
-              </div>
+              <h1 id="term-hw" className="la-headword term-title">
+                {term.name}
+              </h1>
               {original && (
                 <p className="la-hanja term-sub" lang={term.englishName ? "en" : undefined}>
                   {original}
@@ -164,7 +149,7 @@ function TermDetail({ term }: { term: Term }) {
                 <Marked text={term.description} />
               </p>
             </div>
-            <StudyCard termId={term.id} saveError={saveError} />
+            <StudyCard termId={term.id} saveError={saveError} press={press} />
           </div>
 
           <figure id="term-fig" className="la-term-fig la-card" aria-labelledby="term-fig-cap">
@@ -178,7 +163,7 @@ function TermDetail({ term }: { term: Term }) {
           {completed && auth.status !== "user" && (
             <section className="la-note complete-notice" role="status">
               <p>
-                <strong>끝까지 봤어요.</strong> 로그인하면 이 표제어에 完 도장이 찍히고, 다른 기기에서도 이어서 볼 수 있어요.
+                <strong>끝까지 봤어요.</strong> 로그인하면 이 용어에 完 도장이 찍히고, 다른 기기에서도 이어서 볼 수 있어요.
               </p>
               <Link to={loginPath(pathname)} className="la-btn la-btn-mark">
                 로그인하고 저장하기

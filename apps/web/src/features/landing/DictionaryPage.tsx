@@ -7,6 +7,7 @@ import type { Category } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
 import { IndexColumns, Ledger, Thumbs, useInView } from "../dictionary/Dictionary.tsx";
 import { Seal } from "../dictionary/Seal.tsx";
+import { bookmarkIds } from "../progress/bookmarks.ts";
 import { isRead, readAt, useProgress, useRecent } from "../progress/store.ts";
 import SketchFigure from "./SketchFigure.tsx";
 import { josa, type LandingData } from "./LandingPage.tsx";
@@ -35,7 +36,7 @@ export default function DictionaryPage({ data, failed }: Props) {
   const recent = useRecent();
   const resumeId = useMemo(() => {
     if (!data) return undefined;
-    if (mine) return (recent.find((r) => !isRead(progress, r.termId)) ?? recent[0])?.termId;
+    if (mine) return progress.status === "ready" ? bookmarkIds(progress.records, recent).find((id) => byId.has(id)) : undefined;
     return (demoEntry ?? data.index[0])?.related.find((id) => byId.has(id) && !lined.has(id));
   }, [data, mine, recent, progress, demoEntry, byId, lined]);
 
@@ -56,7 +57,7 @@ export default function DictionaryPage({ data, failed }: Props) {
         </Form>
         {data && (
           <span className="la-guide">
-            표제어 <span className="la-num">{data.index.length}</span>, 분야 <span className="la-num">{data.groups.length}</span>
+            용어 <span className="la-num">{data.index.length}</span>, 분야 <span className="la-num">{data.groups.length}</span>
           </span>
         )}
       </header>
@@ -77,7 +78,7 @@ export default function DictionaryPage({ data, failed }: Props) {
               {total !== undefined && (
                 <>
                   {" "}
-                  {fields.join(", ")} 분야의 표제어 <span className="la-num">{total}</span>개를 싣는다.
+                  {fields.join(", ")} 분야의 용어 <span className="la-num">{total}</span>개를 싣는다.
                 </>
               )}
             </li>
@@ -90,7 +91,7 @@ export default function DictionaryPage({ data, failed }: Props) {
               )}
             </li>
             <li>
-              다 읽은 표제어에{" "}
+              완독한 용어에{" "}
               <span className="la-seal-word">
                 <Seal size={26} light />
                 完 도장
@@ -100,7 +101,7 @@ export default function DictionaryPage({ data, failed }: Props) {
           </ol>
           <p className="la-actions">
             <Link className="la-btn la-btn-ink" to="/terms">
-              표제어 둘러보기
+              용어 둘러보기
             </Link>
             {mine ? (
               <Link className="la-btn" to="/me">
@@ -112,10 +113,10 @@ export default function DictionaryPage({ data, failed }: Props) {
               </Link>
             )}
           </p>
-          {!mine && <p className="la-signup-note">가입하면 다 읽은 표제어에 完 도장이 찍혀요.</p>}
+          {!mine && <p className="la-signup-note">가입하면 완독한 용어에 完 도장이 찍혀요.</p>}
           {failed && (
             <p className="la-note" role="alert">
-              표제어 목록을 불러오지 못했습니다. 새로고침하거나 표제어 둘러보기로 가 주세요.
+              용어 목록을 불러오지 못했습니다. 새로고침하거나 용어 둘러보기로 가 주세요.
             </p>
           )}
         </article>
@@ -125,12 +126,12 @@ export default function DictionaryPage({ data, failed }: Props) {
 
       <section ref={indexRef} id="la-index" className={inView ? "la-index is-inview" : "la-index"} aria-labelledby="la-index-title">
         <div className="la-index-head">
-          <h2 id="la-index-title">표제어 색인</h2>
+          <h2 id="la-index-title">용어 색인</h2>
           <p>
             {total === undefined
-              ? "표제어를 불러오는 중입니다."
+              ? "용어를 불러오는 중입니다."
               : mine
-                ? `가나다순 ${total}개. 完 도장은 내가 끝까지 읽은 표제어다.`
+                ? `가나다순 ${total}개. 完 도장은 내가 끝까지 읽은 용어다.`
                 : `가나다순 ${total}개, 모두 로그인 없이 볼 수 있다. 「미리보기」 표지가 붙은 完 도장은 가입하면 생기는 모습이다.`}
           </p>
         </div>
@@ -145,21 +146,21 @@ export default function DictionaryPage({ data, failed }: Props) {
           <h2 id="la-bm-title">{mine ? "내 사전의 完 도장" : "읽은 만큼 完 도장이 쌓이는 사전"}</h2>
           <p>
             {mine
-              ? "끝까지 본 표제어에 完 도장이 찍히고, 분야마다 몇 개를 다 읽었는지 쌓인다. 다른 브라우저에서도 같다."
-              : "다 읽은 책에 도장을 찍듯, 끝까지 본 표제어에 完 도장이 남습니다. 찍은 날짜도 함께 남고, 기록은 계정에 저장되어 다른 브라우저에서 열어도 같은 곳에서 이어집니다."}
+              ? "끝까지 본 용어에 完 도장이 찍히고, 분야마다 몇 개를 완독했는지 쌓인다. 다른 브라우저에서도 같다."
+              : "완독한 책에 도장을 찍듯, 끝까지 본 용어에 完 도장이 남습니다. 찍은 날짜도 함께 남고, 기록은 계정에 저장되어 다른 브라우저에서 열어도 같은 곳에서 이어집니다."}
           </p>
           <dl className="la-bm-list">
             <div>
               <dt>完 도장</dt>
-              <dd>끝까지 본 표제어에 다 읽은 날짜와 함께 도장이 찍힌다.</dd>
+              <dd>끝까지 본 용어에 완독한 날짜와 함께 도장이 찍힌다.</dd>
             </div>
             <div>
               <dt>분야별 진행률</dt>
-              <dd>분야마다 도장 찍힌 표제어가 몇 개인지 쌓인다.</dd>
+              <dd>분야마다 도장 찍힌 용어가 몇 개인지 쌓인다.</dd>
             </div>
             <div>
               <dt>책갈피</dt>
-              <dd>읽다 만 표제어에 책갈피가 꽂히고, 최근 본 표제어가 목록 첫머리에 남는다.</dd>
+              <dd>읽다 만 용어에 책갈피가 꽂히고, 최근 본 용어가 목록 첫머리에 남는다.</dd>
             </div>
           </dl>
           <p className="la-actions">
@@ -184,7 +185,7 @@ export default function DictionaryPage({ data, failed }: Props) {
             groups={data.groups}
             lined={lined}
             caption={mine ? "분야별 진행률" : "미리보기"}
-            note={!mine && lined.size > 0 ? `색인에서 도장이 찍힌 ${[...lined].map((id) => byId.get(id)?.name).join("·")}를 다 읽었다면` : undefined}
+            note={!mine && lined.size > 0 ? `색인에서 도장이 찍힌 ${[...lined].map((id) => byId.get(id)?.name).join("·")}를 완독했다면` : undefined}
             resume={resumeId ? byId.get(resumeId) : undefined}
             resumeNote={mine ? undefined : " (미리보기)"}
           />

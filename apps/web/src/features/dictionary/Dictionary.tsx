@@ -129,7 +129,7 @@ export function IndexColumns({
                 <li key={t.id} className="term-card">
                   <Link to={`/terms/${t.id}`} className="la-word">
                     <span className="term-card-name">{t.name}</span>
-                    {on && <span className="visually-hidden tag-read">{preview ? " (다 읽음 미리보기)" : ` (${sealLabel(readAt?.(t.id))})`}</span>}
+                    {on && <span className="visually-hidden tag-read">{preview ? " (완독 미리보기)" : ` (${sealLabel(readAt?.(t.id))})`}</span>}
                   </Link>
                   {t.englishName && (
                     <span className="la-en" lang="en">
@@ -138,7 +138,7 @@ export function IndexColumns({
                   )}
                   <Field category={t.category} />
                   {on && (
-                    <span className="la-seal-mark" title={preview ? "다 읽음(미리보기)" : sealLabel(readAt?.(t.id))}>
+                    <span className="la-seal-mark" title={preview ? "완독(미리보기)" : sealLabel(readAt?.(t.id))}>
                       <Seal size={34} light />
                     </span>
                   )}
@@ -203,7 +203,7 @@ export function Ledger({
         <strong className="la-num">
           {read} / {all}
         </strong>{" "}
-        표제어 다 읽음
+        완독
       </p>
       <ul className="progress-cats">
         {groups.map(([c, list]) => {
@@ -216,7 +216,7 @@ export function Ledger({
               </span>
               <span className="la-num la-ledger-count">
                 <Seal size={22} light />
-                <span className="visually-hidden">다 읽음 </span>
+                <span className="visually-hidden">완독 </span>
                 {n}/{list.length}
               </span>
             </li>
