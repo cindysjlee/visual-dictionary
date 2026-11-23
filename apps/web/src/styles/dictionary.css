@@ -1471,3 +1471,219 @@ html[data-scene="paper"] .scene-label.tone-neutral {
   color: var(--la-ink-sub);
   border-color: var(--la-ink-sub);
 }
+
+/* ════════ 표제어 한 쪽 가독성(2026-11-23) ════════
+   본문: 줄 간격 1.85, 한 줄 약 40자(38em), 단어 단위 줄바꿈(keep-all). 긴 영문·주소는 코드 표기 안에서만 끊는다.
+   구분선 규칙 하나: 구역 사이 = 위 괘선(1px 실선 --la-rule) + 위아래 40px 이상 */
+.la-term-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+
+.la-term .la-term-def,
+.la-term .la-defenses p {
+  max-width: 38em;
+  line-height: 1.85;
+  letter-spacing: 0.012em;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+[data-theme="dark"] .la-term .la-term-def,
+[data-theme="dark"] .la-term .la-defenses p {
+  letter-spacing: 0.02em;
+}
+
+.la-term .la-defenses {
+  gap: var(--sp-6);
+}
+
+.la-term .la-defenses p + p {
+  margin-top: var(--sp-3);
+}
+
+.la-term-sec h2 {
+  padding-top: 40px;
+  border-top: 1px solid var(--la-rule);
+  margin-bottom: var(--sp-2);
+}
+
+.la-term-see {
+  padding-top: 40px;
+  border-top: 1px solid var(--la-rule);
+}
+
+/* 본문 표시: `코드` = 고정폭 표기(여기서만 긴 글자를 끊는다), ==형광펜== = 화면에 들어오면 한 번 긋는다 */
+.la-code {
+  padding: 0.05em 0.35em;
+  border: 1px solid var(--la-rule);
+  border-radius: 3px;
+  background: var(--la-paper-deep);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.86em;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .la-hl-text {
+    transition: background-size 900ms var(--ease-out);
+  }
+}
+
+/* 자유 시점: 켜지면 채운 버튼, 무대에 방어색 테두리·잡기 커서·안내 */
+.free-toggle.is-on {
+  background: var(--la-ink);
+  border-color: var(--la-ink);
+  color: var(--la-paper);
+}
+
+.stage-slot.is-free {
+  outline: 2px solid var(--la-defense); /* box-shadow는 종이 장면이 지운다 */
+  outline-offset: 2px;
+  cursor: grab;
+}
+
+.stage-slot.is-free:active {
+  cursor: grabbing;
+}
+
+.stage-slot.is-free .scene-hint {
+  padding: 4px 10px;
+  border: 1px solid var(--la-defense);
+  background: var(--la-paper);
+  color: var(--la-ink);
+  font-size: var(--fs-xs);
+}
+
+/* 참고 자료의 출처 이름 */
+.la-ref-src {
+  margin-right: 0.5em;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--la-ink-sub);
+}
+
+/* 이 쪽 차례: 지면 모양(page)에서는 쓰지 않는다 */
+.la-toc {
+  display: none;
+}
+
+/* ════════ modern 모양(?style=modern, 시험 중): 사전 요소는 그대로, 내용 묶음을 종이색 카드로 ════════ */
+html[data-style="modern"] .la-term-page {
+  gap: var(--sp-5);
+}
+
+html[data-style="modern"] .la-card {
+  padding: clamp(20px, 2.6vw, 32px);
+  border: 1px solid var(--la-card-line);
+  border-radius: 18px;
+  background: var(--la-card);
+  box-shadow: var(--la-card-shadow);
+}
+
+html[data-style="modern"] .la-card-defense {
+  background: color-mix(in srgb, var(--la-defense-bg) 55%, var(--la-card));
+  border-color: color-mix(in srgb, var(--la-defense) 25%, var(--la-card-line));
+}
+
+/* 카드가 구역을 나누므로 카드 안 제목에는 괘선을 긋지 않는다 */
+html[data-style="modern"] .la-card h2 {
+  padding-top: 0;
+  border-top: 0;
+}
+
+html[data-style="modern"] .la-term-fig .player {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+html[data-style="modern"] .la-margin {
+  border-radius: 14px;
+  border-top: 1px solid var(--la-card-line);
+  border-color: var(--la-card-line);
+}
+
+/* 참고 자료 = 출처가 보이는 작은 카드 */
+html[data-style="modern"] .la-refs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-3);
+  padding: 0;
+  list-style: none;
+}
+
+html[data-style="modern"] .la-refs li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--la-card-line);
+  border-radius: 12px;
+  background: var(--la-paper);
+}
+
+html[data-style="modern"] .la-term-see {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* 넓은 화면: 옆에 차례를 고정(지금 위치 표시) */
+@media (min-width: 1100px) {
+  html[data-style="modern"] .la-term-layout {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: var(--sp-6);
+    align-items: start;
+  }
+
+  html[data-style="modern"] .la-toc {
+    display: block;
+    position: sticky;
+    top: var(--sp-5);
+  }
+}
+
+.la-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--la-rule);
+}
+
+.la-toc a {
+  display: block;
+  padding: 6px 12px;
+  margin-left: -2px;
+  border-left: 2px solid transparent;
+  color: var(--la-ink-sub);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.la-toc a[aria-current="location"] {
+  border-left-color: var(--la-ink);
+  color: var(--la-ink);
+  font-weight: 700;
+}
+
+/* 색인 modern: 표제어 줄을 카드로 */
+html[data-style="modern"] .la-columns {
+  column-rule: 0;
+}
+
+html[data-style="modern"] .la-letter li {
+  margin-bottom: var(--sp-3);
+  padding: 16px 18px;
+  border: 1px solid var(--la-card-line);
+  border-radius: 14px;
+  background: var(--la-card);
+  box-shadow: var(--la-card-shadow);
+}

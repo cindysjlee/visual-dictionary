@@ -82,6 +82,13 @@ export const OrbitIcon = () => (
   </Icon>
 );
 
+/** 자유 시점이 켜졌을 때: 잡은 손(끌어서 돌리는 중) */
+export const GrabIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M8 11V6.5a1.5 1.5 0 0 1 3 0V11V5a1.5 1.5 0 0 1 3 0v6V6.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5A5.5 5.5 0 0 1 4 14.5V11a1.5 1.5 0 0 1 3 0v1h1z" />
+  </svg>
+);
+
 export const LogoMark = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
     <rect className="logo-mark-bg" width="28" height="28" rx="9" />

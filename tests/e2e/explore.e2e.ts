@@ -2,6 +2,7 @@
 // 상세 구성 순서(FR-DTL-01), 참고 자료(FR-DTL-03), 없는 용어(FR-DTL-04). 대상 용어는 content/terms에서 자동으로 늘어난다
 import { expect, test, type Page } from "@playwright/test";
 import { CATEGORY_LABELS } from "../../packages/content-schema/src/labels.ts";
+import { plainText } from "../../packages/content-schema/src/marks.ts";
 import { terms } from "./terms.ts";
 
 const tag = { tag: "@explore" };
@@ -88,7 +89,7 @@ for (const term of terms) {
       page.getByRole("heading", { name: "참고 자료" }),
     ];
     for (const p of parts) await expect(p).toBeVisible();
-    await expect(page.locator(".term-desc")).toHaveText(term.description);
+    await expect(page.locator(".term-desc")).toHaveText(plainText(term.description)); // ==형광펜==·`코드` 표시는 빼고 글자만
     // 문서 순서(앞 요소 다음에 뒤 요소가 온다)
     const handles = await Promise.all(parts.map((p) => p.elementHandle()));
     const inOrder = await page.evaluate(

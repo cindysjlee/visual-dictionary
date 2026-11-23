@@ -42,7 +42,7 @@ export function SceneCanvas({ stageRef, freeView, children }: Props) {
         </Canvas>
       </div>
       <div ref={labelRoot} className="scene-labels" aria-hidden="true" />
-      {freeView && <p className="scene-hint">드래그해서 돌리고, 휠로 확대해 보세요. 무대에 포커스가 있으면 화살표로도 돌릴 수 있어요.</p>}
+      {freeView && <p className="scene-hint">끌어서 돌려 보기 · 다시 누르면 원래 시점</p>}
     </div>
   );
 }

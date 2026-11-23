@@ -1,12 +1,20 @@
 // 용어 JSON의 유일한 스키마. 빌드 검증기(scripts)와 프론트엔드(apps/web)가 함께 쓴다. 규칙: docs/04-content-format.md
 import { z } from "zod";
 import { ACTIONS_BY_PLAYER } from "./labels.ts";
+import { markCount, parseMarks } from "./marks.ts";
 import { checkScene } from "./scene.ts";
 
 export { ACTIONS_BY_PLAYER, CATEGORY_LABELS, PLAYER_LABELS } from "./labels.ts";
+export { markCount, parseMarks, plainText, type MarkSegment } from "./marks.ts";
 
 const id = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "소문자·숫자·하이픈만 쓸 수 있습니다");
 const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
+/** 본문(뜻풀이·방어 설명): ==형광펜==과 `코드` 표시를 쓸 수 있다. 짝이 안 맞거나 다른 문법이면 실패, 형광펜은 문단마다 최대 한 군데(docs/04 "본문 표시") */
+const marked = text.superRefine((v, ctx) => {
+  const { error } = parseMarks(v);
+  if (error) ctx.addIssue({ code: "custom", message: error });
+  else if (markCount(v) > 1) ctx.addIssue({ code: "custom", message: "형광펜(==)은 문단마다 최대 한 군데입니다" });
+});
 
 /* ---------- 3D 장면 어휘 (docs/06, 모두 선택 항목) ---------- */
 export const ACTOR_KINDS = ["browser", "tab", "frame", "cookieJar", "server", "database", "network", "attacker", "person", "thread", "resource"] as const;
@@ -121,7 +129,7 @@ const codeSchema = z.strictObject({ title: text.optional(), lines: z.array(z.str
 const defenseSchema = z.strictObject({
   name: text,
   kind: z.enum(["defense", "solution"]),
-  description: text,
+  description: marked,
   blockedAtStep: z.int().min(1).optional(),
   branchAtStep: z.int().min(1).optional(),
   steps: z.array(stepSchema).min(1).optional(),
@@ -149,7 +157,7 @@ export const termSchema = z
     aliases: z.array(text).default([]),
     category: z.enum(["web-security", "network", "os", "runtime"]),
     summary: text,
-    description: text,
+    description: marked,
     status: z.enum(["draft", "published", "retired"]),
     scenario: z.strictObject({
       playerType: z.enum(["flow", "stack", "lock"]),

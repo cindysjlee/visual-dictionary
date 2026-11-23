@@ -3,7 +3,7 @@ import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Term } from "@app/content-schema";
 import { modeDefenses, type StepView, type Tone } from "@app/content-schema/scene";
-import { NextIcon, OrbitIcon, PauseIcon, PlayIcon, PrevIcon, ShieldIcon } from "../icons.tsx";
+import { GrabIcon, NextIcon, OrbitIcon, PauseIcon, PlayIcon, PrevIcon, ShieldIcon } from "../icons.tsx";
 import { SPEEDS, type Speed } from "./engine.ts";
 import type { Playback } from "./usePlayback.ts";
 
@@ -70,9 +70,11 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
             {state.step + 1} / {last + 1} 단계
           </span>
           {onFreeViewChange && (
-            <button type="button" className="btn" aria-pressed={freeView} onClick={() => onFreeViewChange(!freeView)}>
-              <OrbitIcon />
+            // 켜고 꺼진 상태가 바로 보이게: 켜지면 채운 버튼 + 잡은 손 아이콘 + "켜짐"(이름은 "자유 시점" 그대로, 상태는 aria-pressed)
+            <button type="button" className={freeView ? "btn free-toggle is-on" : "btn free-toggle"} aria-pressed={freeView} onClick={() => onFreeViewChange(!freeView)}>
+              {freeView ? <GrabIcon /> : <OrbitIcon />}
               자유 시점
+              {freeView && <span aria-hidden="true"> 켜짐</span>}
             </button>
           )}
         </div>
@@ -89,7 +91,7 @@ export default function PlayerShell({ term, playback, view, freeView, onFreeView
         </div>
       )}
 
-      <div ref={stageRef} className={`stage-slot ${stageClassName ?? ""}`} tabIndex={0} role="group" aria-label={stageHelp}>
+      <div ref={stageRef} className={`stage-slot ${stageClassName ?? ""}${freeView ? " is-free" : ""}`} tabIndex={0} role="group" aria-label={stageHelp}>
         {children}
         <AnimatePresence>
           {!state.started && (

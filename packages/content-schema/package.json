@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./labels": "./src/labels.ts",
-    "./scene": "./src/scene.ts"
+    "./scene": "./src/scene.ts",
+    "./marks": "./src/marks.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

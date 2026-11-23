@@ -8,7 +8,7 @@
   ],
   "category": "web-security",
   "summary": "다른 사이트 화면을 투명한 iframe으로 겹쳐 두고, 사용자가 엉뚱한 버튼을 누르게 속이는 공격",
-  "description": "함정 사이트는 iframe으로 은행의 송금 확인 화면을 불러와 투명하게 만든 뒤, \"경품 받기\" 같은 버튼 바로 위에 겹쳐 둔다. 사용자는 경품 버튼을 누른다고 생각하지만, 실제로는 그 위의 보이지 않는 은행 송금 버튼이 눌린다. 진짜 은행 화면에서 누른 것이라 CSRF 토큰도 들어 있어 CSRF 방어로는 막을 수 없다. 막으려면 은행이 응답에 CSP frame-ancestors 'none'이나 X-Frame-Options: DENY를 붙여, 브라우저가 은행 화면을 다른 사이트 안에 그리지 않게 한다. 이 서비스도 두 헤더를 모두 응답에 붙인다.",
+  "description": "함정 사이트는 iframe으로 은행의 송금 확인 화면을 불러와 투명하게 만든 뒤, \"경품 받기\" 같은 버튼 바로 위에 겹쳐 둔다. 사용자는 경품 버튼을 누른다고 생각하지만, ==실제로는 그 위의 보이지 않는 은행 송금 버튼이 눌린다==. 진짜 은행 화면에서 누른 것이라 CSRF 토큰도 들어 있어 CSRF 방어로는 막을 수 없다. 막으려면 은행이 응답에 CSP `frame-ancestors 'none'`이나 `X-Frame-Options: DENY`를 붙여, 브라우저가 은행 화면을 다른 사이트 안에 그리지 않게 한다. 이 서비스도 두 헤더를 모두 응답에 붙인다.",
   "status": "published",
   "scenario": {
     "playerType": "flow",
@@ -261,7 +261,7 @@
     {
       "name": "frame-ancestors / X-Frame-Options",
       "kind": "defense",
-      "description": "은행이 응답에 CSP frame-ancestors 'none'(또는 X-Frame-Options: DENY)을 붙이면, 브라우저는 은행 화면을 다른 사이트의 frame·iframe 안에 그리지 않습니다. 주 방어는 이 헤더이고, frame-ancestors가 더 새롭고 세밀한 방법입니다. SameSite 쿠키는 iframe 안의 은행이 로그인되지 않게 해 보조로 도움이 되지만, 로그인이 필요 없는 화면은 막지 못하므로 단독으로 기대지 않습니다. 이 서비스도 frame-ancestors 'none'과 X-Frame-Options: DENY를 모두 응답에 붙입니다.",
+      "description": "은행이 응답에 CSP `frame-ancestors 'none'`(또는 `X-Frame-Options: DENY`)을 붙이면, ==브라우저는 은행 화면을 다른 사이트의 frame·iframe 안에 그리지 않습니다==. 주 방어는 이 헤더이고, `frame-ancestors`가 더 새롭고 세밀한 방법입니다. SameSite 쿠키는 iframe 안의 은행이 로그인되지 않게 해 보조로 도움이 되지만, 로그인이 필요 없는 화면은 막지 못하므로 단독으로 기대지 않습니다. 이 서비스도 `frame-ancestors 'none'`과 `X-Frame-Options: DENY`를 모두 응답에 붙입니다.",
       "blockedAtStep": 5,
       "blockedTitle": "다른 사이트 안에 그리기 거부",
       "blockedLabel": "DENY · frame-ancestors 'none'",
@@ -291,7 +291,7 @@
     {
       "name": "SameSite 쿠키 (보조)",
       "kind": "defense",
-      "description": "은행 쿠키를 SameSite=Lax나 Strict로 두면 다른 사이트 안의 iframe에서 은행을 열 때 쿠키가 붙지 않아, 겹쳐진 은행 화면이 로그인되지 않은 상태가 됩니다. 로그인이 필요한 송금은 막히지만, 로그인이 필요 없는 버튼을 노리는 클릭재킹은 막지 못하므로 frame-ancestors와 함께 쓰는 보조 수단입니다."
+      "description": "은행 쿠키를 `SameSite=Lax`나 `Strict`로 두면 다른 사이트 안의 iframe에서 은행을 열 때 쿠키가 붙지 않아, 겹쳐진 은행 화면이 로그인되지 않은 상태가 됩니다. 로그인이 필요한 송금은 막히지만, ==로그인이 필요 없는 버튼을 노리는 클릭재킹은 막지 못하므로== frame-ancestors와 함께 쓰는 보조 수단입니다."
     }
   ],
   "references": [

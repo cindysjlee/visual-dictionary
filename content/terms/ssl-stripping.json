@@ -8,7 +8,7 @@
   ],
   "category": "network",
   "summary": "사용자와 서버 사이에 끼어든 공격자가 HTTPS로 가는 길을 HTTP로 바꿔치기해, 암호화되지 않은 비밀번호를 엿보는 공격",
-  "description": "사용자가 주소창에 bank.example처럼 https 없이 입력하거나 http:// 링크를 누르면 첫 요청은 HTTP로 나간다. 같은 와이파이 등 경로 중간에 선 공격자는 이 요청을 가로채, 서버와는 HTTPS로 대화하면서 사용자에게는 페이지 안의 https:// 링크와 리디렉션을 http://로 바꿔(벗겨) 넘긴다. 사용자는 평소와 같은 화면에 비밀번호를 입력하지만 실제로는 암호화되지 않은 HTTP로 보내고, 공격자는 그것을 그대로 읽는다. HSTS(Strict-Transport-Security 헤더)를 한 번 받은 브라우저는 그 사이트의 http 주소를 요청하기 전에 스스로 https로 바꾸므로 끼어들 틈이 없다. 처음 방문까지 막으려면 브라우저에 내장된 preload 목록에 사이트를 올린다.",
+  "description": "사용자가 주소창에 `bank.example`처럼 https 없이 입력하거나 `http://` 링크를 누르면 첫 요청은 HTTP로 나간다. 같은 와이파이 등 경로 중간에 선 공격자는 이 요청을 가로채, 서버와는 HTTPS로 대화하면서 사용자에게는 페이지 안의 `https://` 링크와 리디렉션을 `http://`로 바꿔(벗겨) 넘긴다. 사용자는 평소와 같은 화면에 비밀번호를 입력하지만 ==실제로는 암호화되지 않은 HTTP로 보내고==, 공격자는 그것을 그대로 읽는다. HSTS(`Strict-Transport-Security` 헤더)를 한 번 받은 브라우저는 그 사이트의 http 주소를 요청하기 전에 스스로 https로 바꾸므로 끼어들 틈이 없다. 처음 방문까지 막으려면 브라우저에 내장된 preload 목록에 사이트를 올린다.",
   "status": "published",
   "scenario": {
     "playerType": "flow",
@@ -148,7 +148,7 @@
     {
       "name": "HSTS",
       "kind": "defense",
-      "description": "서버가 HTTPS 응답에 Strict-Transport-Security 헤더를 붙이면, 브라우저는 정해진 기간 동안 그 사이트의 http 주소를 요청하기 전에 스스로 https로 바꿉니다. 중간자가 끼어들 HTTP 요청이 생기지 않습니다. HSTS 사이트에서는 인증서 경고를 무시하고 넘어갈 수도 없습니다. 헤더는 HTTPS로 한 번 접속해야 받으므로 첫 방문은 막지 못합니다. 첫 방문까지 막으려면 preload를 지정해 브라우저에 내장된 HSTS preload 목록에 사이트를 올립니다.",
+      "description": "서버가 HTTPS 응답에 `Strict-Transport-Security` 헤더를 붙이면, 브라우저는 정해진 기간 동안 그 사이트의 http 주소를 요청하기 전에 스스로 https로 바꿉니다. ==중간자가 끼어들 HTTP 요청이 생기지 않습니다==. HSTS 사이트에서는 인증서 경고를 무시하고 넘어갈 수도 없습니다. 헤더는 HTTPS로 한 번 접속해야 받으므로 첫 방문은 막지 못합니다. 첫 방문까지 막으려면 preload를 지정해 브라우저에 내장된 HSTS preload 목록에 사이트를 올립니다.",
       "blockedAtStep": 1,
       "blockedTitle": "브라우저가 스스로 https로",
       "blockedLabel": "HSTS · http 요청 안 보냄",
