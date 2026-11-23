@@ -89,15 +89,6 @@ export const GrabIcon = () => (
   </svg>
 );
 
-export const LogoMark = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-    <rect className="logo-mark-bg" width="28" height="28" rx="9" />
-    <circle className="logo-mark-attack" cx="9" cy="14" r="3" />
-    <path className="logo-mark-line" d="M12 14h4" strokeWidth="2" strokeLinecap="round" />
-    <circle className="logo-mark-defense" cx="19" cy="14" r="3" />
-  </svg>
-);
-
 /** 행위자 역할(docs/04의 권장 role)별 아이콘 */
 export function ActorIcon({ role }: { role: string }) {
   const s = { ...stroke, strokeWidth: 2.4 };

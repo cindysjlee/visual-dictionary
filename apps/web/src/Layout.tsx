@@ -3,7 +3,8 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { loginPath } from "./features/auth/safeNext.ts";
 import { auth, startAuth, useAuth } from "./features/auth/store.ts";
 import { startProgress } from "./features/progress/store.ts";
-import { LogoMark, MoonIcon, SunIcon } from "./icons.tsx";
+import { MoonIcon, SunIcon } from "./icons.tsx";
+import { Logo } from "./logo/Logo.tsx";
 import { applyTheme, readStoredTheme, storeTheme, systemDarkQuery, type Theme } from "./theme.ts";
 
 function ThemeToggle() {
@@ -87,8 +88,10 @@ export default function Layout() {
       <div className="page">
         <header className="glass topbar">
           <Link to={user.status === "user" ? "/terms" : "/"} className="logo">
-            <LogoMark />
-            <span className="logo-text">시각화 사전</span>
+            <Logo variant="full" />
+            <Logo variant="compact" />
+            <Logo variant="icon" />
+            <span className="visually-hidden">시각화 사전</span>
           </Link>
           <nav className="topbar-nav" aria-label="주 메뉴">
             <NavLink to="/terms" end>

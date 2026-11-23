@@ -38,7 +38,7 @@ XSS·CSRF 같은 보안 공격과 콜 스택·데드락 같은 CS 개념을 단�
 
 ## Brand Commitments
 
-- 이름: "보안·CS 개념 시각화 사전"(상단바 로고 글자 "시각화 사전"). 로고 마크 `LogoMark`(icons.tsx).
+- 이름: "보안·CS 개념 시각화 사전"(상단바 로고 "시각화 사전"). 로고 = ¶ 문단 기호 + "시각화 사전" 윤곽선 SVG(`logo/Logo.tsx`, 만드는 법·규칙은 docs/05 "로고").
 - 공격=주황, 방어=파랑의 의미 색은 서비스 전체의 약속이다.
 - 문의 메일 `visualdict.help@gmail.com`, 개인정보처리방침 `/privacy`.
 

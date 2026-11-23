@@ -125,20 +125,51 @@ button {
   font-weight: 800;
 }
 
-.logo-mark-bg {
-  fill: var(--cta);
+/* 로고(logo/Logo.tsx): 낮 = 형광펜 띠, 밤 = 글자 아래 호박색 밑줄. 넓으면 가로 조합(원어 표기 포함), 좁으면 축약형 */
+.brand {
+  display: block;
+  width: auto;
 }
 
-.logo-mark-attack {
-  fill: var(--attack);
+.brand-full {
+  height: 46px;
 }
 
-.logo-mark-defense {
-  fill: var(--defense);
+.brand-compact,
+.brand-icon {
+  display: none;
+  height: 34px;
 }
 
-.logo-mark-line {
-  stroke: var(--cta-text);
+.brand-ink {
+  fill: var(--la-ink);
+}
+
+.brand-sub {
+  fill: var(--la-ink-sub);
+}
+
+.brand-hl {
+  fill: var(--la-mark);
+  stroke: var(--la-mark);
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+
+.brand-ul {
+  display: none;
+  fill: var(--la-mark);
+  stroke: var(--la-mark);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+[data-theme="dark"] .brand-hl {
+  display: none;
+}
+
+[data-theme="dark"] .brand-ul {
+  display: inline;
 }
 
 .topbar-nav {
@@ -1145,15 +1176,24 @@ button:disabled {
   background: rgba(10, 12, 20, 0.45);
 }
 
-/* 아주 좁은 폭: 로고 글자는 화면에서만 숨긴다(링크 이름으로는 읽힌다) */
+/* 좁은 폭: 로고는 원어 표기를 뺀 축약형, 더 좁으면 ¶만(상단바가 두 줄로 꺾이지 않게. 링크 이름은 그대로 "시각화 사전") */
 @media (max-width: 479px) {
-  .logo-text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .brand-full {
+    display: none;
+  }
+
+  .brand-compact {
+    display: block;
+  }
+}
+
+@media (max-width: 399px) {
+  .brand-compact {
+    display: none;
+  }
+
+  .brand-icon {
+    display: block;
   }
 }
 
