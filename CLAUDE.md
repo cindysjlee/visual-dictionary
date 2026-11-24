@@ -75,11 +75,11 @@ docs/                     설계 문서
 
 **현재 단계: 8단계 완료(구글 로그인: Essentials·로그인 도메인·인가 코드+PKCE, 같은 이메일은 별도 계정, 탈퇴 재인증 서버 강제(auth_time 5분), /privacy, 사람 확인 체크리스트 1~6 통과).** 단계를 끝내면 이 줄을 갱신할 것.
 8단계 결과: Auth 스택(Essentials, 로그인 도메인 `visual-dictionary-auth`, 구글 IdP는 Secrets Manager `visual-dictionary/google-oauth` dynamic reference, OAuth 코드 흐름만), CSP `connect-src`에 로그인 도메인, `/auth/callback`·`/privacy`·푸터, AccountFn `reauthFresh()`, E2E `@google`, smoke:progress 오래된 토큰 거부(약 5분). 구글 관련 코드·설정을 바꾸면 docs/03 2.4의 사람 확인 체크리스트를 실제 구글 계정으로 다시 한다.
+8단계 뒤 결과: 고아 기록 정리(OrphanSweepFn, 매일 03:00 서울)와 구글 토큰 범위 축소는 배포됨. 11-24 읽기 전용 조회로 확인: 일정 ENABLED(그룹 `visual-dictionary`, `cron(0 3 * * ? *)` Asia/Seoul), OAuth 범위 email·openid·profile, `check:aws` 67건 통과, 03:00 정기 실행 11-22~24 `done`(자세히는 docs/03 2.5 "배포 상태").
 6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
 남은 일:
 - CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
-- 고아 기록 정리(OrphanSweepFn, 매일 03:00 서울)와 구글 토큰 범위 축소: 코드·테스트 완료, IAM·OAuth 범위 diff 승인 뒤 배포(docs/03 2.5 "고아 기록 정리"). 배포 뒤 smoke:progress(D 고아 정리·A 탈퇴 표시 유지)와 check:aws(로컬: 일정 ENABLED).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
 - 디자인 2차(11-23): 랜딩·사이트 전체 "사전 지면", 표제어 한 쪽은 종이색 카드 + 차례, 색인은 괘선 지면, 3D는 종이 장면, 본문 표시 문법(==형광펜==·`코드`, docs/04), 로고 ¶ + "시각화 사전"(docs/05 "로고", `scripts/build-logo.ts`). 비교용 `?scene`·`?style`·`?font` 전환은 모두 지웠다.
 - Cognito 관리형 로그인 화면 로고는 넣지 않았다(사용자 결정: 앱이 구글 화면으로 바로 보내 거의 안 보임). 넣으려면 auth-stack의 `CfnManagedLoginBranding`을 `useCognitoProvidedValues: false` + 로고·파비콘 자산으로 바꾸고, 보안 검토·변경 세트·승인·구글 사람 확인 체크리스트를 다시 한다.

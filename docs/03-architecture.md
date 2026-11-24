@@ -243,9 +243,9 @@ DynamoDB 테이블은 두 개다. **LearningRecord**는 파티션 키가 회원 
 
 | 대상 | 호스팅 | 주요 설정 |
 | --- | --- | --- |
-| Frontend (웹 빌드 결과물) | Amazon S3 (비공개) + CloudFront | OAC로 CloudFront만 버킷에 접근, HTTPS 전용, 403·404를 `index.html`(200)로 응답 (FR-DEP-01, 02) |
+| Frontend (웹 빌드 결과물) | Amazon S3 (비공개) + CloudFront | OAC로 CloudFront만 버킷에 접근, HTTPS 전용. 기본 동작의 CloudFront Function이 확장자 없는 화면 주소만 `index.html`로 보내고, 없는 파일은 404 그대로 돌려준다(오류 페이지 대체 응답 없음, CH-26) (FR-DEP-01, 02) |
 | 콘텐츠 (용어 JSON) | 같은 S3 버킷 + CloudFront | 빌드 때 생성된 `/content/index.json`, `/content/terms/{id}.json`을 정적 파일로 제공 |
-| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`와 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`)뿐이다(와일드카드 없음). 학습 기록 API는 CloudFront `/api/*`로 같은 출처라 추가하지 않는다. `/api/*` 응답에도 같은 헤더를 붙인다 (FR-DEP-04) |
+| 보안 헤더 | CloudFront 응답 헤더 정책 | CSP, HSTS, X-Frame-Options, X-Content-Type-Options. CSP `connect-src`는 `'self'`, 서울 사용자 풀 엔드포인트(`https://cognito-idp.ap-northeast-2.amazonaws.com`), Cognito 로그인 도메인(`https://visual-dictionary-auth.auth.ap-northeast-2.amazoncognito.com`, 구글 로그인 뒤 토큰 교환·취소)뿐이다(와일드카드 없음). 학습 기록 API는 CloudFront `/api/*`로 같은 출처라 추가하지 않는다. `/api/*` 응답에도 같은 헤더를 붙인다 (FR-DEP-04) |
 | 인증 | Amazon Cognito User Pool (Essentials, 스택 `VisualDictionaryAuth`) | 이메일 로그인·인증 코드, 비밀번호는 서버 8자+숫자(영문 포함은 화면에서 검사), 이메일로 계정 복구, MFA 없음. 앱 클라이언트는 SRP·비밀 없음, 토큰 1시간/1시간/30일, 로그아웃 시 리프레시 토큰 취소 (FR-AUTH-02·03·05). 구글 로그인(8단계, FR-AUTH-07): 로그인 도메인 `visual-dictionary-auth.auth.ap-northeast-2.amazoncognito.com`(managed login), OAuth는 인가 코드 + PKCE만(implicit 없음), 콜백 `/auth/callback`·로그아웃 `/`. 구글 클라이언트 값은 Secrets Manager `visual-dictionary/google-oauth`를 CloudFormation dynamic reference로 읽는다. Essentials는 Lite와 같이 월 1만 MAU 무료(넘으면 MAU당 $0.015), 시크릿 월 $0.40. 메일은 Cognito 기본(계정 전체 하루 50통), 늘어나면 SES 연결 |
 | Backend | API Gateway (HTTP API) + Lambda (스택 `VisualDictionaryApi`) | 6단계: progress(조회·저장), account(탈퇴), 정리(큐 소비자). activity는 7단계. 모든 경로에 JWT 인가, 스테이지 요청 제한 초당 10·버스트 20, CloudFront `/api/*`로 연결 (FR-DEP-03) |
 | Database | Amazon DynamoDB | LearningRecord, RecentView 테이블 |
@@ -406,6 +406,13 @@ flowchart TB
 6. smoke:progress: 테스트 사용자 D가 기록·최근 본 용어를 남긴 뒤 Cognito에서 직접 지움 → 기록이 남는지 확인 → `aws lambda invoke`로 `{onlyUserIds: [D의 sub]}` 실행(운영의 다른 기록은 대상 아님) → 두 테이블 0건. 탈퇴한 A로도 실행해 A가 고아로 잡히지 않고 `#deleted`가 남아 예전 토큰 PUT이 계속 403인지 확인한다.
 
 함께 구글 사용자 토큰의 범위에서 `aws.cognito.signin.user.admin`을 뺐다(앱 클라이언트 OAuth 범위). 구글 사용자는 Cognito 사용자 API(`DeleteUser` 등)를 직접 부를 수 없다. 앱은 구글 사용자에게 그 API를 쓰지 않는다(사용자 정보는 ID 토큰 값, 로그아웃은 토큰 취소). 이메일 사용자의 SRP 토큰에는 Cognito가 이 범위를 늘 넣으므로 고아 정리가 여전히 필요하다.
+
+**배포 상태(2026-11-24, 읽기 전용 조회로 확인).**
+- 스택 `VisualDictionaryApi`는 `UPDATE_COMPLETE`이고 마지막 갱신은 11-21 20:05(KST)다. OrphanSweepFn은 서울 리전에 있다(nodejs22.x, arm64, 제한 시간 60초, 메모리 256MB, 로그 보관 14일).
+- 일정은 그룹 `visual-dictionary`에 하나뿐이고 `ENABLED`, `cron(0 3 * * ? *)` Asia/Seoul이다. `default` 그룹에는 이 프로젝트 일정이 없다.
+- 함수 역할 권한은 `dynamodb:Scan`, `cognito-idp:ListUsers`, `sqs:SendMessage`·`GetQueueAttributes`·`GetQueueUrl`뿐이다(위 5번과 같다). 앱 클라이언트 OAuth 범위는 `email`·`openid`·`profile`이라 구글 토큰 범위 축소도 적용돼 있다.
+- 경보 `OrphanSweepErrorsAlarm`·`CleanupDlqAlarm`은 OK, DLQ 메시지는 0개다. `npm run check:aws`는 67건 통과했다.
+- 함수 로그에는 03:00(KST)에 시작한 실행이 11-22·11-23·11-24에 하나씩 있고 모두 `status: done`이다(찾은 고아는 4명·0명·1명, `ERROR`가 든 로그 없음). 그 고아가 누구였는지와 정리 결과는 조회하지 않았다.
 
 | 비용 항목(고아 정리) | 예상 | 근거 |
 | --- | --- | --- |
