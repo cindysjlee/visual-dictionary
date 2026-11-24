@@ -37,7 +37,10 @@ export function useJson<T>(url: string | null): Load<T> {
       .then((load) => {
         if (!alive) return;
         if (load === "same") {
-          setResult((r) => (r.url === url ? r : { url, load: cached<T>(url)! }));
+          // 같은 내용이다. 지금 이 화면이 이미 그 내용을 보이고 있으면 객체를 그대로 두고(플레이어가 다시 시작되지 않게),
+          // 아직 loading이면 캐시의 내용으로 바꾼다. 응답이 오기 전에 화면을 나갔다 돌아오거나(첫 응답은 이 화면이 없어 캐시만 채움),
+          // 개발 모드(StrictMode)가 효과를 두 번 실행하면 두 번째 응답이 여기로 오는데, 이때 loading을 그대로 두면 영원히 멈춘다
+          setResult((r) => (r.url === url && r.load.state === "ok" ? r : { url, load: cached<T>(url)! }));
           return;
         }
         // 읽은 적이 있는데 이번에만 실패하면 화면에 있는 내용을 지우지 않는다
