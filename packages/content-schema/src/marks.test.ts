@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { termSchema } from "./index.ts";
+import { explanationSchema } from "./index.ts";
 import { markCount, noteWords, parseMarks, plainText } from "./marks.ts";
 
 describe("본문 표시 문법", () => {
@@ -55,11 +55,10 @@ describe("본문 표시 문법", () => {
     expect(parseMarks(s).error).toContain(msg);
   });
 
-  it("스키마: 짝이 안 맞거나 형광펜이 두 군데면 뜻풀이 검증이 실패한다", () => {
-    const ok = (description: string) => termSchema.shape.description.safeParse(description).success;
+  it("스키마: 짝이 안 맞거나 형광펜이 두 군데면 설명 문단 검증이 실패한다", () => {
+    const ok = (text: string) => explanationSchema.shape.how.safeParse([text, "둘째 문단이다."]).success;
     expect(ok("정상 ==한 군데== 문장, 크기 비교 a < b")).toBe(true);
     expect(ok("==하나== 그리고 ==둘==")).toBe(false);
     expect(ok("==짝 없음")).toBe(false);
-    expect(ok("이전 형식에는 [[각주]]를 쓸 수 없다")).toBe(false);
   });
 });

@@ -57,9 +57,22 @@ describe("termSchema", () => {
       return csrf;
     };
 
-    it("네 부분이 모두 있으면 통과하고, 이전 형식(문단 하나)도 아직 통과한다", () => {
+    it("네 부분이 모두 있으면 통과한다", () => {
       expect(issuePaths(withFrame())).toEqual([]);
       expect(issuePaths(example("csrf"))).toEqual([]);
+    });
+
+    it("방어 설명에는 각주 [[ ]]를 쓸 수 없다", () => {
+      const t: any = example("csrf");
+      t.defenses[0].description = "방어 설명에는 [[각주]]를 쓸 수 없다.";
+      expect(issuePaths(t)).toContain("defenses.0.description");
+    });
+
+    it("문자열 한 문단(이전 형식)은 draft여도 쓸 수 없다(초안 자리 표시만 예외)", () => {
+      const old: any = example("csrf");
+      old.status = "draft";
+      old.description = "한 문단짜리 옛 설명이다.";
+      expect(issuePaths(old)).toContain("description");
     });
 
     it.each([

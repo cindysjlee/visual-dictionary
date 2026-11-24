@@ -40,11 +40,16 @@ export const explanationSchema = z.strictObject({
 export type Explanation = z.output<typeof explanationSchema>;
 
 /**
- * description: 설명 틀(객체) 또는 이전 형식(문단 하나, 아직 틀로 옮기지 않은 용어). 틀로 다 옮기면 이전 형식은 없앤다.
- * 어느 쪽인지 값의 종류로 나눠 검사해서, 오류 위치가 description.how[1]처럼 자세히 나온다(z.union은 위치를 뭉갠다)
+ * description: 설명 틀(객체). 문자열 한 문단(이전 형식)은 없어졌고, 초안 자리 표시 DRAFT_DESCRIPTION만 문자열로 허용한다(status draft에서만, 아래 termSchema).
+ * 값의 종류로 갈라 검사해서, 오류 위치가 description.how[1]처럼 자세히 나온다(z.union은 위치를 뭉갠다)
  */
-const descriptionSchema = z.unknown().transform((value, ctx): string | Explanation => {
-  const result = typeof value === "string" ? marked.safeParse(value) : explanationSchema.safeParse(value);
+const descriptionSchema = z.unknown().transform((value, ctx): typeof DRAFT_DESCRIPTION | Explanation => {
+  if (value === DRAFT_DESCRIPTION) return DRAFT_DESCRIPTION;
+  if (typeof value === "string") {
+    ctx.addIssue({ code: "custom", message: "설명은 한 줄 정의·쉬운 비유·어떻게 일어나나·왜 위험한가(중요한가) 네 부분 객체로 씁니다. 문자열 한 문단(이전 형식)은 쓸 수 없습니다" });
+    return z.NEVER;
+  }
+  const result = explanationSchema.safeParse(value);
   if (result.success) return result.data;
   for (const issue of result.error.issues) ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
   return z.NEVER;

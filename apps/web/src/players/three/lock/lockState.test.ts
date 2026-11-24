@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema } from "@app/content-schema";
+import { DRAFT_DESCRIPTION } from "@app/content-schema/explain";
 import { lockStateAt } from "./lockState.ts";
 
 const term = termSchema.parse(JSON.parse(readFileSync(new URL("../../../../../../content/terms/deadlock.json", import.meta.url), "utf8")));
@@ -45,7 +46,7 @@ describe("lockStateAt (공유 값)", () => {
     name: "경쟁",
     category: "os",
     summary: "s",
-    description: "d",
+    description: DRAFT_DESCRIPTION,
     status: "draft",
     scenario: {
       playerType: "lock",

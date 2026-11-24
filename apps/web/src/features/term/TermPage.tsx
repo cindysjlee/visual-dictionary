@@ -163,7 +163,7 @@ function TermDetail({ term }: { term: BuiltTerm }) {
             </div>
             <StudyCard termId={term.id} saveError={saveError} press={press} />
             {typeof term.description === "string" ? (
-              // 이전 형식(설명 틀로 아직 옮기지 않은 용어): 문단 하나
+              // 초안 자리 표시("(설명 준비 중)", draft만): 문단 하나
               <p className="la-term-def term-desc">
                 <Marked text={term.description} />
               </p>

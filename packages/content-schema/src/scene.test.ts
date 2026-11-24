@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { termSchema, type Term } from "./index.ts";
+import { DRAFT_DESCRIPTION } from "./explain.ts";
 import { blockTarget, codeAt, defenseCounts, modeDefenses, hasPanel, passesGate, kindOf, lastStepIndex, stepView, zoneOf } from "./scene.ts";
 
 const raw = () => JSON.parse(readFileSync(new URL("../../../content/terms/csrf.json", import.meta.url), "utf8"));
@@ -306,7 +307,7 @@ describe("점유형 어휘: 공유 값(access·read·write)", () => {
     name: "경쟁",
     category: "os",
     summary: "s",
-    description: "d",
+    description: DRAFT_DESCRIPTION,
     status: "draft",
     scenario: {
       playerType: "lock",

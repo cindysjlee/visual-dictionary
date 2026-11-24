@@ -7,6 +7,8 @@ import { terms } from "./terms.ts";
 const tag = { tag: "@scroll" };
 /** 그림 윗변이 화면 맨 위에서 벗어나도 되는 px: 이동한 뒤 글꼴·내용이 늦게 들어와 위쪽 높이가 몇 px 바뀔 수 있다 */
 const TOP_TOLERANCE = 40;
+/** 초안 포함 실행(npm run test:e2e:drafts)은 개발 서버가 대상이다. 개발 서버는 CSS·글꼴이 늦게 들어와 높이가 바뀌어서, 뒤로 가기 때 복원한 위치가 어긋난다(공개된 xss도 같은 증상이라 용어 내용 문제가 아니다). 위치를 정확히 비교하는 테스트는 빌드(공개 용어만)를 쓰는 실행에서만 돈다 */
+const DEV_SERVER = process.env.E2E_INCLUDE_DRAFTS === "1";
 const scrollY = (page: Page) => page.evaluate(() => Math.round(window.scrollY));
 /** 색인 줄의 용어 링크(첫소리 묶음 안의 이름 링크) */
 const entryLinks = (page: Page) => page.locator(".term-card .la-word");
@@ -98,6 +100,7 @@ test("색인의 분야·검색 필터를 바꿔도 화면이 맨 위로 튀지 �
 });
 
 test("뒤로 가기: #term-fig로 연 용어 쪽에서 다른 곳을 거쳐 돌아와도 떠난 위치다(해시가 위치를 덮지 않는다)", tag, async ({ page }) => {
+  test.skip(DEV_SERVER, "개발 서버(초안 포함 실행)에서는 CSS·글꼴이 늦게 들어와 복원 위치가 어긋난다. 빌드를 쓰는 실행에서만 돈다");
   const id = terms[0]!.id;
   await page.goto("/terms");
   await page.goto(`/terms/${id}#term-fig`);

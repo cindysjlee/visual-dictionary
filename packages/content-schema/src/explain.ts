@@ -38,8 +38,8 @@ export function explanationParagraphs(e: Explanation): { part: ExplainPart; inde
   ];
 }
 
-/** 설명 전체의 각주 단어(나온 순서, 같은 단어도 나온 만큼). 이전 형식(문단 하나)의 설명에는 각주가 없다 */
-export const explanationNoteWords = (description: string | Explanation): string[] =>
+/** 설명 전체의 각주 단어(나온 순서, 같은 단어도 나온 만큼). 초안 자리 표시(문자열)에는 각주가 없다 */
+export const explanationNoteWords = (description: typeof DRAFT_DESCRIPTION | Explanation): string[] =>
   typeof description === "string" ? [] : explanationParagraphs(description).flatMap((p) => noteWords(p.text));
 
 /** 문장 나누기: 마침표·물음표·느낌표 뒤에 공백이 오거나 글이 끝날 때. 주소(169.254.169.254)·소수점은 나뉘지 않는다 */

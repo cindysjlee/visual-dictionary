@@ -6,7 +6,7 @@ import { terms } from "./terms.ts";
 
 type Rect = { l: number; t: number; r: number; b: number };
 
-/** 머리 영역 안 요소들의 사각형(문서 좌표)과 설명 문단의 줄마다 글자 수(한 줄 정의 문단은 글자가 커서 뺀다) */
+/** 머리 영역 안 요소들의 사각형(문서 좌표)과 설명 문단의 줄마다 글자 수(한 줄 정의와 코드 표기가 든 문단은 뺀다) */
 const layout = (page: Page) =>
   page.evaluate(() => {
     const rect = (sel: string): Rect | undefined => {
@@ -17,7 +17,8 @@ const layout = (page: Page) =>
     };
     const lines: number[] = [];
     for (const p of document.querySelectorAll(".la-term-head p.term-desc")) {
-      if (p.closest(".is-definition")) continue;
+      // 한 줄 정의는 글자가 커서, 고정폭 코드 표기가 든 문단은 글자 폭이 달라(코드가 더 넓다) 글자 수 비교에서 뺀다
+      if (p.closest(".is-definition") || p.querySelector("code")) continue;
       const rows = new Map<number, number>();
       const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -72,7 +73,8 @@ for (const term of terms) {
       const median = sorted[Math.floor(sorted.length / 2)]!;
       expect(median).toBeGreaterThanOrEqual(50);
       expect(median).toBeLessThanOrEqual(62);
-    }    // 설명이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한)
+    }
+    // 설명이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한)
     expect(body.r).toBeLessThan(head.r - 100);
     expect(wide.scrollOver).toBeLessThanOrEqual(0);
 

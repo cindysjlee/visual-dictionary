@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { termSchema } from "@app/content-schema";
+import { DRAFT_DESCRIPTION } from "@app/content-schema/explain";
 import { loadTerms } from "./validate-content.ts";
 import { selectTerms, toIndexEntry, withFootnotes } from "./build-index.ts";
 
@@ -122,8 +123,8 @@ describe("각주 풀이 사전(glossary.json)", () => {
     ]);
     // 그 용어가 아직 공개 전(함께 나가지 않음)이면 링크 없이 풀이만
     expect(withFootnotes(term, entries, []).footnotes[0]).toEqual({ word: "가", gloss: "가의 풀이다." });
-    // 이전 형식의 설명에는 각주가 없다
-    expect(withFootnotes({ ...term, description: "이전 형식" }, entries, []).footnotes).toEqual([]);
+    // 초안 자리 표시(문자열)에는 각주가 없다
+    expect(withFootnotes({ ...term, description: DRAFT_DESCRIPTION }, entries, []).footnotes).toEqual([]);
   });
 });
 

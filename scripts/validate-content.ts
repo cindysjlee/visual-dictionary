@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { glossarySchema, termSchema, type GlossaryEntry, type Term } from "@app/content-schema";
-import { DRAFT_DESCRIPTION, SENTENCE_WARN, explanationNoteWords, explanationParagraphs, sentencesOf } from "@app/content-schema/explain";
+import { SENTENCE_WARN, explanationNoteWords, explanationParagraphs, sentencesOf } from "@app/content-schema/explain";
 
 export const TERMS_DIR = fileURLToPath(new URL("../content/terms/", import.meta.url));
 /** 한 번이라도 공개(published)한 용어 id. 학습 기록의 키라 바꾸거나 지우지 않는다(FR-CNT-05). 용어를 내리려면 status를 retired로 */
@@ -109,10 +109,6 @@ export function loadTerms(
       if (e.term && !fileById.has(e.term)) errors.push(`glossary.json: [${i}].term - 없는 용어 id: ${e.term}`);
     });
   }
-
-  // 설명 틀로 옮기지 않은 용어(이전 형식, 초안 자리 표시 제외): 모두 옮기면 이전 형식을 없앤다. 한 줄로만 알린다
-  const legacy = terms.filter((t) => typeof t.description === "string" && t.description !== DRAFT_DESCRIPTION).map((t) => t.id);
-  if (legacy.length > 0) warnings.push(`description - 설명 틀로 옮기지 않은 용어 ${legacy.length}개: ${legacy.join(", ")}`);
 
   for (const term of terms) {
     term.related.forEach((relatedId, i) => {

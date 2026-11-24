@@ -78,7 +78,7 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-CNT-01 용어 = JSON 하나 | docs/04 | `content/terms/*.json`, `packages/content-schema/src/index.ts` | 단 `index.test.ts`, `validate-content.test.ts`, `explain.test.ts`(설명 틀) | 완료 | 설명 틀·풀이 사전은 CH-59 |
+| FR-CNT-01 용어 = JSON 하나 | docs/04 | `content/terms/*.json`, `packages/content-schema/src/index.ts` | 단 `index.test.ts`, `validate-content.test.ts`, `explain.test.ts`(설명 틀) | 완료 | 설명 틀·풀이 사전은 CH-59, 모든 용어가 설명 틀(옛 형식 거부)은 CH-62 |
 | FR-CNT-02 스키마 검증 | docs/04 검증 규칙 | `index.ts` superRefine, `scene.ts` `checkScene`, `scripts/validate-content.ts` | 단 `index.test.ts`·`scene.test.ts`·`validate-content.test.ts`·`explain.test.ts`, verify(빌드 실패) | 완료 | 설명 틀 규칙(구조·각주·사전)도 같은 검증기 |
 | FR-CNT-03 인덱스 자동 생성 | docs/04 | `scripts/build-index.ts` | 단 `validate-content.test.ts`, S smoke:prod(index.json = published 목록) | 완료 | |
 | FR-CNT-04 검수 상태 | docs/04 | `build-index.ts`(개발·배포 폴더 분리), Vite 설정 | S smoke:prod(published만), E `test:e2e:drafts` | 완료 | |
