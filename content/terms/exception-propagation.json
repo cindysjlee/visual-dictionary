@@ -29,8 +29,7 @@
     "actors": [
       { "id": "main", "name": "main", "role": "function" },
       { "id": "load", "name": "load", "role": "function" },
-      { "id": "read_config", "name": "read_config", "role": "function" },
-      { "id": "open", "name": "open", "role": "function" }
+      { "id": "read_config", "name": "read_config", "role": "function" }
     ],
     "steps": [
       {
@@ -58,47 +57,28 @@
         "line": 2,
         "title": "read_config 호출",
         "label": "read_config(\"app.ini\")",
-        "caption": "read_config 프레임이 쌓입니다. path는 \"app.ini\"이고, 2행에서 open(path)로 파일을 열려고 합니다. 여기에도 try는 없습니다.",
+        "caption": "read_config 프레임이 쌓입니다. path는 \"app.ini\"이고, 2행에서 open(path)로 파일을 열려고 합니다. 여기에도 try는 없습니다. 스택은 main → load → read_config 순서로 세 칸입니다.",
         "effects": [{ "type": "locals", "vars": [{ "name": "path", "value": "\"app.ini\"" }] }]
       },
       {
-        "action": "push",
-        "from": "read_config",
-        "to": "open",
-        "line": 2,
-        "title": "open() 호출",
-        "label": "open(\"app.ini\")",
-        "caption": "파일을 여는 내장 함수 open의 프레임이 맨 위에 쌓입니다. 스택은 main → load → read_config → open 순서로 네 칸입니다."
-      },
-      {
         "action": "run",
-        "from": "open",
-        "to": "open",
-        "line": 2,
-        "title": "파일이 없어 예외 발생",
-        "label": "raise FileNotFoundError",
-        "caption": "app.ini 파일이 없어서 open이 FileNotFoundError를 일으킵니다. 이 예외는 open 안에서 처리되지 않았습니다. 이제 파이썬은 예외를 처리할 except를 찾으러 호출한 쪽으로 올라가기 시작합니다.",
-        "danger": true,
-        "effects": [{ "type": "stamp", "label": "FileNotFoundError", "tone": "attack" }]
-      },
-      {
-        "action": "pop",
-        "from": "open",
+        "from": "read_config",
         "to": "read_config",
         "line": 2,
-        "title": "open 프레임이 버려짐",
-        "label": "예외가 올라감",
-        "caption": "open에는 처리할 곳이 없으므로 이 프레임은 반환값 없이 버려지고, 예외가 호출한 read_config로 넘어갑니다. 정상 반환과 달리 돌아가서 다음 줄을 실행하지 않습니다. 3행 f.read()는 실행되지 않습니다.",
-        "danger": true
+        "title": "파일이 없어 예외 발생",
+        "label": "open() → FileNotFoundError",
+        "caption": "app.ini 파일이 없어서 2행의 open(path)가 FileNotFoundError를 일으킵니다. open은 파이썬 내부에서 실행되어 따로 프레임이 쌓이지 않고, 예외는 이 줄을 실행 중인 read_config에서 생긴 것으로 기록됩니다. read_config에는 처리할 except가 없으므로, 파이썬은 처리할 곳을 찾으러 호출한 쪽으로 올라가기 시작합니다.",
+        "danger": true,
+        "effects": [{ "type": "stamp", "label": "FileNotFoundError", "tone": "attack" }]
       },
       {
         "action": "pop",
         "from": "read_config",
         "to": "load",
         "line": 6,
-        "title": "read_config 프레임도 버려짐",
+        "title": "read_config 프레임이 버려짐",
         "label": "예외가 올라감",
-        "caption": "read_config에도 except가 없어서 이 프레임도 버려지고 예외는 load로 올라갑니다. 이렇게 처리할 곳을 찾을 때까지 프레임을 하나씩 버리며 올라가는 것이 예외 전파입니다.",
+        "caption": "처리할 곳이 없으므로 이 프레임은 반환값 없이 버려지고, 예외가 호출한 load로 넘어갑니다. 정상 반환과 달리 돌아가서 다음 줄을 실행하지 않습니다. 3행 f.read()는 실행되지 않습니다. 프레임에 적힌 반환 주소(↩)도 쓰이지 않습니다.",
         "danger": true
       },
       {
@@ -108,7 +88,7 @@
         "line": 10,
         "title": "load 프레임도 버려짐",
         "label": "예외가 올라감",
-        "caption": "load도 예외를 처리하지 못해 버려집니다. 예외가 도착한 main에는 try … except FileNotFoundError가 있습니다. 예외의 종류가 맞으므로 여기서 멈춥니다.",
+        "caption": "load에도 except가 없어서 이 프레임도 버려지고 예외는 main으로 올라갑니다. 이렇게 처리할 곳을 찾을 때까지 프레임을 하나씩 버리며 올라가는 것이 예외 전파입니다. 예외가 도착한 main에는 try … except FileNotFoundError가 있고, 예외의 종류가 맞으므로 여기서 멈춥니다.",
         "danger": true
       },
       {
@@ -118,7 +98,7 @@
         "line": 12,
         "title": "main의 except가 처리",
         "label": "except FileNotFoundError",
-        "caption": "main의 except 블록이 예외를 받아 12행을 실행합니다. 예외가 처리됐으므로 프로그램은 계속 이어집니다. 중간에 있던 세 프레임은 이미 정리됐습니다. 만약 어디에서도 처리하지 않았다면 스택 트레이스백을 출력하고 프로그램이 종료됩니다.",
+        "caption": "main의 except 블록이 예외를 받아 12행을 실행합니다. 예외가 처리됐으므로 프로그램은 계속 이어집니다. 중간에 있던 두 프레임은 호출 스택에서 이미 빠졌습니다. 만약 어디에서도 처리하지 않았다면 스택 트레이스백을 출력하고 프로그램이 종료됩니다.",
         "effects": [{ "type": "stamp", "label": "except로 처리됨", "tone": "defense" }]
       }
     ]
