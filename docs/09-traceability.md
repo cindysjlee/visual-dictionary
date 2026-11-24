@@ -28,7 +28,7 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-DTL-01 상세 구성 순서 | docs/05 배치 | `TermPage.tsx` | E `explore.e2e.ts`(모든 용어: 이름 → 설명 → 플레이어 자막 → 방어·해결 → 참고 자료의 문서 순서), E `a11y.e2e.ts` | 완료 | |
+| FR-DTL-01 상세 구성 순서 | docs/05 배치 | `TermPage.tsx` | E `explore.e2e.ts`(모든 용어: 이름 → 설명 → 플레이어 자막 → 방어·해결 → 참고 자료의 문서 순서), E `a11y.e2e.ts`, E `explain.e2e.ts`(설명 틀 부분 순서·각주 단어·풀이 상자·대비), E `term-head.e2e.ts`(완독 칸 위치·줄 길이·Tab 순서) | 완료 | CH-59, CH-61 |
 | FR-DTL-02 방어·해결 방법 | docs/04, docs/06 | `TermPage.tsx`, `content-schema` `modeDefenses` | E `player.e2e.ts`(방어·해결 방법 탭·칩), 단 `scene.test.ts` | 완료 | CS 용어는 "해결 방법"(대체 흐름, CH-21) |
 | FR-DTL-03 참고 자료 | docs/04 | `TermPage.tsx`, 스키마의 `references` 필수 | 단 `index.test.ts`(스키마), E `explore.e2e.ts`(모든 용어의 제목·주소가 JSON과 같음) | 완료 | |
 | FR-DTL-04 없는 용어 처리 | docs/03 2.4·CLAUDE.md(개발 서버·운영 404 처리) | `TermPage.tsx` → `NotFoundPage.tsx` | E `explore.e2e.ts`(없는 용어·없는 화면 주소: 안내와 목록 버튼), S smoke:prod(응답 코드) | 완료 | |
@@ -66,7 +66,7 @@
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | FR-PRG-01 완료 자동 기록 | docs/03 2.5, docs/05 완독 표시 | `TermPage.tsx`, `progress/store.ts`(`readAt()`), `StudyCard.tsx`·`Seal.tsx`(完 도장·날짜), `progress.ts` | 단 `api.test.ts`, E `progress.e2e.ts`(끝까지 보면 도장·날짜·화면 읽기 이름·찍히는 움직임), S smoke:progress | 완료 | "읽음" → "완독"(CH-53·54) |
-| FR-PRG-02 완독 직접 변경 | docs/02 규칙, docs/05 완독 표시 | `StudyCard.tsx`([완독으로 표시]/[완독 취소]) | E `progress.e2e.ts`(read:false로 남김, aria-pressed 없음), E `auth.e2e.ts` | 완료 | CH-55 |
+| FR-PRG-02 완독 직접 변경 | docs/02 규칙, docs/05 완독 표시 | `StudyCard.tsx`([완독으로 표시]/[완독 취소]) | E `progress.e2e.ts`(read:false로 남김, aria-pressed 없음), E `auth.e2e.ts`, E `term-head.e2e.ts`(머리 영역 오른쪽 위, 좁은 화면은 설명 앞) | 완료 | CH-55, CH-61 |
 | FR-PRG-03 목록 상태 표시 | docs/05 완독 표시 | `Dictionary.tsx` `IndexColumns`(줄 끝 完 도장), `HomePage.tsx` | E `progress.e2e.ts`(도장·title·화면 읽기 "완독, 날짜") | 완료 | |
 | FR-PRG-04 읽음 필터 | docs/05 | `summary.ts`, `HomePage.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts` | 완료 | |
 | FR-PRG-05 진행률 | docs/02 규칙, docs/05 완독 표시 | `summary.ts`, `Dictionary.tsx` `Ledger`("n / m 완독", 분야별 "n/m 완독") | 단 `summary.test.ts`, E `progress.e2e.ts`, S smoke:progress(다른 브라우저 같은 진행률 "1 / 14 완독") | 완료 | |
@@ -78,8 +78,8 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-CNT-01 용어 = JSON 하나 | docs/04 | `content/terms/*.json`, `packages/content-schema/src/index.ts` | 단 `index.test.ts`, `validate-content.test.ts` | 완료 | |
-| FR-CNT-02 스키마 검증 | docs/04 검증 규칙 | `index.ts` superRefine, `scene.ts` `checkScene`, `scripts/validate-content.ts` | 단 `index.test.ts`·`scene.test.ts`·`validate-content.test.ts`, verify(빌드 실패) | 완료 | |
+| FR-CNT-01 용어 = JSON 하나 | docs/04 | `content/terms/*.json`, `packages/content-schema/src/index.ts` | 단 `index.test.ts`, `validate-content.test.ts`, `explain.test.ts`(설명 틀) | 완료 | 설명 틀·풀이 사전은 CH-59 |
+| FR-CNT-02 스키마 검증 | docs/04 검증 규칙 | `index.ts` superRefine, `scene.ts` `checkScene`, `scripts/validate-content.ts` | 단 `index.test.ts`·`scene.test.ts`·`validate-content.test.ts`·`explain.test.ts`, verify(빌드 실패) | 완료 | 설명 틀 규칙(구조·각주·사전)도 같은 검증기 |
 | FR-CNT-03 인덱스 자동 생성 | docs/04 | `scripts/build-index.ts` | 단 `validate-content.test.ts`, S smoke:prod(index.json = published 목록) | 완료 | |
 | FR-CNT-04 검수 상태 | docs/04 | `build-index.ts`(개발·배포 폴더 분리), Vite 설정 | S smoke:prod(published만), E `test:e2e:drafts` | 완료 | |
 | FR-CNT-05 용어 ID 불변 | CLAUDE.md 원칙 7, docs/02 규칙, docs/04 검증 | `validate-content.ts` + `content/published-ids.json`, `summary.ts`(목록에 없는 용어 기록 제외) | 단 `validate-content.test.ts`(공개한 id의 파일이 없으면 오류, retired는 통과, 목록에 없는 published 오류), 단 `summary.test.ts` | 완료 | CH-45 |
@@ -100,7 +100,7 @@
 | --- | --- | --- | --- | --- | --- |
 | NFR-01 보안 | docs/03 2.4~2.6 | API(액세스 토큰의 sub로만 대상, `accessSubject()`), Cognito, CSP, OIDC 역할(배포 job에만) | 단 `api.test.ts`, S smoke:progress(토큰 없음·변조·만료·ID 토큰 401, 다른 사용자 격리), C check:aws, 인 IAM 테스트 | 완료 | 알고 있는 한계 5개는 docs/03 2.4(DF-49 남은 위험 포함) |
 | NFR-02 성능·가용성 | docs/03 1.2, docs/10 성능 기준 | 정적 콘텐츠, 기록 실패와 무관한 재생 | E `perf.e2e.ts` @perf(랜딩·색인·상세 LCP ≤ 2.5초, CLS ≤ 0.1), 검사 `check:bundle`(홈 묶음 gzip ≤ 120KB), S smoke:progress(기록 GET·PUT 각 10회 최대 ≤ 1초), E `progress.e2e.ts`(API 실패해도 재생 끝까지) | 완료 | LCP·CLS 기준 초과는 로컬 배포 전 전체 E2E에서만 실패(CI는 측정만), LCP는 로컬 빌드 기준(CDN 거리 제외), API 시간은 콜드 스타트 제외(docs/10) |
-| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드, 3D 캔버스 글자 전용 토큰(`--scene-ink` 계열, DF-48) | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 랜딩·색인·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음) | 완료 | 캔버스 글자 대비는 axe가 못 봐 토큰 값으로 계산(ecc:accessibility, 11-21 60개 조합 미달 0) |
+| NFR-03 사용성·접근성 | docs/05 | 동작 줄이기·자막·키보드, 3D 캔버스 글자 전용 토큰(`--scene-ink` 계열, DF-48) | E `a11y.e2e.ts`(axe 라이트·다크), E `player.e2e.ts`(스페이스·?no3d 2D 대체), E `scene-layout.e2e.ts`(동작 줄이기 결과 상태), E `viewport.e2e.ts` @narrow·@wide(360px·1920px: 랜딩·색인·상세 14개·로그인·가입·재설정·/me·/privacy 가로 스크롤·잘림 없음), E `term-head.e2e.ts`(390px 한 열, Tab 순서 완독 → 설명 → 플레이어), E `explain.e2e.ts`(각주 단어 누르는 영역 24px·밑줄 대비) | 완료 | 캔버스 글자 대비는 axe가 못 봐 토큰 값으로 계산(ecc:accessibility, 11-21 60개 조합 미달 0) |
 | DC-01 프론트엔드 기술 | docs/06, CLAUDE.md 원칙 8 | R3F 장면, PlaybackEngine | S/검사 `check:bundle`(홈 묶음에 three 없음) | 완료 | |
 | DC-02 인프라·백엔드 | docs/03 2.2~2.3 | `infra/lib/*.ts` | 인 테스트 4개, C check:aws | 완료 | |
 | DC-03 콘텐츠 제작 방식 | docs/04, CLAUDE.md 원칙 1 | 용어 JSON + 플레이어 3종 | 단 `simulate.test.ts`(모든 용어×모드가 데이터만으로 끝까지) | 완료 | 콘텐츠 1차(11-21): 플레이어 3종에 일반 어휘만 더하고 용어 6개를 JSON으로 추가(CH-48) |

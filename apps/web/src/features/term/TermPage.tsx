@@ -1,4 +1,4 @@
-// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이 + 오른쪽 완독 메모(完 도장 + 완독한 날, 학습 상태)
+// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 머리 영역 한 줄(표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 | 완독 메모: 完 도장 + 완독한 날, 학습 상태) → 그 아래 카드 폭 전체에 설명(설명 틀)
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
 // 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
 import { Link, useLocation, useNavigationType, useParams } from "react-router";
@@ -147,7 +147,8 @@ function TermDetail({ term }: { term: BuiltTerm }) {
         <Toc items={toc} />
         <article className="la-term-page" aria-labelledby="term-hw">
           <div id="term-def" className="la-term-head la-card">
-            <div>
+            {/* 머리 영역: 제목 | 완독 칸. 본문(설명)은 그 아래 카드 폭 전체를 쓴다. DOM·Tab 순서: 제목 → 완독 → 본문 → 플레이어 */}
+            <div className="la-term-title">
               <h1 id="term-hw" className="la-headword term-title">
                 {term.name}
               </h1>
@@ -159,16 +160,16 @@ function TermDetail({ term }: { term: BuiltTerm }) {
               <p className="la-pos">
                 <Field category={term.category} /> <span className="la-num">{meta}</span>
               </p>
-              {typeof term.description === "string" ? (
-                // 이전 형식(설명 틀로 아직 옮기지 않은 용어): 문단 하나
-                <p className="la-term-def term-desc">
-                  <Marked text={term.description} />
-                </p>
-              ) : (
-                <Explanation term={term} data={term.description} />
-              )}
             </div>
             <StudyCard termId={term.id} saveError={saveError} press={press} />
+            {typeof term.description === "string" ? (
+              // 이전 형식(설명 틀로 아직 옮기지 않은 용어): 문단 하나
+              <p className="la-term-def term-desc">
+                <Marked text={term.description} />
+              </p>
+            ) : (
+              <Explanation term={term} data={term.description} />
+            )}
           </div>
 
           <figure id="term-fig" className="la-term-fig la-card" aria-labelledby="term-fig-cap">

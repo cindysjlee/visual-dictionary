@@ -1085,6 +1085,20 @@ body {
   align-items: start;
 }
 
+/* 용어 쪽 머리: 제목 | 완독 칸은 맨 위 한 줄만 차지하고, 설명은 그 아래 카드 폭 전체(줄 길이는 --measure-ko로 제한)를 쓴다 */
+.la-term .la-term-head {
+  row-gap: var(--sp-4);
+}
+
+.la-term-head > .la-explain,
+.la-term-head > .la-term-def {
+  grid-column: 1 / -1;
+}
+
+.la-term-head > .la-term-def {
+  margin: 0;
+}
+
 .la-term .la-headword,
 .la-me .la-headword {
   margin: 0;
@@ -1103,7 +1117,7 @@ body {
 
 .la-term-def {
   margin: var(--sp-3) 0 0;
-  max-width: var(--measure);
+  max-width: var(--measure-ko);
   font-family: var(--font-body);
   font-size: var(--fs-md);
   line-height: 1.85;
@@ -1463,7 +1477,7 @@ body {
 
 .la-term .la-term-def,
 .la-term .la-defenses p {
-  max-width: 38em;
+  max-width: var(--measure-ko);
   line-height: 1.85;
   letter-spacing: 0.012em;
   word-break: keep-all;
@@ -1784,7 +1798,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
-  margin-top: var(--sp-4);
+  max-width: var(--measure-ko);
 }
 
 .la-explain-part {

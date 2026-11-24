@@ -41,7 +41,7 @@ flowchart TB
 | S1 공통 | `Layout`·`Logo`·`main.tsx` 라우터(랜딩 분기 `hasStoredSession`)·`NotFoundPage`·`useJson`·디자인 토큰 | API Gateway JWT 인가(토큰 확인), 핸들러별 입력 검증·공통 응답 형식 | 없음(정적 파일만) |
 | S2 콘텐츠 | `content-schema`(스키마·타입 공유) | `validate-content`·`build-index`(빌드 시) | `content/terms/*.json`(원본), `/content/index.json`·`/content/terms/{id}.json`(배포본, S3) |
 | S3 탐색 | `LandingPage`(`DictionaryPage`·`SketchFigure`), `HomePage`(용어 색인: 분야·검색·읽음 필터), 사전 지면 부품(`features/dictionary/`) | 없음(손글씨 글꼴 조각은 빌드 때 생성) | `index.json` 읽기 |
-| S4 시각화 | `TermPage`, `PlaybackEngine`(`engine.ts`), `PlayerShell`, `FlowScene`·`StackScene`·`LockScene`, `StepList2D` | 없음 | `terms/{id}.json` 읽기 |
+| S4 시각화 | `TermPage`, `Explanation`·`Footnotes`(설명 틀), `PlaybackEngine`(`engine.ts`), `PlayerShell`, `FlowScene`·`StackScene`·`LockScene`, `StepList2D` | 없음 | `terms/{id}.json` 읽기 |
 | S5 인증 | `LoginPage`·`SignupPage`·`ConfirmPage`·`ResetPage`·`CallbackPage`, 인증 저장소(`auth/store.ts`), `PrivacyPage` | Cognito 사용자 풀(Essentials, 로그인 도메인, Google IdP), Account API(탈퇴, 재인증 5분) | Cognito 사용자 저장소, Secrets Manager(Google 클라이언트) |
 | S6 학습 진행 | `StudyCard`(完 도장)·`Ledger`(진행률)·`MePage`, 책갈피 규칙(`bookmarks.ts`), 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
 
@@ -95,6 +95,9 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 카테고리·플레이어 유형 표시 이름 | `packages/content-schema/src/labels.ts` `CATEGORY_LABELS`, `PLAYER_LABELS`, `ACTIONS_BY_PLAYER` |
 | 콘텐츠 검증기 | `scripts/validate-content.ts` `loadTerms()`, `validateOrExit()` |
 | 인덱스 생성기 (`index.json`·`terms/<id>.json`, draft 분리) | `scripts/build-index.ts` `selectTerms()`, `toIndexEntry()` |
+| 설명 틀(문자열 또는 4부분 객체)·풀이 사전 항목 | `packages/content-schema/src/index.ts` `explanationSchema`, `descriptionSchema`, `glossaryEntrySchema`, `glossarySchema`, 타입 `Explanation`·`Footnote`·`BuiltTerm`. 규칙 값 `packages/content-schema/src/explain.ts` `EXPLAIN_PARTS`, `partLabel()`, `explanationParagraphs()`, `explanationNoteWords()`, `sentencesOf()`, `DEFINITION_MAX`·`SENTENCE_WARN`·`NOTES_MAX`·`DRAFT_DESCRIPTION` |
+| 각주 `[[단어]]` 표시 | `packages/content-schema/src/marks.ts` `noteWords()`(설명 틀 안에서만 허용) |
+| 풀이 사전 | `content/glossary.json`, 검증 `scripts/validate-content.ts` `loadGlossary()`, 빌드 `scripts/build-index.ts` `withFootnotes()` |
 
 **S1 공통 · S3 탐색 · S4 상세 화면**
 
@@ -112,7 +115,9 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 랜딩 그림 1(연필 스케치, three.js 없음) | `features/landing/SketchFigure.tsx` `SketchFigure`, 상태 `sketchScene.ts` `sceneAt()`·`sceneDuring()`, 손글씨 글꼴 조각 `scripts/subset-hand-font.ts` |
 | 용어 색인(목록)·검색·분야 거르기·읽음 필터 | `features/explore/HomePage.tsx` `HomePage`, `matches()`, `features/progress/summary.ts` `passesReadFilter()` |
 | 사전 지면 공통 부품(첫소리 묶기·분야 버튼·색인 줄·관련 용어·진행률·"6단계 · 방어 2개") | `features/dictionary/Dictionary.tsx` `byInitial()`, `Thumbs`, `IndexColumns`, `SeeAlso`, `Ledger`, `entryMeta()` |
-| 용어 상세 페이지(카드·옆 목차·참고 자료 출처) | `features/term/TermPage.tsx` (플레이어는 동적 import), `Toc`, `sourceOf()` |
+| 용어 상세 페이지(카드·옆 목차·참고 자료 출처) | `features/term/TermPage.tsx` (플레이어는 동적 import, 라우트는 `main.tsx`에서 lazy로 받아 홈 묶음 120KB 이하를 지킨다), `Toc`, `sourceOf()` |
+| 용어 쪽 머리 영역(제목 `.la-term-title`과 완독 칸 `.study-card`가 한 줄, 그 아래 설명이 카드 폭 전체) | `features/term/TermPage.tsx` `TermDetail`, 스타일 `styles/dictionary.css` `.la-term-head`, 줄 길이 토큰 `styles/tokens.css` `--measure-ko` |
+| 설명 틀 화면(부분 이름표·한 줄 정의·각주 단어·각주 목록) | `features/term/Explanation.tsx` `Explanation`, `features/term/Footnotes.tsx` `FootnoteWord`(풀이 상자)·`FootnoteLink`(공개 용어 링크)·`FootnoteList` |
 | 본문 표시 문법(==형광펜==·`코드`) 파싱·그리기 | `packages/content-schema/src/marks.ts` `parseMarks()`, `plainText()`(검증은 `termSchema`), 화면 `features/dictionary/Marked.tsx` `Marked` |
 | "¶ n단계" → 그 방어 모드의 n단계로 | `TermPage.tsx` `showDefense()`, `players/Player.tsx` `jump`(`PlayerJump`) |
 

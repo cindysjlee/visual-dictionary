@@ -1,6 +1,6 @@
 # 테스트 계획·결과 보고서
 
-기준 시점: 2026-11-24, 디자인 개편 배포 뒤(랜딩·용어 색인·사전 지면·로고·完 도장·책갈피 규칙, CI 45255574801 배포). 용어 14개. 이전 기준(11-21 콘텐츠 1차·중간 점검 4차)의 수치는 바뀐 항목만 고쳤다. 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
+기준 시점: 2026-11-24, 디자인 개편 배포 뒤(랜딩·용어 색인·사전 지면·로고·完 도장·책갈피 규칙, CI 45255574801 배포). 용어 14개. 이전 기준(11-21 콘텐츠 1차·중간 점검 4차)의 수치는 바뀐 항목만 고쳤다. 그 뒤 로컬 변경(설명 틀·각주, 용어 쪽 머리 영역, 화면 이동 스크롤·`useJson` 수정, draft 용어 7개)은 아직 배포하지 않았다. 아래 단위·E2E 개수는 그 변경까지 센 값이고, E2E 전체 통과 수는 push 직전에 전체를 돌린 뒤 다시 적는다(이번에는 태그별로 돌렸다). 요구사항별 테스트 연결은 `09-traceability.md`, 테스트가 잡은 결함의 자세한 내용은 `08-defect-log.md`에 있다.
 
 ## 1. 테스트 계획(언제 무엇을 돌리나)
 
@@ -9,7 +9,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 시점 | 실행 | 비고 |
 | --- | --- | --- |
 | 코드를 고칠 때마다 | `npm run verify` | 콘텐츠 검증 → 단위·인프라 테스트 → 타입 검사·빌드 → 홈 묶음 검사(`check:bundle`) |
-| 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google`, `@explore`, `@scroll`, `@narrow`, `@wide`, `@perf` |
+| 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google`, `@explore`, `@explain`, `@scroll`, `@narrow`, `@wide`, `@perf` |
 | push·배포 직전 | 전체 E2E(`npm run test:e2e`, draft가 있으면 `test:e2e:drafts`) | 실제 속도 테스트 2개 포함 |
 | 배포 뒤 | `smoke:prod`, `smoke:auth`, `smoke:progress`, `check:aws` | 인증 코드를 바꿨을 때만 `smoke:auth:signup`(인증 메일 1통) |
 | main push마다(CI) | `verify` job: verify → E2E(실제 속도 제외) / `deploy` job(OIDC 권한은 여기만, DF-49): 설치 스크립트 없이 설치 → 빌드 → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
@@ -19,9 +19,9 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 | 수준 | 대상과 목적 | 테스트 수 | 최근 결과 | 실행 시간 |
 | --- | --- | --- | --- | --- |
-| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증·본문 표시 문법, 모든 용어×모드 시뮬레이션, 인증·로그인 분기·진행률·책갈피 규칙, 랜딩 그림 상태, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 267(파일 23개) | 통과 267 / 실패 0 (11-24) | verify 전체 약 30~60초(빌드 포함, 인프라 테스트 포함 299) |
+| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증·본문 표시 문법·설명 틀, 모든 용어×모드 시뮬레이션, 인증·로그인 분기·진행률·책갈피 규칙, 랜딩 그림 상태, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 312(파일 24개) | 통과 312 / 실패 0 (인프라 32와 함께 `vitest run` 344 통과, 로컬) | verify 전체 약 30~60초(빌드 포함, 인프라 테스트 포함 344) |
 | 인프라(CDK assertions) | S3·CloudFront·헤더·캐시, Cognito·OAuth, API·Lambda 권한·일정, CI 역할 신뢰·권한, 템플릿 비ASCII·메일 해시 | 32(파일 4개) | 통과 32 / 실패 0 (11-24) | verify에 포함 |
-| E2E(Playwright, 데스크톱 1440×900. `@narrow` 360×800, `@wide` 1920×1080) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px·1920px 레이아웃, LCP·CLS | 260(main 258 + 실제 속도 2, 용어 14개, 파일 11개) | 통과 260 / 실패 0 (11-24, 로컬 5.4분) | 로컬 5.5~6.5분(workers 4), CI 약 14~22분(workers 2, 제한 35분, DF-52) |
+| E2E(Playwright, 데스크톱 1440×900. `@narrow` 360×800, `@wide` 1920×1080) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px·1920px 레이아웃, LCP·CLS | 297(main 295 + 실제 속도 2, 용어 14개, 파일 14개) | 이전 기준 260개는 통과 260 / 실패 0 (11-24, 로컬 5.4분). 늘어난 37개(`explain` 19·`term-head` 15·`usejson` 3)는 태그로 돌려 통과(`@explain\|@ssrf\|@deadlock` 45개, 머리 영역·Tab 순서 draft 포함 22개). 전체는 push 직전에 | 로컬 5.5~6.5분(workers 4), CI 약 14~22분(workers 2, 제한 35분, DF-52) |
 | smoke:prod | 운영 보안 헤더·CSP, SPA 라우팅·404, published 용어 상세·JSON, `/config.json`, 캐시 헤더 | 47 | 통과 47 / 실패 0 (11-24) | 2~3초 |
 | smoke:auth | 실제 Cognito: 로그인·새로고침 유지·로그아웃, CSP 위반 없음 | 8 | 통과 8 / 실패 0 (11-24) | 약 9초 |
 | smoke:progress | 실제 API: 토큰 검증(없음·변조·만료), 사용자 격리, 기록 GET·PUT 응답 시간(각 10회, 최대 1초 이하), 다른 브라우저 진행률, API 경로 전수 호출, 화면 탈퇴·정리, 오래된 토큰 탈퇴 거부, 고아 정리, ID 토큰 거부(모든 라우트·탈퇴 401, DF-50) | 48 | 통과 48 / 실패 0 (11-24, 진행률 문구 "1 / 14 완독") | 약 5분 45초(5분 넘은 토큰을 만들기 위한 대기 포함) |
@@ -34,9 +34,9 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 
 | 영역 | 파일(테스트 수) |
 | --- | --- |
-| 화면·플레이어 | `auth.test.ts`(21, 저장된 로그인 판정 포함), `recent.test.ts`(2), `summary.test.ts`(3), `bookmarks.test.ts`(5, 책갈피 규칙), `engine.test.ts`(18), `simulate.test.ts`(50), `speedStore.test.ts`(2), `lockState.test.ts`(5), `three/pure.test.ts`(16), `stackState.test.ts`(5), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2), 랜딩 `sketchScene.test.ts`(3)·`josa.test.ts`(2) |
-| 콘텐츠 스키마 | `index.test.ts`(15), `scene.test.ts`(34), `marks.test.ts`(10, 본문 표시 문법) |
-| 스크립트 | `validate-content.test.ts`(10), `no-shell.test.ts`(19: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `subset-hand-font.test.ts`(1), `ci-gate-rules.test.ts`(6, Lambda 호출 권한 예외 4개 추가), `changeset-prepare.test.ts`(3) |
+| 화면·플레이어 | `auth.test.ts`(21, 저장된 로그인 판정 포함), `recent.test.ts`(2), `summary.test.ts`(3), `bookmarks.test.ts`(5, 책갈피 규칙), `engine.test.ts`(18), `simulate.test.ts`(69, draft 7개 포함), `speedStore.test.ts`(2), `lockState.test.ts`(5), `three/pure.test.ts`(16), `stackState.test.ts`(5), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2), 랜딩 `sketchScene.test.ts`(3)·`josa.test.ts`(2) |
+| 콘텐츠 스키마 | `index.test.ts`(26, 설명 틀·풀이 사전 항목 포함), `scene.test.ts`(34), `marks.test.ts`(15, 본문 표시 문법·각주 표시), `explain.test.ts`(3, 설명 틀 규칙) |
+| 스크립트 | `validate-content.test.ts`(17, 풀이 사전·각주 규칙 포함), `no-shell.test.ts`(19: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `subset-hand-font.test.ts`(1), `ci-gate-rules.test.ts`(6, Lambda 호출 권한 예외 4개 추가), `changeset-prepare.test.ts`(3) |
 | API | `api.test.ts`(33, 액세스 토큰만 받기 DF-50) |
 | 인프라 | `web-stack.test.ts`(9), `auth-stack.test.ts`(7), `api-stack.test.ts`(8), `ci-stack.test.ts`(8) |
 
@@ -55,7 +55,9 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | `google.e2e.ts` | 5 | `@google` | 구글 로그인 흐름(가짜), 콜백 실패·코드 없음·사이트 밖 next, 구글 사용자 탈퇴 재확인, 푸터·/privacy |
 | `related.e2e.ts` | 14 | 용어 ID | 관련 용어 카드 순서·이동 |
 | `scroll.e2e.ts` | 7 | `@scroll` | 색인→용어 쪽은 맨 위·포커스 없음, 뒤로 가기는 색인·랜딩이 떠난 위치, `#term-fig` 주소와 랜딩 "3D로 자세히 보기"만 플레이어 그림에서 시작(해시로 열었다 돌아와도 떠난 위치), 색인 필터를 바꿔도 안 튐, 목차 이동 뒤 다른 용어는 맨 위 |
-
+| `explain.e2e.ts` | 19 | `@explain`, 용어 ID | 설명 틀 부분 순서·이름표·문단 수, 각주 단어(점선 밑줄, 단어 전체가 풀이 상자의 트리거: 마우스·누르기·키보드·Esc), 본문 ↔ 목록 왕복 링크, 공개 용어는 실선 링크, 화면 읽기 이름, 누르는 영역 24px, 밑줄 3:1·글자 4.5:1(라이트·다크) |
+| `term-head.e2e.ts` | 15 | `@explore`, 용어 ID, `@ssrf` | 머리 영역: 완독 칸이 제목 줄 오른쪽 위, 설명·플레이어가 카드 폭을 씀, 줄 길이 상한(48.4rem, 설명 틀 용어는 가운데 줄이 50~62자), 390px에서 제목 → 완독 → 설명 한 열, Tab 순서(완독 칸 → 설명 → 플레이어) |
+| `usejson.e2e.ts` | 3 | `@scroll` | 응답을 기다리는 도중 나갔다 돌아와도 "불러오는 중…"에서 멈추지 않음(DF-54), 운영 빌드와 개발 서버 모두 |
 ### 성능 기준(NFR-02)
 
 | 지표 | 기준 | 근거 | 최근 측정(11-24, 로컬 전체 E2E 중) | 검사 |
@@ -94,7 +96,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 수준 | 잡은 결함 | 그 뒤 추가한 검사 |
 | --- | --- | --- |
 | 단위·타입 검사 | DF-10(생성자 매개변수 속성) | CLAUDE.md 문법 규칙 |
-| E2E | DF-20(LockScene 2D로 떨어짐), DF-21·DF-22(겹침·화면 밖), DF-26(E2E 멈춤), DF-31(관련 용어 순서), DF-46(홈 CLS 0.091, 성능 측정) | 장면 기록·겹침 검사, 멈춤 진단 리포터, LCP·CLS 검사 |
+| E2E | DF-20(LockScene 2D로 떨어짐), DF-21·DF-22(겹침·화면 밖), DF-26(E2E 멈춤), DF-31(관련 용어 순서), DF-46(홈 CLS 0.091, 성능 측정), DF-54(draft E2E 58개가 "불러오는 중…"에서 멈춤, `useJson`) | 장면 기록·겹침 검사, 멈춤 진단 리포터, LCP·CLS 검사, `usejson.e2e.ts` |
 | 번들 검사(`check:bundle`) | DF-08(홈 묶음에 motion), DF-28(가짜 구현 청크가 운영 묶음에) | 가짜 구현 표시 검사 |
 | smoke | DF-33(최근 본 용어 GET 500, IAM 권한 누락), DF-36(탈퇴 정리 경쟁) | API 경로 전수 실제 호출, PR-07 |
 | check:aws | DF-39(조건 비교 키 순서) | 정렬 비교 |
@@ -122,6 +124,9 @@ GitHub Actions `deploy` 워크플로, 2026-11-20 ~ 21(UTC 기준 시작 시각).
 
 ## 5. 확인하지 못한 것
 
+- **설명 틀 전환은 일부만 했다**: SSRF·데드락만 설명 틀이고 나머지 12개는 이전 형식이다(검증기 경고 한 줄). draft 7개는 "(설명 준비 중)"이다.
+- **draft 7개의 사람 검수**: 장면·자막은 스크린샷으로 단계마다 대조했지만 개념 검수(status를 published로 바꾸기 전)는 사용자가 한다. 페이지 폴트는 RAM 이름표가 커널 모형 위에 놓이는 단계가 있다(docs/04 "새 어휘가 필요해…").
+- **글자 대비는 이번 CSS 변경에서 색을 바꾸지 않았다**: 머리 영역 배치와 줄 길이만 바꿨고, 새 색은 없다. axe(라이트·다크)와 각주 대비 E2E로 확인했다.
 - **smoke:auth:signup**: 8단계(구글 로그인, 인증 코드 변경) 뒤에는 다시 돌리지 않았다. CLAUDE.md는 인증 코드를 바꿔 배포했을 때 돌리게 되어 있다.
 - **성능 측정 범위**: LCP·CLS는 운영 CDN이 아니라 로컬 테스트 빌드 기준이고, 기록 API 응답 시간은 Lambda 콜드 스타트를 뺀 값이다.
 - **CI의 새 E2E**: 2차의 37개는 CI 44795013341, 3차의 `@wide` 14개는 CI 44801749175에서 통과했다. 4차부터 CI의 `@perf`는 측정만 하고 판정하지 않는다(2절).

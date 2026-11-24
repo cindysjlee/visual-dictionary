@@ -13,7 +13,7 @@
   "aliases": ["사이트 간 요청 위조"],     // 검색 대상
   "category": "web-security",            // 아래 카테고리 표 참고
   "summary": "한 줄 요약",                // 카드·검색 대상
-  "description": "개념 설명 (2~4문장)",
+  "description": "개념 설명",             // 문자열(이전 형식) 또는 설명 틀 객체(아래 "설명 틀과 각주")
   "status": "published",                 // draft | published | retired
   "scenario": {
     "playerType": "flow",                // flow | stack | lock
@@ -37,7 +37,7 @@
 | 필드 | 필수 | 규칙 |
 | --- | --- | --- |
 | `id` | O | `^[a-z0-9]+(-[a-z0-9]+)*$`, 파일명과 일치, 전체에서 유일 |
-| `name`, `summary`, `description` | O | 빈 문자열 금지 |
+| `name`, `summary`, `description` | O | 빈 문자열 금지. `description`은 문자열(이전 형식, 12개를 옮길 때까지 허용) 또는 설명 틀 객체 |
 | `englishName`, `aliases` | | 검색 대상. `aliases` 기본값 `[]` |
 | `category` | O | 카테고리 표의 값 |
 | `status` | O | `draft`는 빌드에서 제외, `published`만 배포, `retired`는 배포 제외하되 ID 재사용 방지용으로 파일 유지 |
@@ -72,6 +72,49 @@
 - 검증 실패: 짝이 안 맞는 `==`·`` ` ``, 빈 표시(`====`, ``` `` ```), HTML 태그(`<b>`, `<script>` 등), `**`·`__`·`[..](..)` 같은 다른 문법, 한 문단에 형광펜 두 군데 이상.
 - 비교·검색은 표시를 뺀 글자(`plainText`)로 한다.
 
+### 설명 틀과 각주 (`description` 객체, 2026-11-24)
+
+처음 온 사람이 한 문단만으로 개념을 잡기는 어렵고, 낯선 단어를 풀 곳도 없어서 `description`을 부분으로 나눈다. 부분 이름이 고정이라 화면 제목이 같고, 필드가 나뉘어 있어 검증과 다른 곳(퀴즈 등)에서 다시 쓸 수 있다. 이전 형식(문자열 하나)은 용어 12개를 모두 옮길 때까지 허용하고, 빌드는 옮기지 않은 용어 목록을 경고 한 줄로 출력한다.
+
+```jsonc
+"description": {
+  "definition": "공격자가 서버를 시켜 [[내부 주소]]로 대신 요청을 보내게 하는 공격이다.",  // 한 줄 정의
+  "analogy": ["쉬운 비유 문단 1~3개"],
+  "how": ["어떻게 일어나나 문단 2~4개"],
+  "why": ["왜 위험한가(CS 용어는 왜 중요한가) 문단 1~3개"]
+}
+```
+
+| 규칙 | 내용 | 어기면 |
+| --- | --- | --- |
+| 구조 | 네 필드가 모두 있고 다른 필드는 없다. 문단 수는 위 범위 | 오류 |
+| 한 줄 정의 | 한 문장, 표시를 뺀 글자 90자 이하(`DEFINITION_MAX`) | 오류 |
+| 문장 길이 | 70자(`SENTENCE_WARN`)를 넘는 문장은 나눈다 | 경고 |
+| 표시 | `==형광펜==`·`` `코드` ``는 본문 표시 문법과 같다. 형광펜은 문단당 최대 한 곳 | 오류 |
+| 각주 `[[단어]]` | 설명 틀 안에서만 쓴다(방어 설명·이전 형식 문자열에는 못 쓴다). 용어 하나에 서로 다른 단어 4개까지(`NOTES_MAX`), 같은 단어를 두 번 쓰지 않는다 | 오류 |
+| 부분 이름 | 한 줄 정의 · 쉬운 비유 · 어떻게 일어나나 · 왜 위험한가. 웹 보안 분야이거나 방어(`kind: defense`)가 있으면 "왜 위험한가", 아니면 "왜 중요한가"(`partLabel()`) | 자동 |
+| 초안 자리 | `"(설명 준비 중)"`(`DRAFT_DESCRIPTION`) 문자열은 `status: draft`에서만 | 오류 |
+
+**풀이 사전 `content/glossary.json`.** 각주 단어의 풀이를 한 곳에 둔다: `[{ "word", "gloss", "term"? }]`. `word`는 20자 이하(`[ ] ` =`와 줄바꿈 금지), `gloss`는 120자 이하·두 문장 이하, 본문 표시는 `` `코드` ``만 쓴다. `term`은 이 단어가 공개된 용어와 같은 말일 때 그 용어의 `id`를 적는다(화면은 풀이 상자 대신 그 용어로 가는 링크).
+- 오류: 본문에 있는데 사전에 없는 단어, 어떤 용어에도 쓰이지 않는 항목, 없는 용어 `id`를 가리키는 `term`, 용어가 자기 자신을 가리키는 `term`, 같은 `word` 중복.
+- 빌드(`build-index.ts` `withFootnotes()`)는 각 `terms/<id>.json`에 `footnotes: [{ word, gloss, link? }]`를 본문에 나온 순서대로 풀어 넣는다. 화면은 사전 파일을 따로 받지 않는다. `link`는 가리키는 용어가 그 빌드의 결과물(개발용은 draft 포함, 배포용은 published만)에 있을 때만 붙는다.
+
+### 새 어휘가 필요해 데이터로 나타내지 못한 것 (2차 초안 7개를 쓰며 확인)
+
+새 어휘는 사용자와 먼저 상의한다. 아래는 지금 어휘로는 화면에서 표현하지 못해 자막과 화면판 글자로 대신한 것이다.
+
+| 필요한 표현 | 걸린 용어 | 지금의 대체 |
+| --- | --- | --- |
+| 우선순위·선점, 준비/대기 상태 | 우선순위 역전, 컨텍스트 스위칭, 페이지 폴트 | 화면판 글자("준비 (CPU 차례 기다림)", "잠듦(디스크 대기)")와 자막 |
+| 프로세스 상태 배지, CPU 토큰 | 컨텍스트 스위칭, 페이지 폴트 | 화면판 글자 |
+| 암호화 표시, 공유 키 표시 | TLS 핸드셰이크 | 라벨의 `[암호화]` 글자. `store` 효과는 화면판 라벨이 같은 자리를 덮어 키가 보이지 않아 쓰지 않음 |
+| 목적지가 아닌 쪽의 검사(브라우저가 인증서를 확인) | TLS 핸드셰이크 | 클라이언트 화면판 글자 |
+| 브로드캐스트(모두에게 퍼뜨림) | ARP 스푸핑 1단계 | 게이트웨이로 가는 화살표 하나. 자막이 "모두에게"라고 설명 |
+| 유선 스위치 모양 | ARP 스푸핑 | `kind: server`, `look: web`(검문소 `gate: true`) |
+| 다른 결말로 갈라지는 분기(SIGSEGV) | 페이지 폴트 | 자막 한 문장 |
+| 되감기 중 반환 주소 태그 숨기기 | 예외 전파 | 자막 |
+
+페이지 폴트는 RAM과 디스크를 `internal` 구역 한 줄에 둔다(RAM을 서버·사이·클라이언트 구역에 두면 디스크와 34% 겹치거나 MMU를 가렸다). 그래도 몇 단계에서 RAM 이름표가 커널 모형 위에 놓인다.
 ## 플레이어 유형별 action
 
 | playerType | 허용 action | from → to의 뜻 | 화면 표현 |
@@ -84,7 +127,7 @@
 
 ## 스택형 필드와 효과 (`playerType: "stack"`)
 
-- `scenario.code: { title?, lines[] }`: 코드 판(C·Java 문법에 가까운 의사코드 하나로 통일). `steps[].line`: 이 단계 뒤 맨 위 프레임이 실행 중인 줄(1부터). push할 때 호출한 쪽의 줄이 새 프레임의 **반환 주소**(돌아갈 곳)가 된다.
+- `scenario.code: { title?, lines[] }`: 코드 판(C·Java 문법에 가까운 의사코드 하나로 통일. 예외: 예외 전파(`exception-propagation`)는 파이썬 traceback을 설명하므로 제목에 "Python"을 적은 파이썬 코드 판을 쓴다). `steps[].line`: 이 단계 뒤 맨 위 프레임이 실행 중인 줄(1부터). push할 때 호출한 쪽의 줄이 새 프레임의 **반환 주소**(돌아갈 곳)가 된다.
 - 효과: `locals { target?, vars: [{ name, value }] }`(맨 위 프레임, 또는 `target` 함수의 맨 위 프레임 서랍의 지역 변수 칸을 정하거나 바꿈), `returnValue { value, into? }`(pop 단계에서 반환값이 호출한 프레임의 칸 `into`로 전달됨).
 - `scenario.stackLimit`(1~12): 유리 기둥 그 높이에 "스택 한도" 선을 긋는다(프레임 칸 수). 효과 `overflow`: 한도를 넘는 push에 붙이면 그 프레임이 선 위로 솟아 공격색이 되고 선이 깜빡인다. `stamp { label, tone }`(도장)도 스택형에서 쓸 수 있다(예: `StackOverflowError`).
 - `defenses[].code`(해결 방법만): 이 모드에서는 처음부터 코드 판이 이 코드(고친 코드)다. 고친 프로그램을 처음부터 실행하는 것이므로, 갈림 단계 앞 단계의 자막이 원래 코드를 설명하면 `overrides`로 자막을 따로 쓴다. 모든 `line`이 두 코드에서 같은 줄을 가리키도록 줄 번호를 맞춰 두는 것이 좋다. 판 높이는 가장 긴 코드에 맞춘다.
@@ -170,7 +213,7 @@
 `scripts/build-index`가 `status: "published"`인 파일만 모아 `apps/web/generated/build/content/`에 만든다. 배포 주소에서는 `/content/...`로 제공된다. 화면 경로 `/terms/:id`와 겹치지 않게 하려고 `/content/` 아래에 둔다.
 
 - `/content/index.json`: 목록·검색·진행률 계산용. 용어마다 `id`, `name`, `englishName`, `aliases`, `category`, `summary`, `playerType`, `stepCount`(단계 수), `defenseCount`(차단 단계가 있는 방어 수), `supportCount`(차단 단계 없는 보조 방어 수), `dangerFrom`(처음 `danger: true`인 단계 번호, 없으면 `null`), `blockedAt`(방어들의 `blockedAtStep`을 중복 없이 오름차순)만 담는다. `stepCount`~`supportCount`는 목록 카드의 "흐름형 · 6단계 · 방어 2개"(보조가 있으면 "방어 1 · 보조 1") 표시용이고, `dangerFrom`·`blockedAt`은 랜딩의 단계 막대(공격이 어디서 위험해지고 방어가 어디서 막는지) 표시용이다.
-- `/content/terms/<id>.json`: 상세 페이지용. 스키마 검증을 거쳐 기본값(`aliases: []`, `danger: false` 등)을 채운 결과.
+- `/content/terms/<id>.json`: 상세 페이지용. 스키마 검증을 거쳐 기본값(`aliases: []`, `danger: false` 등)을 채우고, 각주 풀이를 `footnotes`로 풀어 넣은 결과(`BuiltTerm`).
 
 개발 서버(`npm run dev`)용은 `draft`까지 포함해 `apps/web/generated/dev/content/`에 따로 만든다. `vite.config.ts`는 `vite build`일 때 `generated/build`만 publicDir로 쓰므로, `npx vite build`를 직접 실행해도 draft가 배포 결과물에 들어갈 수 없다. `retired`는 어느 쪽에도 포함하지 않는다.
 
@@ -186,6 +229,7 @@
 - `blockedAtStep`이 단계 수를 넘음, `blockedAtStep`이 있는데 `blockedLabel`/`blockedCaption` 없음
 - 방어(`defense`)에 `branchAtStep`·`steps`, 해결 방법(`solution`)에 `blockedAtStep`, `branchAtStep`과 `steps` 중 하나만 있음, 갈림 단계 이후의 `overrides`
 - 스택형 push·pop·run 순서, 점유형 acquire·wait·release 상태(위 각 절)
+- 설명 틀: 구조·문단 수·한 줄 정의 길이·각주 4개 초과·같은 단어 반복, 초안이 아닌 용어의 "(설명 준비 중)", 풀이 사전의 누락·미사용·잘못된 `term`·자기 링크(위 "설명 틀과 각주"). 70자 넘는 문장과 옛 형식 용어 목록은 경고
 
 오류가 있으면 파일명과 위치(예: `csrf.json: scenario.steps[4].to`)를 출력하고 빌드를 실패시킨다.
 
