@@ -1,12 +1,12 @@
 // 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 → 뜻풀이 + 오른쪽 완독 메모(完 도장 + 완독한 날, 학습 상태)
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
 // 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
-import { Link, useLocation, useParams } from "react-router";
+import { Link, useLocation, useNavigationType, useParams } from "react-router";
 import type { IndexEntry, Term } from "@app/content-schema";
 import { defenseCounts } from "@app/content-schema/scene";
 import NotFoundPage from "../../NotFoundPage.tsx";
 import { useJson } from "../../useJson.ts";
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { loginPath } from "../auth/safeNext.ts";
 import { useAuth } from "../auth/store.ts";
 import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
@@ -85,7 +85,20 @@ function TermDetail({ term }: { term: Term }) {
     if (wasRead.current === false && read) setPress(true);
     wasRead.current = read;
   }, [read, state.status, auth.status]);
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const navType = useNavigationType();
+  // 용어 쪽은 늘 맨 위(용어 이름)에서 시작한다(Layout의 ScrollRestoration). 주소에 #term-fig처럼 가리키는 곳이 있을 때만 거기서 시작한다.
+  // 내용이 늦게 도착한 첫 방문은 라우터가 그 자리를 아직 모르므로 여기서 한 번 옮긴다. 뒤로 가기(POP)는 라우터가 먼저 떠난 위치를 복원하므로(앞선 형제 효과),
+  // 이미 맨 위가 아니면 건드리지 않는다. 주소를 직접 열었을 때도 POP이지만 그때는 맨 위라 해시로 간다
+  useLayoutEffect(() => {
+    if (!hash || (navType === "POP" && window.scrollY > 0)) return;
+    try {
+      document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+    } catch {
+      // 해석할 수 없는 해시는 무시한다(맨 위에서 시작)
+    }
+    // 처음 그려질 때만: 쪽 안 차례 링크로 해시가 바뀌는 것은 라우터가 처리한다
+  }, []);
   // 끝까지 봄(FR-PRG-01): 로그인 상태면 읽음으로 저장, 아니면 로그인 안내. 저장이 실패해도 재생은 그대로(NFR-02)
   const [completed, setCompleted] = useState(false);
   const [saveError, setSaveError] = useState<string>();
@@ -247,5 +260,6 @@ export default function TermPage() {
   if (load.state === "loading") return <TermSkeleton />;
   if (load.state === "notfound") return <NotFoundPage message="찾는 용어가 없습니다." />;
   if (load.state === "error") return <p role="alert">용어를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
-  return <TermDetail term={load.data} />;
+  // key: 다른 용어로 바뀌면 재생 상태·완독 안내 같은 이 쪽의 상태를 처음부터 다시 시작한다(캐시된 용어는 "불러오는 중"을 거치지 않는다)
+  return <TermDetail key={load.data.id} term={load.data} />;
 }

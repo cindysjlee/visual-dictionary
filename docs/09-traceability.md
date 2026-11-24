@@ -20,7 +20,7 @@
 | FR-EXP-02 카테고리 필터 | docs/05 | `HomePage.tsx` | E `explore.e2e.ts`(비회원, 기본 "전체", 카테고리마다 그 용어만), E `progress.e2e.ts`(읽음 필터와 함께) | 완료 | |
 | FR-EXP-03 키워드 검색 | docs/05 | `HomePage.tsx`(이름·영문명·요약·별칭, 소문자 비교) | E `explore.e2e.ts`(별칭 대문자 입력·영문명 소문자·한글 별칭·요약 일부, 카테고리와 함께) | 완료 | |
 | FR-EXP-04 결과 없음 안내 | docs/05 | `HomePage.tsx`("전체 목록 보기") | E `explore.e2e.ts`(안내 문구·버튼, 누르면 검색어·카테고리 초기화) | 완료 | |
-| FR-EXP-05 상세 진입·고유 URL | docs/03 1.1 | `main.tsx` 라우트, `features/term/TermPage.tsx` | E `player.e2e.ts`(모든 용어 `/terms/<id>` 직접 열기), S smoke:prod(published 전부 200) | 완료 | |
+| FR-EXP-05 상세 진입·고유 URL | docs/03 1.1, 1.5 "화면 이동 스크롤" | `main.tsx` 라우트, `features/term/TermPage.tsx`, `Layout.tsx` `ScrollRestoration`, `useJson.ts` | E `player.e2e.ts`(모든 용어 `/terms/<id>` 직접 열기), E `scroll.e2e.ts` @scroll(색인을 내려 둔 채 열어도 맨 위, 뒤로 가기는 떠난 위치, `#term-fig`·랜딩 "3D로 자세히 보기"만 플레이어에서 시작, 색인 필터는 튀지 않음), S smoke:prod(published 전부 200) | 완료 | CH-58, DF-53 |
 | FR-EXP-06 첫 화면(랜딩) | docs/05 랜딩, docs/03 1.5 | `features/landing/LandingPage.tsx`·`DictionaryPage.tsx`·`SketchFigure.tsx` | 단 `sketchScene.test.ts`·`josa.test.ts`, E `a11y.e2e.ts`(`/` 라이트·다크), E `perf.e2e.ts`(랜딩 LCP·CLS), E `viewport.e2e.ts`(360·1920) | 완료 | CH-56 |
 | FR-EXP-07 로그인 분기 | docs/03 1.5 | `features/auth/session.ts` `hasStoredSession()`, `main.tsx` index `loader` | 단 `auth.test.ts`(저장된 로그인 판정 5가지), E `auth.e2e.ts`(로그인 뒤 `/` → 색인) | 완료 | CH-56. 토큰이 만료됐으면 색인이 비로그인으로 보인다 |
 

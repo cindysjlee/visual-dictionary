@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from "react-router";
 import { loginPath } from "./features/auth/safeNext.ts";
 import { auth, startAuth, useAuth } from "./features/auth/store.ts";
 import { startProgress } from "./features/progress/store.ts";
@@ -85,6 +85,8 @@ export default function Layout() {
   }, [landing]);
   return (
     <>
+      {/* 새 화면은 맨 위에서, 뒤로 가기는 떠난 자리에서 시작한다. 데이터 라우터에서는 인라인 스크립트를 내지 않으므로 CSP(script-src 'self')와 맞는다 */}
+      <ScrollRestoration />
       <div className="page">
         <header className="glass topbar">
           <Link to={user.status === "user" ? "/terms" : "/"} className="logo">

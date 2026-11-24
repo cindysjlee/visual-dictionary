@@ -87,7 +87,7 @@ export default function HomePage() {
     const next = new URLSearchParams();
     if (q) next.set("q", q);
     if (c !== "all") next.set("field", c);
-    setParams(next, { replace: true });
+    setParams(next, { replace: true, preventScrollReset: true }); // 같은 화면 안의 필터라 스크롤을 맨 위로 보내지 않는다
   };
   const changeQuery = (q: string) => {
     setQuery(q);

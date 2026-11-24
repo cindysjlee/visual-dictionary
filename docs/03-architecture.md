@@ -105,7 +105,9 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 라우트 표(랜딩 `/`·`/about`, 색인 `/terms`, 상세 `/terms/:id`, 계정·`/me`·`/privacy`는 lazy) | `main.tsx` `router` |
 | 랜딩 로그인 분기(로그인 기록이 있으면 `/` → `/terms`) | `features/auth/session.ts` `hasStoredSession()`, `main.tsx` index `loader` |
 | 정적 파일(robots.txt·파비콘)을 배포 폴더로 복사 | `scripts/build-index.ts`(`apps/web/static/` 전체) |
-| 정적 JSON 읽기 (JSON이 아닌 응답은 `notfound`로 처리) | `useJson.ts` `useJson()` |
+| 정적 JSON 읽기 (JSON이 아닌 응답은 `notfound`로 처리, 읽은 적이 있으면 첫 그리기부터 그 내용을 주고 뒤에서 다시 읽는다) | `useJson.ts` `useJson()` |
+| 화면 이동 스크롤(새 화면은 맨 위, 뒤로 가기는 떠난 자리, 색인 필터는 그대로) | `Layout.tsx` `ScrollRestoration`, `features/explore/HomePage.tsx` `sync()`(`preventScrollReset`) |
+| 플레이어로 바로 가는 주소(`/terms/<id>#term-fig`) | `features/landing/SketchFigure.tsx`("3D로 자세히 보기" 링크), `features/term/TermPage.tsx`의 해시 이동 효과 |
 | 첫 화면(랜딩): 용어 풀이 ①②③, 그림 1, 색인 미리보기, 책갈피(가입) | `features/landing/LandingPage.tsx` `LandingPage`, `pickDemo()`, `DictionaryPage.tsx` |
 | 랜딩 그림 1(연필 스케치, three.js 없음) | `features/landing/SketchFigure.tsx` `SketchFigure`, 상태 `sketchScene.ts` `sceneAt()`·`sceneDuring()`, 손글씨 글꼴 조각 `scripts/subset-hand-font.ts` |
 | 용어 색인(목록)·검색·분야 거르기·읽음 필터 | `features/explore/HomePage.tsx` `HomePage`, `matches()`, `features/progress/summary.ts` `passesReadFilter()` |

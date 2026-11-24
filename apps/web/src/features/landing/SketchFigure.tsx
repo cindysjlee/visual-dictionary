@@ -725,7 +725,7 @@ export default function SketchFigure({ term, mine = false }: { term: Term; mine?
 
       {/* 자리를 미리 잡아 두고(레이아웃이 밀리지 않게) 끝까지 재생하면 보인다 */}
       <p className="la-fig-next" data-on={finished}>
-        <Link className="la-btn la-btn-sm la-btn-ink" to={`/terms/${term.id}`} tabIndex={finished ? undefined : -1}>
+        <Link className="la-btn la-btn-sm la-btn-ink" to={`/terms/${term.id}#term-fig`} tabIndex={finished ? undefined : -1}>
           3D로 자세히 보기 → {term.name} 용어
         </Link>
         {mine ? (
