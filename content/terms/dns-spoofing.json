@@ -1,0 +1,205 @@
+{
+  "id": "dns-spoofing",
+  "name": "DNS 스푸핑",
+  "englishName": "DNS Spoofing",
+  "aliases": ["DNS 캐시 포이즈닝", "DNS cache poisoning", "DNS 위조"],
+  "category": "network",
+  "summary": "공격자가 위조한 DNS 응답을 리졸버 캐시에 심어, 이름을 입력한 사용자를 가짜 서버로 보내는 공격",
+  "description": "(설명 준비 중)",
+  "status": "draft",
+  "scenario": {
+    "playerType": "flow",
+    "actors": [
+      { "id": "browser", "name": "사용자 브라우저", "role": "user", "kind": "browser", "zone": "client", "site": "browser" },
+      {
+        "id": "user",
+        "name": "은행 탭",
+        "role": "user",
+        "kind": "tab",
+        "parent": "browser",
+        "site": "bank.example",
+        "screen": { "title": "bank.example", "lines": ["(접속 전)"] }
+      },
+      {
+        "id": "resolver",
+        "name": "DNS 리졸버 (ISP)",
+        "role": "server",
+        "kind": "server",
+        "look": "web",
+        "zone": "between",
+        "gate": true,
+        "mirrorScreen": true,
+        "screen": { "title": "리졸버 캐시", "lines": ["(bank.example 없음)"] }
+      },
+      {
+        "id": "authns",
+        "name": "bank.example의 네임서버",
+        "role": "server",
+        "kind": "server",
+        "look": "web",
+        "zone": "server",
+        "site": "ns.bank.example",
+        "screen": { "title": "진짜 기록", "lines": ["bank.example → 진짜 IP"] }
+      },
+      { "id": "attacker", "name": "공격자", "role": "attacker", "kind": "attacker", "zone": "outside" },
+      {
+        "id": "fake",
+        "name": "가짜 은행 서버",
+        "role": "server",
+        "kind": "server",
+        "look": "bank",
+        "tone": "attack",
+        "zone": "outside",
+        "site": "bank.example"
+      }
+    ],
+    "steps": [
+      {
+        "action": "send",
+        "from": "user",
+        "to": "resolver",
+        "title": "사용자가 주소를 물음",
+        "label": "bank.example의 IP는?",
+        "caption": "사용자가 bank.example에 접속하려고 하면 브라우저는 먼저 DNS 리졸버에게 이 이름의 IP 주소를 묻습니다. 리졸버의 캐시에는 아직 답이 없습니다."
+      },
+      {
+        "action": "send",
+        "from": "resolver",
+        "to": "authns",
+        "title": "리졸버가 진짜 네임서버에 질의",
+        "label": "bank.example? · ID 1234 · 포트 5353",
+        "caption": "리졸버는 bank.example을 관리하는 네임서버에 같은 질문을 보냅니다. 이 질문에는 16비트 질문 번호(ID)가 붙고, 응답은 이 번호와 질문을 보낸 포트가 맞아야 받아들여집니다. 진짜 응답이 도착하기 전의 짧은 시간이 공격이 끼어들 틈입니다."
+      },
+      {
+        "action": "send",
+        "from": "attacker",
+        "to": "resolver",
+        "title": "공격자가 위조 응답을 먼저 보냄",
+        "label": "위조 응답 · bank.example = 가짜 IP",
+        "caption": "공격자는 진짜 응답이 오기 전에 \"bank.example은 가짜 서버 IP\"라는 위조 응답을 보냅니다. 질문 번호를 맞히려고 번호를 바꿔 가며 많이 보냅니다. 포트가 고정된 리졸버라면 번호만 맞히면 됩니다.",
+        "danger": true,
+        "burst": 4,
+        "effects": [
+          {
+            "type": "inspect",
+            "at": "resolver",
+            "contents": ["bank.example = 가짜 IP", "질문 번호 맞음", "보낸 곳 주소 위조"],
+            "checks": [
+              { "name": "질문 번호·포트 일치", "result": "일치", "status": "ok" },
+              { "name": "DNSSEC 서명 검증", "result": "검증 안 함", "status": "skip" }
+            ]
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "resolver",
+        "to": "resolver",
+        "title": "위조 응답이 캐시에 저장됨",
+        "label": "캐시: bank.example → 가짜 IP",
+        "caption": "리졸버는 질문 번호가 맞는 이 응답을 진짜로 믿고 캐시에 저장합니다. 뒤늦게 도착한 진짜 응답은 이미 처리된 질문의 응답이라 버려집니다. 이제 캐시를 쓰는 모든 사용자가 같은 가짜 주소를 받습니다. 저장 기간(TTL) 동안 계속됩니다.",
+        "danger": true,
+        "effects": [
+          {
+            "type": "rewrite",
+            "target": "resolver",
+            "screen": { "title": "리졸버 캐시", "lines": ["bank.example → 가짜 IP", "(저장 기간 동안 유지)"] }
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "resolver",
+        "to": "user",
+        "title": "사용자에게 가짜 IP를 알려 줌",
+        "label": "bank.example = 가짜 IP",
+        "caption": "리졸버가 캐시에 있는 값을 사용자에게 알려 줍니다. 사용자는 아무것도 잘못하지 않았고 주소도 정확히 입력했지만, 이름이 가리키는 곳이 바뀌었습니다.",
+        "danger": true
+      },
+      {
+        "action": "send",
+        "from": "user",
+        "to": "fake",
+        "title": "사용자가 가짜 서버에 접속",
+        "label": "GET / · Host: bank.example",
+        "caption": "브라우저는 받은 IP로 접속합니다. 주소창에는 bank.example이라고 보이지만 실제로 닿은 곳은 공격자가 만든 서버입니다. 인증서 검사가 없다면(HTTP) 사용자는 눈치채지 못합니다.",
+        "danger": true,
+        "effects": [
+          {
+            "type": "rewrite",
+            "target": "user",
+            "screen": { "title": "http://bank.example", "lines": ["인증서 확인 없음(HTTP)", "자물쇠 없음"] }
+          }
+        ]
+      },
+      {
+        "action": "send",
+        "from": "fake",
+        "to": "user",
+        "title": "가짜 로그인 화면",
+        "label": "가짜 로그인 페이지",
+        "caption": "가짜 서버는 진짜와 똑같이 만든 로그인 화면을 돌려줍니다. 사용자가 아이디와 비밀번호를 입력하면 공격자에게 그대로 전달됩니다. 이렇게 이름을 속여 가짜 사이트로 데려가는 것이 DNS 스푸핑의 목적입니다.",
+        "danger": true
+      }
+    ]
+  },
+  "defenses": [
+    {
+      "name": "DNSSEC",
+      "kind": "defense",
+      "description": "DNS 응답에 도메인 소유자의 디지털 서명을 붙이고, 리졸버가 그 서명을 검증하게 합니다. 위조 응답에는 올바른 서명이 없으므로 캐시에 들어가지 못합니다. 다만 ==도메인이 서명되어 있고 리졸버가 검증할 때만 효과가 있습니다==. 서명하지 않은 도메인은 보호되지 않습니다.",
+      "blockedAtStep": 3,
+      "blockedTitle": "서명 없는 응답 거부",
+      "blockedLabel": "DNSSEC · 서명 검증 실패",
+      "blockedCaption": "이 시나리오는 bank.example이 DNSSEC로 서명되어 있고, 리졸버가 서명을 검증한다고 가정합니다. 위조 응답에는 bank.example의 키로 만든 올바른 서명이 없으므로 리졸버가 응답을 버리고 캐시에 넣지 않습니다. 질문 번호를 맞혔어도 소용이 없습니다. 서명이 없는 도메인이거나 리졸버가 검증하지 않으면 이 방어는 작동하지 않습니다.",
+      "overrides": [
+        {
+          "step": 3,
+          "effects": [
+            {
+              "type": "inspect",
+              "at": "resolver",
+              "contents": ["bank.example = 가짜 IP", "질문 번호 맞음", "서명 없음"],
+              "checks": [
+                { "name": "질문 번호·포트 일치", "result": "일치", "status": "ok" },
+                { "name": "DNSSEC 서명 검증", "result": "올바른 서명 없음", "status": "fail" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HTTPS (서버 인증서 확인)",
+      "kind": "defense",
+      "description": "HTTPS는 DNS 위조 자체를 막지 못합니다. 대신 ==가짜 서버는 bank.example의 진짜 인증서를 내밀 수 없어 브라우저가 경고하고 연결을 막습니다==. 인증서에는 서버가 그 이름의 주인임을 증명하는 서명이 있고, 공격자는 그 이름으로 신뢰받는 인증서를 받을 수 없기 때문입니다. 사용자가 경고를 무시하고 넘어가면 이 방어는 소용이 없습니다.",
+      "blockedAtStep": 6,
+      "blockedTitle": "가짜 서버가 들통남",
+      "blockedLabel": "인증서 이름 불일치 · 경고",
+      "blockedCaption": "DNS는 이미 속았고 브라우저는 가짜 서버에 도착했습니다. 하지만 HTTPS 연결에서 가짜 서버는 bank.example의 진짜 인증서를 내밀 수 없습니다. 브라우저가 인증서를 검사해 이름이나 서명이 맞지 않음을 알아내고 경고 화면으로 연결을 막습니다. 위조가 막힌 것이 아니라, 속은 사실이 드러난 것입니다.",
+      "overrides": [
+        {
+          "step": 6,
+          "effects": [
+            {
+              "type": "rewrite",
+              "target": "user",
+              "screen": { "title": "연결이 안전하지 않음", "lines": ["인증서의 이름이 맞지 않음", "또는 신뢰할 수 없는 서명"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "출발지 포트 무작위화",
+      "kind": "defense",
+      "description": "리졸버가 질문마다 다른 출발지 포트를 무작위로 쓰게 하면, 공격자는 16비트 질문 번호에 더해 포트까지 맞혀야 합니다. 맞혀야 할 경우의 수가 크게 늘어 위조 성공 확률이 크게 낮아집니다. 위조를 완전히 막지는 못하는 보조 방어입니다."
+    }
+  ],
+  "references": [
+    { "title": "RFC 5452 · Measures for Making DNS More Resilient against Forged Answers", "url": "https://www.rfc-editor.org/rfc/rfc5452" },
+    { "title": "RFC 4033 · DNS Security Introduction and Requirements", "url": "https://www.rfc-editor.org/rfc/rfc4033" },
+    { "title": "Wikipedia · DNS spoofing", "url": "https://en.wikipedia.org/wiki/DNS_spoofing" }
+  ],
+  "related": ["ssl-stripping", "tls-handshake"]
+}

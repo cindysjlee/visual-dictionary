@@ -1,0 +1,132 @@
+{
+  "id": "exception-propagation",
+  "name": "예외 전파",
+  "englishName": "Exception Propagation",
+  "aliases": ["예외 전달", "스택 풀기", "stack unwinding"],
+  "category": "runtime",
+  "summary": "예외가 생기면 처리할 곳을 찾을 때까지 호출한 쪽으로 프레임을 하나씩 버리며 올라가는 동작",
+  "description": "(설명 준비 중)",
+  "status": "draft",
+  "scenario": {
+    "playerType": "stack",
+    "code": {
+      "title": "설정 파일 읽기 · Python",
+      "lines": [
+        "def read_config(path):",
+        "    f = open(path)",
+        "    return f.read()",
+        "",
+        "def load():",
+        "    return read_config(\"app.ini\")",
+        "",
+        "def main():",
+        "    try:",
+        "        load()",
+        "    except FileNotFoundError:",
+        "        print(\"설정 파일이 없어요\")"
+      ]
+    },
+    "actors": [
+      { "id": "main", "name": "main", "role": "function" },
+      { "id": "load", "name": "load", "role": "function" },
+      { "id": "read_config", "name": "read_config", "role": "function" },
+      { "id": "open", "name": "open", "role": "function" }
+    ],
+    "steps": [
+      {
+        "action": "push",
+        "from": "main",
+        "to": "main",
+        "line": 10,
+        "title": "main 시작, try 안으로",
+        "label": "main()",
+        "caption": "main이 try 블록 안에서 load()를 부르려 합니다. main에는 FileNotFoundError를 처리하는 except가 있습니다. 예외가 어디서 생기든 이 except가 마지막으로 기다립니다."
+      },
+      {
+        "action": "push",
+        "from": "main",
+        "to": "load",
+        "line": 6,
+        "title": "load() 호출",
+        "label": "load()",
+        "caption": "load 프레임이 쌓입니다. load는 6행에서 read_config(\"app.ini\")를 부릅니다. load에는 try가 없어서 예외를 처리할 수 없습니다."
+      },
+      {
+        "action": "push",
+        "from": "load",
+        "to": "read_config",
+        "line": 2,
+        "title": "read_config 호출",
+        "label": "read_config(\"app.ini\")",
+        "caption": "read_config 프레임이 쌓입니다. path는 \"app.ini\"이고, 2행에서 open(path)로 파일을 열려고 합니다. 여기에도 try는 없습니다.",
+        "effects": [{ "type": "locals", "vars": [{ "name": "path", "value": "\"app.ini\"" }] }]
+      },
+      {
+        "action": "push",
+        "from": "read_config",
+        "to": "open",
+        "line": 2,
+        "title": "open() 호출",
+        "label": "open(\"app.ini\")",
+        "caption": "파일을 여는 내장 함수 open의 프레임이 맨 위에 쌓입니다. 스택은 main → load → read_config → open 순서로 네 칸입니다."
+      },
+      {
+        "action": "run",
+        "from": "open",
+        "to": "open",
+        "line": 2,
+        "title": "파일이 없어 예외 발생",
+        "label": "raise FileNotFoundError",
+        "caption": "app.ini 파일이 없어서 open이 FileNotFoundError를 일으킵니다. 이 예외는 open 안에서 처리되지 않았습니다. 이제 파이썬은 예외를 처리할 except를 찾으러 호출한 쪽으로 올라가기 시작합니다.",
+        "danger": true,
+        "effects": [{ "type": "stamp", "label": "FileNotFoundError", "tone": "attack" }]
+      },
+      {
+        "action": "pop",
+        "from": "open",
+        "to": "read_config",
+        "line": 2,
+        "title": "open 프레임이 버려짐",
+        "label": "예외가 올라감",
+        "caption": "open에는 처리할 곳이 없으므로 이 프레임은 반환값 없이 버려지고, 예외가 호출한 read_config로 넘어갑니다. 정상 반환과 달리 돌아가서 다음 줄을 실행하지 않습니다. 3행 f.read()는 실행되지 않습니다.",
+        "danger": true
+      },
+      {
+        "action": "pop",
+        "from": "read_config",
+        "to": "load",
+        "line": 6,
+        "title": "read_config 프레임도 버려짐",
+        "label": "예외가 올라감",
+        "caption": "read_config에도 except가 없어서 이 프레임도 버려지고 예외는 load로 올라갑니다. 이렇게 처리할 곳을 찾을 때까지 프레임을 하나씩 버리며 올라가는 것이 예외 전파입니다.",
+        "danger": true
+      },
+      {
+        "action": "pop",
+        "from": "load",
+        "to": "main",
+        "line": 10,
+        "title": "load 프레임도 버려짐",
+        "label": "예외가 올라감",
+        "caption": "load도 예외를 처리하지 못해 버려집니다. 예외가 도착한 main에는 try … except FileNotFoundError가 있습니다. 예외의 종류가 맞으므로 여기서 멈춥니다.",
+        "danger": true
+      },
+      {
+        "action": "run",
+        "from": "main",
+        "to": "main",
+        "line": 12,
+        "title": "main의 except가 처리",
+        "label": "except FileNotFoundError",
+        "caption": "main의 except 블록이 예외를 받아 12행을 실행합니다. 예외가 처리됐으므로 프로그램은 계속 이어집니다. 중간에 있던 세 프레임은 이미 정리됐습니다. 만약 어디에서도 처리하지 않았다면 스택 트레이스백을 출력하고 프로그램이 종료됩니다.",
+        "effects": [{ "type": "stamp", "label": "except로 처리됨", "tone": "defense" }]
+      }
+    ]
+  },
+  "defenses": [],
+  "references": [
+    { "title": "Python 언어 레퍼런스 · 실행 모델의 예외 (Exceptions)", "url": "https://docs.python.org/3/reference/executionmodel.html" },
+    { "title": "Python 튜토리얼 · 오류와 예외", "url": "https://docs.python.org/3/tutorial/errors.html" }
+  ],
+  "related": ["call-stack", "stack-overflow"]
+}
