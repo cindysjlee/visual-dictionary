@@ -2,17 +2,42 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { termSchema, type Term } from "@app/content-schema";
+import { glossarySchema, termSchema, type GlossaryEntry, type Term } from "@app/content-schema";
+import { DRAFT_DESCRIPTION, SENTENCE_WARN, explanationNoteWords, explanationParagraphs, sentencesOf } from "@app/content-schema/explain";
 
 export const TERMS_DIR = fileURLToPath(new URL("../content/terms/", import.meta.url));
 /** 한 번이라도 공개(published)한 용어 id. 학습 기록의 키라 바꾸거나 지우지 않는다(FR-CNT-05). 용어를 내리려면 status를 retired로 */
 export const PUBLISHED_IDS = fileURLToPath(new URL("../content/published-ids.json", import.meta.url));
 const readPublishedIds = () => JSON.parse(readFileSync(PUBLISHED_IDS, "utf8")) as string[];
+/** 각주 풀이 사전(docs/04 "각주"): 본문의 [[단어]]가 이 목록의 word를 가리킨다 */
+export const GLOSSARY_FILE = fileURLToPath(new URL("../content/glossary.json", import.meta.url));
 
 const formatPath = (path: PropertyKey[]) =>
   path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("").replace(/^\./, "") || "(전체)";
 
-export function loadTerms(dir = TERMS_DIR, publishedIds: string[] | undefined = dir === TERMS_DIR ? readPublishedIds() : undefined) {
+/** 풀이 사전을 읽고 형식을 검사한다. 파일이 없으면 오류 */
+export function loadGlossary(file = GLOSSARY_FILE): { entries: GlossaryEntry[]; errors: string[] } {
+  const name = basename(file);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(file, "utf8").replace(/^/, ""));
+  } catch (e) {
+    return { entries: [], errors: [`${name}: 읽을 수 없습니다 - ${(e as Error).message}`] };
+  }
+  const result = glossarySchema.safeParse(raw);
+  if (!result.success) return { entries: [], errors: result.error.issues.map((i) => `${name}: ${formatPath(i.path)} - ${i.message}`) };
+  return { entries: result.data, errors: [] };
+}
+
+/**
+ * glossaryFile을 주면(실제 content/terms는 항상) 각주 단어를 풀이 사전과 맞춰 본다:
+ * 사전에 없는 단어, 어느 용어에서도 안 쓰이는 사전 항목, 없는 용어를 가리키는 term, 자기 자신으로 가는 각주는 오류
+ */
+export function loadTerms(
+  dir = TERMS_DIR,
+  publishedIds: string[] | undefined = dir === TERMS_DIR ? readPublishedIds() : undefined,
+  glossaryFile: string | undefined = dir === TERMS_DIR ? GLOSSARY_FILE : undefined,
+) {
   const terms: Term[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -40,6 +65,14 @@ export function loadTerms(dir = TERMS_DIR, publishedIds: string[] | undefined = 
     if (other) errors.push(`${file}: id - "${term.id}"가 ${other}에도 있습니다`);
     fileById.set(term.id, file);
 
+    // 설명 틀: 문장은 짧게(권장). 길면 경고만
+    if (typeof term.description !== "string") {
+      for (const p of explanationParagraphs(term.description)) {
+        const long = sentencesOf(p.text).find((s) => [...s].length > SENTENCE_WARN);
+        if (long) warnings.push(`${file}: description.${p.part}[${p.index}] - ${SENTENCE_WARN}자가 넘는 문장(짧게 나누세요): "${long.slice(0, 24)}…"`);
+      }
+    }
+
     const stepCount = term.scenario.steps.length;
     if (stepCount < 2 || stepCount > 10) warnings.push(`${file}: scenario.steps - 단계 ${stepCount}개 (권장 2~10개)`);
     if (term.category === "web-security" && !term.defenses.some((d) => d.kind === "defense")) {
@@ -57,6 +90,29 @@ export function loadTerms(dir = TERMS_DIR, publishedIds: string[] | undefined = 
       errors.push(`${fileById.get(term.id)}: id - 공개하는 용어는 content/published-ids.json에 "${term.id}"를 추가하세요(한 번 넣으면 지우지 않음)`);
     }
   }
+
+  if (glossaryFile) {
+    const { entries, errors: glossaryErrors } = loadGlossary(glossaryFile);
+    errors.push(...glossaryErrors);
+    const byWord = new Map(entries.map((e) => [e.word, e]));
+    const used = new Set<string>();
+    for (const term of terms) {
+      for (const word of explanationNoteWords(term.description)) {
+        used.add(word);
+        const entry = byWord.get(word);
+        if (glossaryErrors.length === 0 && !entry) errors.push(`${fileById.get(term.id)}: description - 각주 단어 "${word}"가 glossary.json에 없습니다`);
+        else if (entry?.term === term.id) errors.push(`${fileById.get(term.id)}: description - 각주 "${word}"가 이 용어 자신을 가리킵니다(자기 쪽으로 가는 링크)`);
+      }
+    }
+    entries.forEach((e, i) => {
+      if (!used.has(e.word)) errors.push(`glossary.json: [${i}].word - "${e.word}"는 어떤 용어의 설명에서도 쓰이지 않습니다(쓰지 않는 항목은 지웁니다)`);
+      if (e.term && !fileById.has(e.term)) errors.push(`glossary.json: [${i}].term - 없는 용어 id: ${e.term}`);
+    });
+  }
+
+  // 설명 틀로 옮기지 않은 용어(이전 형식, 초안 자리 표시 제외): 모두 옮기면 이전 형식을 없앤다. 한 줄로만 알린다
+  const legacy = terms.filter((t) => typeof t.description === "string" && t.description !== DRAFT_DESCRIPTION).map((t) => t.id);
+  if (legacy.length > 0) warnings.push(`description - 설명 틀로 옮기지 않은 용어 ${legacy.length}개: ${legacy.join(", ")}`);
 
   for (const term of terms) {
     term.related.forEach((relatedId, i) => {

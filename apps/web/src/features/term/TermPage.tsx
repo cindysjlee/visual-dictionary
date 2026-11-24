@@ -2,7 +2,7 @@
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
 // 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
 import { Link, useLocation, useNavigationType, useParams } from "react-router";
-import type { IndexEntry, Term } from "@app/content-schema";
+import type { BuiltTerm, IndexEntry } from "@app/content-schema";
 import { defenseCounts } from "@app/content-schema/scene";
 import NotFoundPage from "../../NotFoundPage.tsx";
 import { useJson } from "../../useJson.ts";
@@ -12,6 +12,7 @@ import { useAuth } from "../auth/store.ts";
 import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
 import { Marked } from "../dictionary/Marked.tsx";
 import { SAVE_FAILED, StudyCard } from "../progress/StudyCard.tsx";
+import { Explanation } from "./Explanation.tsx";
 import { isRead, progress, useProgress } from "../progress/store.ts";
 import type { PlayerJump } from "../../players/Player.tsx"; // 타입만이라 묶음에 들어가지 않는다
 
@@ -69,7 +70,7 @@ function Toc({ items }: { items: { id: string; label: string }[] }) {
   );
 }
 
-function TermDetail({ term }: { term: Term }) {
+function TermDetail({ term }: { term: BuiltTerm }) {
   const index = useJson<IndexEntry[]>("/content/index.json");
   // JSON에 적은 순서대로, 배포된(published, 목록에 있는) 용어만 링크한다
   const related = index.state === "ok" ? term.related.flatMap((id) => index.data.find((t) => t.id === id) ?? []) : [];
@@ -158,9 +159,14 @@ function TermDetail({ term }: { term: Term }) {
               <p className="la-pos">
                 <Field category={term.category} /> <span className="la-num">{meta}</span>
               </p>
-              <p className="la-term-def term-desc">
-                <Marked text={term.description} />
-              </p>
+              {typeof term.description === "string" ? (
+                // 이전 형식(설명 틀로 아직 옮기지 않은 용어): 문단 하나
+                <p className="la-term-def term-desc">
+                  <Marked text={term.description} />
+                </p>
+              ) : (
+                <Explanation term={term} data={term.description} />
+              )}
             </div>
             <StudyCard termId={term.id} saveError={saveError} press={press} />
           </div>
@@ -255,7 +261,7 @@ function TermSkeleton() {
 
 export default function TermPage() {
   const { id } = useParams();
-  const load = useJson<Term>(`/content/terms/${id}.json`);
+  const load = useJson<BuiltTerm>(`/content/terms/${id}.json`);
 
   if (load.state === "loading") return <TermSkeleton />;
   if (load.state === "notfound") return <NotFoundPage message="찾는 용어가 없습니다." />;

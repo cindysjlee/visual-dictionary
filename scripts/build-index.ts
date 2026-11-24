@@ -4,10 +4,11 @@
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { IndexEntry, Term } from "@app/content-schema";
+import type { BuiltTerm, Footnote, GlossaryEntry, IndexEntry, Term } from "@app/content-schema";
+import { explanationNoteWords } from "@app/content-schema/explain";
 import { defenseCounts } from "@app/content-schema/scene";
 import { subsetHandFont } from "./subset-hand-font.ts";
-import { validateOrExit } from "./validate-content.ts";
+import { loadGlossary, validateOrExit } from "./validate-content.ts";
 
 const outDir = (includeDrafts: boolean) =>
   fileURLToPath(new URL(`../apps/web/generated/${includeDrafts ? "dev" : "build"}/content/`, import.meta.url));
@@ -31,6 +32,20 @@ export const toIndexEntry = ({ id, name, englishName, aliases, category, summary
   blockedAt: [...new Set(defenses.flatMap((d) => (d.blockedAtStep === undefined ? [] : [d.blockedAtStep])))].sort((a, b) => a - b),
 });
 
+/**
+ * 설명의 각주를 풀이 사전에서 찾아 용어 파일에 넣는다(번호 = 나온 순서). 링크 용어(glossary의 term)는 이번에 함께 내보내는 용어일 때만 링크한다:
+ * 공개 빌드에서는 published만, 개발 서버에서는 draft도 있으므로 "공개된 용어면 링크"가 그대로 된다
+ */
+export function withFootnotes(term: Term, glossary: GlossaryEntry[], shown: Pick<Term, "id" | "name">[]): BuiltTerm {
+  const footnotes = explanationNoteWords(term.description).map((word): Footnote => {
+    const entry = glossary.find((e) => e.word === word);
+    if (!entry) throw new Error(`${term.id}: 각주 단어 "${word}"가 glossary.json에 없습니다(검증기가 먼저 막아야 합니다)`);
+    const target = entry.term ? shown.find((t) => t.id === entry.term) : undefined;
+    return { word, gloss: entry.gloss, ...(target ? { link: { id: target.id, name: target.name } } : {}) };
+  });
+  return { ...term, footnotes };
+}
+
 if (import.meta.main) {
   const includeDrafts = process.argv.includes("--include-drafts");
   const terms = selectTerms(validateOrExit(), includeDrafts);
@@ -40,7 +55,8 @@ if (import.meta.main) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(join(dir, "terms"), { recursive: true });
   writeFileSync(join(dir, "index.json"), JSON.stringify(terms.map(toIndexEntry)));
-  for (const term of terms) writeFileSync(join(dir, "terms", `${term.id}.json`), JSON.stringify(term));
+  const { entries: glossary } = loadGlossary();
+  for (const term of terms) writeFileSync(join(dir, "terms", `${term.id}.json`), JSON.stringify(withFootnotes(term, glossary, terms)));
   // publicDir이 generated/<모드>라서 정적 파일(robots.txt, 파비콘)도 여기로 복사한다
   cpSync(fileURLToPath(new URL("../apps/web/static/", import.meta.url)), join(dir, ".."), { recursive: true });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { termSchema } from "./index.ts";
-import { markCount, parseMarks, plainText } from "./marks.ts";
+import { markCount, noteWords, parseMarks, plainText } from "./marks.ts";
 
 describe("본문 표시 문법", () => {
   it("==형광펜==과 `코드`를 조각으로 나누고, 표시를 뺀 글자를 돌려준다", () => {
@@ -17,6 +17,29 @@ describe("본문 표시 문법", () => {
     });
     expect(plainText(s)).toBe("쿠키는 목적지만 보고 붙는다. 헤더 Set-Cookie와 a==b");
     expect(markCount(s)).toBe(1);
+  });
+
+  it("각주 [[단어]]는 note 조각이 되고, 표시를 뺀 글자에는 단어만 남는다", () => {
+    const s = "서버는 [[메타데이터 서비스]]에 닿고 `a[[0]]`는 코드다. ==핵심 문장==";
+    expect(parseMarks(s).segments).toEqual([
+      { kind: "text", text: "서버는 " },
+      { kind: "note", text: "메타데이터 서비스" },
+      { kind: "text", text: "에 닿고 " },
+      { kind: "code", text: "a[[0]]" },
+      { kind: "text", text: "는 코드다. " },
+      { kind: "mark", text: "핵심 문장" },
+    ]);
+    expect(noteWords(s)).toEqual(["메타데이터 서비스"]);
+    expect(plainText(s)).toBe("서버는 메타데이터 서비스에 닿고 a[[0]]는 코드다. 핵심 문장");
+  });
+
+  it.each([
+    ["[[닫히지 않음", "닫히지 않은 각주"],
+    ["[[ ]]", "빈 각주"],
+    ["[[a`b]]", "각주 단어에는"],
+    ["==형광펜 [[각주]] 안==", "형광펜(==) 안에는 각주"],
+  ])("%s → 오류", (s, msg) => {
+    expect(parseMarks(s).error).toContain(msg);
   });
 
   it.each([
@@ -37,5 +60,6 @@ describe("본문 표시 문법", () => {
     expect(ok("정상 ==한 군데== 문장, 크기 비교 a < b")).toBe(true);
     expect(ok("==하나== 그리고 ==둘==")).toBe(false);
     expect(ok("==짝 없음")).toBe(false);
+    expect(ok("이전 형식에는 [[각주]]를 쓸 수 없다")).toBe(false);
   });
 });

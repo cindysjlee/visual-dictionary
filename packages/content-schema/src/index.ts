@@ -1,20 +1,81 @@
 // 용어 JSON의 유일한 스키마. 빌드 검증기(scripts)와 프론트엔드(apps/web)가 함께 쓴다. 규칙: docs/04-content-format.md
 import { z } from "zod";
+import { DEFINITION_MAX, DRAFT_DESCRIPTION, NOTES_MAX, explanationParagraphs, sentencesOf } from "./explain.ts";
 import { ACTIONS_BY_PLAYER } from "./labels.ts";
-import { markCount, parseMarks } from "./marks.ts";
+import { markCount, parseMarks, plainText } from "./marks.ts";
 import { checkScene } from "./scene.ts";
 
 export { ACTIONS_BY_PLAYER, CATEGORY_LABELS, PLAYER_LABELS } from "./labels.ts";
-export { markCount, parseMarks, plainText, type MarkSegment } from "./marks.ts";
+export { markCount, noteWords, parseMarks, plainText, type MarkSegment } from "./marks.ts";
 
 const id = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "소문자·숫자·하이픈만 쓸 수 있습니다");
 const text = z.string().trim().min(1, "빈 문자열은 안 됩니다");
-/** 본문(뜻풀이·방어 설명): ==형광펜==과 `코드` 표시를 쓸 수 있다. 짝이 안 맞거나 다른 문법이면 실패, 형광펜은 문단마다 최대 한 군데(docs/04 "본문 표시") */
+/** 본문(방어 설명, 이전 형식의 뜻풀이): ==형광펜==과 `코드` 표시를 쓸 수 있다. 짝이 안 맞거나 다른 문법이면 실패, 형광펜은 문단마다 최대 한 군데(docs/04 "본문 표시"). 각주([[ ]])는 설명 틀(noted)에서만 */
 const marked = text.superRefine((v, ctx) => {
+  const { segments, error } = parseMarks(v);
+  if (error) ctx.addIssue({ code: "custom", message: error });
+  else if (markCount(v) > 1) ctx.addIssue({ code: "custom", message: "형광펜(==)은 문단마다 최대 한 군데입니다" });
+  else if (segments.some((s) => s.kind === "note")) ctx.addIssue({ code: "custom", message: "각주([[ ]])는 설명 틀(description의 정의·비유·과정·이유) 안에서만 씁니다" });
+});
+/** 설명 틀의 문단: marked와 같은 규칙에 각주([[단어]])를 더 쓸 수 있다 */
+const noted = text.superRefine((v, ctx) => {
   const { error } = parseMarks(v);
   if (error) ctx.addIssue({ code: "custom", message: error });
   else if (markCount(v) > 1) ctx.addIssue({ code: "custom", message: "형광펜(==)은 문단마다 최대 한 군데입니다" });
 });
+
+/**
+ * 설명 틀(docs/04 "설명 틀"): 한 줄 정의 → 쉬운 비유 → 어떻게 일어나나(조건과 흐름) → 왜 위험한가(CS 용어는 왜 중요한가).
+ * 문단 배열의 원소 하나가 문단 하나다(형광펜은 문단마다 최대 한 군데). 정의는 한 문장
+ */
+export const explanationSchema = z.strictObject({
+  definition: noted.superRefine((v, ctx) => {
+    if ([...plainText(v)].length > DEFINITION_MAX) ctx.addIssue({ code: "custom", message: `한 줄 정의는 ${DEFINITION_MAX}자 이하입니다` });
+    if (sentencesOf(v).length > 1) ctx.addIssue({ code: "custom", message: "한 줄 정의는 한 문장입니다" });
+  }),
+  analogy: z.array(noted).min(1).max(3),
+  how: z.array(noted).min(2).max(4),
+  why: z.array(noted).min(1).max(3),
+});
+export type Explanation = z.output<typeof explanationSchema>;
+
+/**
+ * description: 설명 틀(객체) 또는 이전 형식(문단 하나, 아직 틀로 옮기지 않은 용어). 틀로 다 옮기면 이전 형식은 없앤다.
+ * 어느 쪽인지 값의 종류로 나눠 검사해서, 오류 위치가 description.how[1]처럼 자세히 나온다(z.union은 위치를 뭉갠다)
+ */
+const descriptionSchema = z.unknown().transform((value, ctx): string | Explanation => {
+  const result = typeof value === "string" ? marked.safeParse(value) : explanationSchema.safeParse(value);
+  if (result.success) return result.data;
+  for (const issue of result.error.issues) ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+  return z.NEVER;
+});
+
+/** 각주 풀이 사전 content/glossary.json의 항목(docs/04 "각주"). word는 본문의 [[단어]]와 같아야 한다 */
+export const glossaryEntrySchema = z.strictObject({
+  word: z
+    .string()
+    .trim()
+    .min(1, "빈 문자열은 안 됩니다")
+    .max(20)
+    .refine((w) => !/[[\]`=\n]/.test(w), "단어에는 [ ] ` = 와 줄바꿈을 쓸 수 없습니다"),
+  /** 짧은 풀이: 1~2문장. `코드` 표기만 쓸 수 있다 */
+  gloss: text.max(120, "풀이는 120자 이하로 짧게 씁니다").superRefine((v, ctx) => {
+    const { segments, error } = parseMarks(v);
+    if (error) ctx.addIssue({ code: "custom", message: error });
+    else if (segments.some((s) => s.kind !== "text" && s.kind !== "code")) ctx.addIssue({ code: "custom", message: "풀이에는 `코드` 표기만 쓸 수 있습니다(형광펜·각주 없음)" });
+    if (sentencesOf(v).length > 2) ctx.addIssue({ code: "custom", message: "풀이는 1~2문장입니다" });
+  }),
+  /** 같은 이름의 용어가 있으면 그 id. 그 용어가 공개돼 있으면 화면은 풀이 대신 그 용어 쪽으로 링크한다 */
+  term: id.optional(),
+});
+export const glossarySchema = z.array(glossaryEntrySchema).superRefine((entries, ctx) => {
+  const seen = new Set<string>();
+  entries.forEach((e, i) => {
+    if (seen.has(e.word)) ctx.addIssue({ code: "custom", path: [i, "word"], message: `중복된 단어: ${e.word}` });
+    seen.add(e.word);
+  });
+});
+export type GlossaryEntry = z.output<typeof glossaryEntrySchema>;
 
 /* ---------- 3D 장면 어휘 (docs/06, 모두 선택 항목) ---------- */
 export const ACTOR_KINDS = ["browser", "tab", "frame", "cookieJar", "server", "database", "network", "attacker", "person", "thread", "resource"] as const;
@@ -157,7 +218,7 @@ export const termSchema = z
     aliases: z.array(text).default([]),
     category: z.enum(["web-security", "network", "os", "runtime"]),
     summary: text,
-    description: marked,
+    description: descriptionSchema,
     status: z.enum(["draft", "published", "retired"]),
     scenario: z.strictObject({
       playerType: z.enum(["flow", "stack", "lock"]),
@@ -175,6 +236,23 @@ export const termSchema = z
     term.related.forEach((relatedId, i) => {
       if (relatedId === term.id) ctx.addIssue({ code: "custom", path: ["related", i], message: `자기 자신을 관련 용어로 둘 수 없습니다: ${relatedId}` });
     });
+    // 설명 틀의 각주: 용어당 NOTES_MAX개 이하, 같은 단어는 한 번만(첫 자리에만 표시). 초안 자리 표시는 공개 용어에 남을 수 없다
+    if (typeof term.description === "string") {
+      if (term.description === DRAFT_DESCRIPTION && term.status !== "draft") {
+        ctx.addIssue({ code: "custom", path: ["description"], message: "설명이 아직 초안 자리 표시입니다. 공개(published)하기 전에 설명을 쓰세요" });
+      }
+    } else {
+      const seenNotes = new Set<string>();
+      for (const p of explanationParagraphs(term.description)) {
+        for (const word of parseMarks(p.text).segments.flatMap((s) => (s.kind === "note" ? [s.text] : []))) {
+          if (seenNotes.has(word)) {
+            ctx.addIssue({ code: "custom", path: p.part === "definition" ? ["description", "definition"] : ["description", p.part, p.index], message: `같은 각주 단어를 두 번 표시했습니다(첫 번째에만 씁니다): ${word}` });
+          }
+          seenNotes.add(word);
+        }
+      }
+      if (seenNotes.size > NOTES_MAX) ctx.addIssue({ code: "custom", path: ["description"], message: `각주는 용어당 ${NOTES_MAX}개 이하입니다(지금 ${seenNotes.size}개)` });
+    }
     const { playerType, actors, steps } = term.scenario;
     const actorIds = new Set<string>();
     actors.forEach((actor, i) => {
@@ -239,8 +317,12 @@ export const termSchema = z
     for (const issue of checkScene(term)) ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
   });
 
-/** 기본값이 채워진 용어. /content/terms/<id>.json의 형식 */
+/** 기본값이 채워진 용어. 원본 content/terms/<id>.json의 형식 */
 export type Term = z.output<typeof termSchema>;
+/** 화면에 보이는 각주 하나(빌드가 glossary.json에서 찾아 넣는다). link가 있으면 그 용어가 공개돼 있어 풀이 대신 그 용어 쪽으로 링크한다 */
+export type Footnote = { word: string; gloss: string; link?: { id: string; name: string } };
+/** /content/terms/<id>.json(배포본): 원본에 설명의 각주(나온 순서 = 번호 순서)를 더한 것. 각주가 없으면 빈 배열 */
+export type BuiltTerm = Term & { footnotes: Footnote[] };
 export type Category = Term["category"];
 export type PlayerType = Term["scenario"]["playerType"];
 export type Actor = Term["scenario"]["actors"][number];

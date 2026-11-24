@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { termSchema } from "@app/content-schema";
 import { loadTerms } from "./validate-content.ts";
-import { selectTerms, toIndexEntry } from "./build-index.ts";
+import { selectTerms, toIndexEntry, withFootnotes } from "./build-index.ts";
 
 const csrfPath = new URL("../content/terms/csrf.json", import.meta.url);
 const tempDir = () => mkdtempSync(join(tmpdir(), "terms-"));
@@ -51,6 +51,79 @@ describe("loadTerms", () => {
     const { errors, warnings } = loadTerms(dir);
     expect(errors).toEqual([]);
     expect(warnings).toContain("csrf.json: related[0] - 없는 용어 id: xss");
+  });
+});
+
+describe("각주 풀이 사전(glossary.json)", () => {
+  /** 각주가 둘인 용어(a: [[가]] [[나]])와 임시 풀이 사전 파일을 만든다 */
+  const setup = (entries: unknown, mutate: (term: any) => void = () => {}) => {
+    const dir = tempDir();
+    const csrf = JSON.parse(readFileSync(csrfPath, "utf8"));
+    csrf.description = {
+      definition: "정의 [[가]]다.",
+      analogy: ["비유다."],
+      how: ["과정 [[나]]이다.", "둘째다."],
+      why: ["이유다."],
+    };
+    mutate(csrf);
+    writeFileSync(join(dir, "csrf.json"), JSON.stringify(csrf));
+    // 풀이 사전은 용어 폴더 밖에 둔다(loadTerms는 폴더의 모든 json을 용어로 읽는다). 실제도 content/glossary.json은 content/terms/ 밖이다
+    const glossary = join(tempDir(), "glossary.json");
+    writeFileSync(glossary, JSON.stringify(entries));
+    return { dir, glossary };
+  };
+  const ga = { word: "가", gloss: "가의 풀이다." };
+  const na = { word: "나", gloss: "나의 풀이다." };
+  const both = [ga, na];
+  const errorsOf = ({ dir, glossary }: { dir: string; glossary: string }) => loadTerms(dir, undefined, glossary).errors;
+
+  it("각주 단어와 사전이 짝이 맞으면 통과한다", () => {
+    expect(errorsOf(setup(both))).toEqual([]);
+  });
+
+  it("사전에 없는 각주 단어는 오류", () => {
+    expect(errorsOf(setup([ga]))).toEqual([`csrf.json: description - 각주 단어 "나"가 glossary.json에 없습니다`]);
+  });
+
+  it("어느 용어에서도 안 쓰이는 사전 항목은 오류", () => {
+    expect(errorsOf(setup([...both, { word: "다", gloss: "안 쓰인다." }]))).toEqual([
+      `glossary.json: [2].word - "다"는 어떤 용어의 설명에서도 쓰이지 않습니다(쓰지 않는 항목은 지웁니다)`,
+    ]);
+  });
+
+  it("없는 용어를 가리키는 term, 자기 자신을 가리키는 각주는 오류", () => {
+    expect(errorsOf(setup([{ ...ga, term: "nothing" }, na]))).toEqual([`glossary.json: [0].term - 없는 용어 id: nothing`]);
+    expect(errorsOf(setup([{ ...ga, term: "csrf" }, na]))).toEqual([`csrf.json: description - 각주 "가"가 이 용어 자신을 가리킵니다(자기 쪽으로 가는 링크)`]);
+  });
+
+  it("사전 형식 오류: 중복 단어, 긴 풀이, 3문장 이상, 형광펜", () => {
+    expect(errorsOf(setup([...both, { word: "가", gloss: "또 가다." }]))).toContain("glossary.json: [2].word - 중복된 단어: 가");
+    const long = errorsOf(setup([{ word: "가", gloss: "가".repeat(121) }, na]));
+    expect(long.join("\n")).toContain("120자 이하");
+    expect(errorsOf(setup([{ word: "가", gloss: "하나다. 둘이다. 셋이다." }, na])).join("\n")).toContain("1~2문장");
+    expect(errorsOf(setup([{ word: "가", gloss: "==형광펜== 풀이다." }, na])).join("\n")).toContain("`코드` 표기만");
+  });
+
+  it("긴 문장은 경고만 낸다", () => {
+    const longSentence = "가".repeat(75) + "다.";
+    const { dir, glossary } = setup(both, (term) => (term.description.how[1] = longSentence));
+    const { errors, warnings } = loadTerms(dir, undefined, glossary);
+    expect(errors).toEqual([]);
+    expect(warnings.some((w) => w.startsWith("csrf.json: description.how[1] - 70자가 넘는 문장"))).toBe(true);
+  });
+
+  it("빌드는 각주를 나온 순서대로 넣고, 그 용어가 함께 나갈 때만 링크한다", () => {
+    const entries = [{ ...ga, term: "xss" }, na];
+    const { dir, glossary } = setup(entries);
+    const term = loadTerms(dir, undefined, glossary).terms[0]!;
+    expect(withFootnotes(term, entries, [{ id: "xss", name: "XSS" }]).footnotes).toEqual([
+      { word: "가", gloss: "가의 풀이다.", link: { id: "xss", name: "XSS" } },
+      { word: "나", gloss: "나의 풀이다." },
+    ]);
+    // 그 용어가 아직 공개 전(함께 나가지 않음)이면 링크 없이 풀이만
+    expect(withFootnotes(term, entries, []).footnotes[0]).toEqual({ word: "가", gloss: "가의 풀이다." });
+    // 이전 형식의 설명에는 각주가 없다
+    expect(withFootnotes({ ...term, description: "이전 형식" }, entries, []).footnotes).toEqual([]);
   });
 });
 

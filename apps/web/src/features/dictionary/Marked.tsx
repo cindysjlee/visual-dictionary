@@ -1,11 +1,12 @@
-// 본문 표시(==형광펜==·`코드`)를 React 요소로 그린다. HTML을 넣지 않고 파서(content-schema parseMarks)가 나눈 조각만 쓴다(XSS 없음).
-// 형광펜은 화면에 들어올 때 한 번 그어진다. 동작 줄이기면 처음부터 그어져 있다(dictionary.css .la-hl-text)
-import { useEffect, useRef, useState } from "react";
+// 본문 표시(==형광펜==·`코드`·[[각주]])를 React 요소로 그린다. HTML을 넣지 않고 파서(content-schema parseMarks)가 나눈 조각만 쓴다(XSS 없음).
+// 형광펜은 화면에 들어올 때 한 번 그어진다. 동작 줄이기면 처음부터 그어져 있다(dictionary.css .la-hl-text).
+// 각주는 note를 넘기면 그 함수가 그린다(설명 틀 안에서만). 넘기지 않으면 단어만 보인다
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { parseMarks } from "@app/content-schema/marks";
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function Marked({ text }: { text: string }) {
+export function Marked({ text, note }: { text: string; note?: (word: string) => ReactNode }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [seen, setSeen] = useState(reduced);
   const { segments } = parseMarks(text); // 검증을 통과한 콘텐츠라 오류는 없다. 있어도 나뉜 데까지 그린다
@@ -28,6 +29,8 @@ export function Marked({ text }: { text: string }) {
           <code key={i} className="la-code">
             {s.text}
           </code>
+        ) : s.kind === "note" ? (
+          <span key={i}>{note ? note(s.text) : s.text}</span>
         ) : (
           s.text
         ),

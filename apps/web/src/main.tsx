@@ -12,7 +12,6 @@ import NotFoundPage from "./NotFoundPage.tsx";
 import HomePage from "./features/explore/HomePage.tsx";
 import { hasStoredSession } from "./features/auth/session.ts";
 import LandingPage from "./features/landing/LandingPage.tsx";
-import TermPage from "./features/term/TermPage.tsx";
 import { installStaleChunkReload } from "./reloadOnStaleChunk.ts";
 import { applyTheme, initialTheme } from "./theme.ts";
 
@@ -39,7 +38,8 @@ const router = createBrowserRouter([
       { index: true, loader: () => (hasStoredSession() || hasHandedNotice() ? redirect("/terms") : null), Component: LandingPage },
       { path: "about", Component: LandingPage }, // 소개: 로그인해도 늘 랜딩
       { path: "terms", Component: HomePage },
-      { path: "terms/:id", Component: TermPage },
+      // 용어 쪽은 따로 받는다(설명 틀·각주·완독 메모가 홈 묶음 120KB를 넘기지 않게). 플레이어는 그 안에서 또 따로 받는다
+      { path: "terms/:id", lazy: { Component: async () => (await import("./features/term/TermPage.tsx")).default } },
       // 계정 화면은 따로 받는다(홈 묶음을 가볍게). 인증 구현(Amplify)은 store가 따로 받는다
       { path: "auth/login", lazy: { Component: async () => (await import("./features/auth/LoginPage.tsx")).default } },
       { path: "auth/signup", lazy: { Component: async () => (await import("./features/auth/SignupPage.tsx")).default } },

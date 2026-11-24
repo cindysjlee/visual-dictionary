@@ -2,6 +2,7 @@
 // 상세 구성 순서(FR-DTL-01), 참고 자료(FR-DTL-03), 없는 용어(FR-DTL-04). 대상 용어는 content/terms에서 자동으로 늘어난다
 import { expect, test, type Page } from "@playwright/test";
 import { CATEGORY_LABELS } from "../../packages/content-schema/src/labels.ts";
+import { explanationParagraphs } from "../../packages/content-schema/src/explain.ts";
 import { plainText } from "../../packages/content-schema/src/marks.ts";
 import { terms } from "./terms.ts";
 
@@ -83,13 +84,22 @@ for (const term of terms) {
     await page.goto(`/terms/${term.id}`);
     const parts = [
       page.getByRole("heading", { level: 1, name: term.name }),
-      page.locator(".term-desc"),
+      page.locator(".term-desc").first(),
       page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".caption"),
       ...(term.defenses.length ? [page.locator(".defense-title").first()] : []),
       page.getByRole("heading", { name: "참고 자료" }),
     ];
     for (const p of parts) await expect(p).toBeVisible();
-    await expect(page.locator(".term-desc")).toHaveText(plainText(term.description)); // ==형광펜==·`코드` 표시는 빼고 글자만
+    // ==형광펜==·`코드`·[[각주]] 표시는 빼고 글자만. 설명 틀이면 문단마다(각주 번호·풀이 상자는 글자에서 뺀다)
+    const expected = typeof term.description === "string" ? [term.description] : explanationParagraphs(term.description).map((p) => p.text);
+    const shown = await page.locator(".term-desc").evaluateAll((els) =>
+      els.map((el) => {
+        const copy = el.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll(".la-fn-box").forEach((n) => n.remove()); // 풀이 상자는 글자에서 뺀다(단어는 본문 글자 그대로)
+        return copy.textContent;
+      }),
+    );
+    expect(shown).toEqual(expected.map(plainText));
     // 문서 순서(앞 요소 다음에 뒤 요소가 온다)
     const handles = await Promise.all(parts.map((p) => p.elementHandle()));
     const inOrder = await page.evaluate(
