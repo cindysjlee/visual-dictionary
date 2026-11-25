@@ -145,10 +145,10 @@
 용어 색인 제목 아래 "처음이라면 이 순서로"에 나오는 읽는 순서다(FR-EXP-08). 용어 JSON이 아니라 한 파일에 모은다.
 
 ```json
-[{ "id": "network", "title": "네트워크", "why": "이 순서인 이유 한 줄", "steps": ["tcp-handshake", "syn-flood", "ssl-stripping"] }]
+[{ "id": "network", "category": "network", "title": "네트워크", "why": "이 순서인 이유 한 줄", "steps": ["tcp-handshake", "syn-flood", "ssl-stripping"] }]
 ```
 
-- `id` 소문자·하이픈, 경로끼리 중복 없음. `title` 20자 이하, `why` 100자 이하. `steps`는 2~5개이고 한 경로 안에서 겹치지 않는다.
+- `id` 소문자·하이픈, 경로끼리 중복 없음. `category`는 용어 분야 하나(화면이 분야 색을 칠한다). `title` 20자 이하, `why` 100자 이하. `steps`는 2~5개이고 한 경로 안에서 겹치지 않는다.
 - `steps`의 id는 **공개(published)된 용어**여야 한다. 없는 id나 draft·retired 용어면 검증이 실패한다(공개 빌드에 초안이 새지 않게).
 - 스키마는 `packages/content-schema`의 `pathsSchema`, 검증은 `loadPaths()`. 빌드가 `/content/paths.json`으로 내보내고 화면은 지연 로드한다.
 

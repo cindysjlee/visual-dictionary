@@ -1037,17 +1037,28 @@ body {
   color: var(--la-ink-sub);
 }
 
-/* 추천 학습 경로(색인 왼쪽): 경로 하나 = 이름 + 읽는 순서(ol) + 이 순서인 이유 한 줄 */
+/* 추천 학습 경로(색인 왼쪽): 경로 하나 = 분야 색 괘선이 걸린 한 쪽. 실(::before) 하나가 읽는 순서의 마디를 꿴다. 완독하면 마디가 完 도장이 된다.
+   넓은 화면은 쪽 3개를 나란히, 쪽이 좁아지면 2열·1열로 접히고, 900px 이하는 한 열 */
 .la-paths {
   width: 100%;
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-5);
 }
 
 .la-paths h2 {
-  margin: 0 0 var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
   font-family: var(--font-sans);
   font-size: var(--fs-md);
   font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.la-paths h2::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--la-ink);
 }
 
 .la-paths ul,
@@ -1057,56 +1068,117 @@ body {
   list-style: none;
 }
 
+.la-paths > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.75rem, 1fr));
+  gap: var(--sp-3);
+}
+
 .la-path {
-  padding: var(--sp-3) 0;
-  border-top: 1px solid var(--la-rule);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--la-card-line);
+  border-top: 4px solid var(--la-t, var(--la-ink));
+  border-radius: 0 0 8px 8px;
+  background: var(--la-card);
+  box-shadow: var(--la-card-shadow);
+}
+
+.la-path-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
 
 .la-path h3 {
-  margin: 0 0 var(--sp-1);
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.la-path-count {
   font-size: var(--fs-sm);
-  font-weight: 700;
   color: var(--la-ink-sub);
 }
 
 .la-path ol {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-1) var(--sp-3);
-  counter-reset: step;
+  position: relative;
 }
 
 .la-path ol li {
-  display: inline-flex;
+  position: relative;
+}
+
+/* 마디와 마디를 잇는 실 */
+.la-path ol li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 28px;
+  bottom: -10px;
+  border-left: 2px solid var(--la-t, var(--la-rule));
+}
+
+.la-path ol a {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
   align-items: center;
-  gap: var(--sp-1);
-  counter-increment: step;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: 2px 0;
+  color: var(--la-ink);
+  text-decoration: none;
 }
 
-.la-path ol li::before {
-  content: counter(step);
-  color: var(--la-ink-sub);
+.la-path-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--la-t, var(--la-ink));
+  border-radius: 50%;
+  background: var(--la-card);
   font-size: var(--fs-sm);
+  font-weight: 800;
 }
 
-/* 단계 사이 화살표: 장식이라 읽어 주지 않는다(번호와 ol이 순서를 말한다) */
-.la-path ol li:not(:last-child)::after {
-  content: "→" / "";
-  margin-left: var(--sp-2);
-  color: var(--la-ink-sub);
+/* 완독: 마디가 도장으로 바뀐다(테두리·바탕 없이 도장만) */
+.la-path .is-done .la-path-node {
+  border-color: transparent;
 }
 
-.la-path .la-seal-mark {
-  float: none;
-  display: inline-flex;
-  margin: 0;
+.la-path-name {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+
+.la-path ol a:hover .la-path-name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .la-path-why {
-  margin: var(--sp-1) 0 0;
+  margin: var(--sp-3) 0 0;
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--la-rule);
   font-size: var(--fs-sm);
+  line-height: 1.55;
   color: var(--la-ink-sub);
+}
+
+@media (max-width: 900px) {
+  .la-paths > ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .la-mine .la-ledger {

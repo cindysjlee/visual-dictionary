@@ -95,6 +95,8 @@ export type GlossaryEntry = z.output<typeof glossaryEntrySchema>;
 /** 추천 학습 경로 content/paths.json (docs/04 "추천 학습 경로"): 처음 배우는 사람을 위한 읽는 순서. steps는 공개된 용어 id */
 export const pathSchema = z.strictObject({
   id,
+  /** 경로의 분야: 화면이 분야 색(표지 위 괘선)을 칠한다 */
+  category: z.enum(["web-security", "network", "os", "runtime"]),
   title: text.max(20),
   /** 이 순서인 이유 한 줄 */
   why: text.max(100),

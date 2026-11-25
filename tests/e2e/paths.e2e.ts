@@ -29,7 +29,9 @@ test("경로 3개가 그려지고, 단계 링크 순서(ol)가 읽는 순서이�
   await expect(section(page).locator(".la-path")).toHaveCount(3);
   for (const p of paths) {
     const item = section(page).locator(".la-path").filter({ has: page.getByRole("heading", { level: 3, name: p.title, exact: true }) });
-    await expect(item.getByRole("list").getByRole("link")).toHaveText(p.steps.map(nameOf));
+    await expect(item.getByRole("list").getByRole("link")).toHaveCount(p.steps.length);
+    await expect(item.locator(".la-path-name")).toHaveText(p.steps.map(nameOf)); // 링크 순서 = 읽는 순서
+    await expect(item.locator(".la-path-node")).toHaveText(p.steps.map((_, i) => String(i + 1))); // 마디 번호
     await expect(item.locator("ol")).toHaveCount(1);
     await expect(item.locator(".la-path-why")).toHaveText(p.why);
   }
@@ -42,15 +44,19 @@ test("단계 링크를 누르면 그 용어 쪽으로 간다", tag, async ({ pag
   await expect(page).toHaveURL(new RegExp(`/terms/${first}$`));
 });
 
-test("비회원에게는 完 도장이 없고, 로그인하면 완독한 용어에만 작은 도장이 붙는다(오른쪽 진행률 카드는 그대로)", tag, async ({ page }) => {
+test("비회원에게는 도장·n/3 완독이 없고, 로그인하면 완독한 용어의 마디만 完 도장이 되며 쪽 머리에 n/3 완독이 붙는다(오른쪽 진행률 카드는 그대로)", tag, async ({ page }) => {
   await page.goto("/terms");
-  await expect(section(page).locator(".la-seal-mark")).toHaveCount(0);
+  await expect(section(page).locator(".la-seal")).toHaveCount(0);
+  await expect(section(page).locator(".la-path-count")).toHaveCount(0);
   await expect(page.getByRole("complementary", { name: "내 진행률" })).toContainText("로그인하면");
 
   const done = [paths[0]!.steps[0]!, paths[2]!.steps[2]!];
   await signedIn(page, done);
   await page.goto("/terms");
-  await expect(section(page).locator(".la-seal-mark")).toHaveCount(done.length);
+  await expect(section(page).locator(".la-seal")).toHaveCount(done.length);
+  await expect(section(page).locator(".is-done")).toHaveCount(done.length);
+  // 쪽 머리: 그 경로에서 읽은 수 / 전체 수(첫 경로 1/3, 둘째 0/3, 셋째 1/3)
+  await expect(section(page).locator(".la-path-count")).toHaveText(["1/3 완독", "0/3 완독", "1/3 완독"]);
   for (const id of done) await expect(section(page).getByRole("link", { name: `${nameOf(id)} (완독` })).toBeVisible();
   const unread = paths[1]!.steps[0]!;
   await expect(section(page).getByRole("link", { name: nameOf(unread), exact: true })).toBeVisible(); // 안 읽은 용어는 이름만
@@ -92,7 +98,18 @@ test("넓은 화면은 진행률 카드 왼쪽에, 900px 이하는 한 열로 �
     expect(narrow.aside.y).toBeGreaterThanOrEqual(narrow.paths.y + narrow.paths.height - 1); // 아래로 쌓임
     expect(narrow.paths.width).toBeGreaterThan(width * 0.8);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // 한 열: 쪽 3개가 같은 x에서 위아래로 쌓이고 폭이 구역을 거의 다 채운다
+    const cards = await section(page).locator(".la-path").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width })));
+    expect(cards).toHaveLength(3);
+    expect(new Set(cards.map((c) => Math.round(c.x))).size, `${width}px: 쪽의 x`).toBe(1);
+    expect(cards[1]!.y).toBeGreaterThan(cards[0]!.y);
+    expect(cards[2]!.y).toBeGreaterThan(cards[1]!.y);
+    expect(cards[0]!.w).toBeGreaterThan(narrow.paths.width * 0.95);
   }
+  // 넓은 화면: 쪽 3개가 나란히(같은 y)
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const row = await section(page).locator(".la-path").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().y)));
+  expect(new Set(row).size).toBe(1);
 });
 
 for (const colorScheme of ["light", "dark"] as const) {
@@ -100,7 +117,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
     await signedIn(page, [paths[0]!.steps[0]!]);
     await page.goto("/terms");
-    await expect(section(page).locator(".la-seal-mark")).toHaveCount(1);
+    await expect(section(page).locator(".la-seal")).toHaveCount(1);
     const { violations } = await new AxeBuilder({ page }).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
   });

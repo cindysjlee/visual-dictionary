@@ -17,7 +17,7 @@ describe("추천 학습 경로 검증", () => {
     writeFileSync(join(dir, "csrf.json"), JSON.stringify(csrf));
     writeFileSync(join(dir, "wip.json"), JSON.stringify({ ...csrf, id: "wip", status: "draft" }));
     const file = join(dir, "..", `paths-${Date.now()}.json`);
-    writeFileSync(file, JSON.stringify([{ id: "p", title: "경로", why: "이유", steps: ["csrf", "wip", "nothing"] }]));
+    writeFileSync(file, JSON.stringify([{ id: "p", category: "network", title: "경로", why: "이유", steps: ["csrf", "wip", "nothing"] }]));
     expect(loadTerms(dir, undefined, undefined, undefined, file).errors).toEqual([
       "paths.json: [0].steps[1] - 공개된(published) 용어가 아닙니다: wip",
       "paths.json: [0].steps[2] - 공개된(published) 용어가 아닙니다: nothing",
@@ -27,7 +27,7 @@ describe("추천 학습 경로 검증", () => {
   it("같은 용어가 두 번 들어 있거나 단계가 1개면 형식 오류", () => {
     const dir = tempDir();
     const file = join(dir, "p.json");
-    writeFileSync(file, JSON.stringify([{ id: "p", title: "경로", why: "이유", steps: ["a", "a"] }, { id: "q", title: "경로", why: "이유", steps: ["a"] }]));
+    writeFileSync(file, JSON.stringify([{ id: "p", category: "network", title: "경로", why: "이유", steps: ["a", "a"] }, { id: "q", category: "network", title: "경로", why: "이유", steps: ["a"] }]));
     expect(loadPaths(file).errors.length).toBeGreaterThan(0);
   });
 });

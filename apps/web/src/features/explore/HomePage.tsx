@@ -139,7 +139,7 @@ export default function HomePage() {
             가나다순 <span className="la-num">{terms.length}</span>개.{" "}
             {records ? "完 도장은 완독한 용어, 책갈피는 읽다 만 용어다." : "모두 로그인 없이 볼 수 있다."}
           </p>
-          {pathsLoad.state === "ok" && <LearningPaths paths={pathsLoad.data} byId={byId} lined={lined} readAt={(id) => readAt(state, id)} />}
+          {pathsLoad.state === "ok" && <LearningPaths paths={pathsLoad.data} byId={byId} lined={lined} records={records} readAt={(id) => readAt(state, id)} />}
         </div>
         <aside className="la-mine" aria-label="내 진행률">
           {user.status !== "user" ? (
