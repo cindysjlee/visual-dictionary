@@ -15,8 +15,8 @@ export const rect = (x: number, y: number, w: number, h: number, rx: number, cls
   `<rect class="${cls}" x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" rx="${n(rx)}"/>`;
 export const circle = (cx: number, cy: number, r: number, cls: string) => `<circle class="${cls}" cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}"/>`;
 export const polygon = (pts: [number, number][], cls: string) => `<polygon class="${cls}" points="${pts.map(([x, y]) => `${n(x)},${n(y)}`).join(" ")}"/>`;
-/** 가운데 정렬 글자(CSS가 정렬·크기를 준다). 3자 이하 표식만 */
-export const text = (x: number, y: number, s: string) => `<text x="${n(x)}" y="${n(y + 0.5)}">${s}</text>`;
+/** 가운데 정렬 글자(CSS가 정렬·크기를 준다). 이름·설명 같은 낱말(한글이거나 4자 넘게)은 작은 글자(k-t), 번호·A·B·100은 큰 글자 */
+export const text = (x: number, y: number, s: string) => `<text${/[가-힣]/.test(s) || s.length > 3 ? ' class="k-t"' : ""} x="${n(x)}" y="${n(y + 0.5)}">${s}</text>`;
 
 /** 도형 아래 이름표(A, B, C) 자리 */
 export const LABEL_DY = 38;
@@ -116,14 +116,12 @@ export function proc(cx: number, cy: number, label: string, run = true): string[
 
 /* ───── 호출 스택의 접시(프레임) ───── */
 export const PLATE = { w: 112, h: 32, pitch: 38 };
-/** 접시 한 장 = 함수 호출 하나. 왼쪽 위 (x, y). ghost = 앞으로 쌓일 빈자리 */
+/** 접시 한 장 = 함수 호출 하나(함수 이름이 적힌다). 왼쪽 위 (x, y). ghost = 앞으로 쌓일 빈자리 */
 export function plate(x: number, y: number, opt: { label?: string; tone?: "ink" | "acc"; ghost?: boolean } = {}): string[] {
   if (opt.ghost) return [rect(x, y, PLATE.w, PLATE.h, 8, "k-soft")];
   return [
     rect(x, y, PLATE.w, PLATE.h, 8, opt.tone === "acc" ? "k-boxa" : "k-box"),
-    ...(opt.label ? [text(x + 18, y + 16, opt.label)] : []),
-    path(`M${P(x + 38, y + 11)}H${P(x + 76)}M${P(x + 38, y + 21)}H${P(x + 64)}`, "k-ink"),
-    path(`M${P(x + 88, y + 9)}H${P(x + 98)}V${P(y + 23)}H${P(x + 90)}M${P(x + 94, y + 19)}L${P(x + 90, y + 23)}L${P(x + 94, y + 27)}`, "k-ink"),
+    ...(opt.label ? [text(x + PLATE.w / 2, y + PLATE.h / 2, opt.label)] : []),
   ];
 }
 

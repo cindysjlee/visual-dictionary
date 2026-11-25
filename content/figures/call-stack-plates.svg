@@ -1,25 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
-<path class="k-ink" d="M22 199H150"/>
-<rect class="k-soft" x="30" y="47" width="112" height="32" rx="8"/>
-<rect class="k-box" x="30" y="85" width="112" height="32" rx="8"/>
-<text x="48" y="101.5">C</text>
-<path class="k-ink" d="M68 96H106M68 106H94"/>
-<path class="k-ink" d="M118 94H128V108H120M124 104L120 108L124 112"/>
-<polygon class="k-fill" points="12,93 12,109 24,101"/>
-<rect class="k-box" x="30" y="123" width="112" height="32" rx="8"/>
-<text x="48" y="139.5">B</text>
-<path class="k-ink" d="M68 134H106M68 144H94"/>
-<path class="k-ink" d="M118 132H128V146H120M124 142L120 146L124 150"/>
-<rect class="k-box" x="30" y="161" width="112" height="32" rx="8"/>
-<text x="48" y="177.5">A</text>
-<path class="k-ink" d="M68 172H106M68 182H94"/>
-<path class="k-ink" d="M118 170H128V184H120M124 180L120 184L124 188"/>
-<path class="k-flow" d="M178 188L178 67"/>
-<polygon class="k-fill" points="178,56 183.5,67 172.5,67"/>
-<circle class="k-box" cx="178" cy="122" r="11"/>
-<text x="178" y="122.5">1</text>
-<path class="k-flow" d="M212 56L212 177"/>
-<polygon class="k-fill" points="212,188 206.5,177 217.5,177"/>
-<circle class="k-box" cx="212" cy="122" r="11"/>
-<text x="212" y="122.5">2</text>
+<path class="k-ink" d="M8 202H132"/>
+<rect class="k-soft" x="14" y="20" width="112" height="32" rx="8"/>
+<text class="k-t" x="70" y="36.5">다음 호출</text>
+<rect class="k-box" x="14" y="58" width="112" height="32" rx="8"/>
+<text class="k-t" x="70" y="74.5">C() 실행 중</text>
+<rect class="k-box" x="14" y="96" width="112" height="32" rx="8"/>
+<text x="70" y="112.5">B()</text>
+<rect class="k-box" x="14" y="134" width="112" height="32" rx="8"/>
+<text x="70" y="150.5">A()</text>
+<rect class="k-box" x="14" y="164" width="112" height="32" rx="8"/>
+<text class="k-t" x="70" y="180.5">main()</text>
+<path class="k-flow" d="M164 190L164 71"/>
+<polygon class="k-fill" points="164,60 169.5,71 158.5,71"/>
+<circle class="k-box" cx="164" cy="126" r="11"/>
+<text x="164" y="126.5">1</text>
+<text class="k-t" x="180" y="46.5">호출하면 쌓임</text>
+<path class="k-flow" d="M212 60L212 179"/>
+<polygon class="k-fill" points="212,190 206.5,179 217.5,179"/>
+<circle class="k-box" cx="212" cy="126" r="11"/>
+<text x="212" y="126.5">2</text>
+<text class="k-t" x="196" y="206.5">끝나면 빠짐</text>
+<text class="k-t" x="120" y="226.5">맨 위 한 장만 실행된다</text>
 </svg>

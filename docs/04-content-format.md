@@ -123,7 +123,7 @@
 - `viewBox="0 0 240 240"` 정사각 캔버스와 `xmlns`가 필요하다. 12KB 이하.
 - 요소는 `svg g path rect circle ellipse line polyline polygon text`만. 스크립트·스타일·이미지·링크(`href`)·애니메이션·그라디언트·`foreignObject`·이벤트 속성·`style` 속성은 없다.
 - **색을 쓰지 않는다**: 색 속성(`fill="#..."` 등)과 색 값은 거부(`fill="none"`·`stroke="none"`만 허용). 색은 클래스 `k-*`로만 칠하고, 스타일은 `styles/dictionary.css`의 `.la-tfig-svg`가 사이트 색 토큰(`--la-ink`·`--la-attack`·`--la-defense` 등)으로 준다. 그래서 라이트·다크 모두에서 읽힌다.
-- 그림 안 글자는 A, B, 1, 2, 100 같은 3자 이하 표식만. 설명은 캡션과 `alt`에 둔다.
+- 그림은 설명 글을 읽지 않아도 이해되어야 한다. 사물에는 이름(예: 공격자, 서버, 메모리)을, 화살표에는 한마디 설명(예: 몰래 복사)을, 맨 아래에는 결론 한 줄을 그림 안에 직접 쓴다. 글자 하나(`<text>`)는 20자 이하, 문장이 아니라 라벨이다. 캡션과 `alt`는 그림을 말로 풀어 쓴다.
 
 | 클래스 | 뜻 |
 | --- | --- |
@@ -135,6 +135,7 @@
 | `k-defl` · `k-deff` | 방어색(파랑) 선 · 채움. 붉은 점선과 파란 실선처럼 색만이 아니라 모양으로도 구분한다 |
 | `k-flow` | 잉크색 굵은 선(정상 흐름 화살표 몸통) |
 | `k-fill` | 잉크색 채움(방향 표시) |
+| `k-t` | 글자(`<text>`) 중 이름·설명 낱말(13px). 번호·A·B·숫자는 클래스 없음(15px). 생성기가 자동으로 붙인다 |
 
 그림 SVG는 `<use>`·`<defs>`를 쓸 수 없어 같은 도형을 파일마다 되풀이해야 한다. 그래서 `content/figures/*.svg`(손으로 그린 `deadlock-intersection.svg` 제외)는 `scripts/figures/shapes.ts`(공통 도형)와 `designs.ts`(그림별 구성)에서 `node scripts/build-figures.ts`로 만들어 커밋한다. 파일이 구성과 어긋나거나 규칙을 어기면 `scripts/build-figures.test.ts`가 실패한다.
 

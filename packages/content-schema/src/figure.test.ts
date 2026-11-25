@@ -1,4 +1,4 @@
-// 용어 옆 그림(figures) 단위 테스트: SVG 규칙(직접 그린 것만, 색은 클래스로만, 표식 글자만)과 캡션 표기
+// 용어 옆 그림(figures) 단위 테스트: SVG 규칙(직접 그린 것만, 색은 클래스로만, 글자는 짧은 낱말만)과 캡션 표기
 import { describe, expect, it } from "vitest";
 import { FIGURE_VIEWBOX, checkFigureSvg } from "./figure.ts";
 
@@ -6,7 +6,7 @@ const svg = (inner: string, attrs = `xmlns="http://www.w3.org/2000/svg" viewBox=
 const OK = svg('<rect class="k-box" x="1" y="1" width="10" height="10" rx="2"/><path class="k-acc" d="M0 0L5 5"/><text x="5" y="5">A</text>');
 
 describe("checkFigureSvg", () => {
-  it("직접 그린 평면 도식(클래스 k-*, 표식 글자)은 통과한다", () => {
+  it("직접 그린 평면 도식(클래스 k-*, 짧은 글자)은 통과한다", () => {
     expect(checkFigureSvg(OK)).toEqual([]);
     expect(checkFigureSvg(svg('<path class="k-soft" fill="none" d="M0 0L5 5"/>'))).toEqual([]);
   });
@@ -23,8 +23,8 @@ describe("checkFigureSvg", () => {
     ["색 속성", svg('<rect class="k-box" fill="red"/>'), 'fill="red"'],
     ["16진 색", svg('<rect class="k-box" data-x="#fff"/>'), "색 값"],
     ["그림 전용이 아닌 클래스", svg('<rect class="box"/>'), 'k-로 시작하는'],
-    ["긴 글자", svg('<text x="1" y="1">설명이길다</text>'), "표식"],
-    ["빈 글자", svg('<text x="1" y="1"> </text>'), "표식"],
+    ["긴 글자", svg(`<text x="1" y="1">${"가".repeat(21)}</text>`), "낱말"],
+    ["빈 글자", svg(`<text x="1" y="1"> </text>`), "낱말"],
     ["viewBox 없음", `<svg xmlns="http://www.w3.org/2000/svg"><rect class="k-box"/></svg>`, "viewBox"],
     ["xmlns 없음", `<svg viewBox="${FIGURE_VIEWBOX}"><rect class="k-box"/></svg>`, "xmlns"],
     ["svg가 아님", "<div/>", "<svg>로 시작"],

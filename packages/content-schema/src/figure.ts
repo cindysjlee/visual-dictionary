@@ -7,8 +7,8 @@ export const FIGURE_PARTS = ["analogy", "how", "why"] as const;
 export type FigurePart = (typeof FIGURE_PARTS)[number];
 /** 모든 그림은 같은 정사각 캔버스(자리를 미리 잡아 불러오는 동안 밀림이 없다) */
 export const FIGURE_VIEWBOX = "0 0 240 240";
-/** 그림 안 글자는 A, B, 1, 2 같은 표식만 */
-export const FIGURE_TEXT_MAX = 3;
+/** 그림 안 글자는 사물 이름·한마디 설명 같은 짧은 낱말·구(20자 이하). 한 줄 문장이 아니라 라벨이다 */
+export const FIGURE_TEXT_MAX = 20;
 export const FIGURE_SIZE_MAX = 12 * 1024;
 /** 그려도 되는 요소. 스크립트·스타일·이미지·링크·애니메이션·그라디언트는 없다 */
 export const FIGURE_ELEMENTS = ["svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text"] as const;
@@ -40,7 +40,7 @@ export function checkFigureSvg(svg: string): string[] {
   }
   for (const m of text.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)) {
     const label = m[1]!.trim();
-    if (/</.test(label) || [...label].length > FIGURE_TEXT_MAX || label.length === 0) issues.push(`글자 "${label.slice(0, 10)}": 그림 안 글자는 ${FIGURE_TEXT_MAX}자 이하 표식(A, B, 1, 2)만 씁니다`);
+    if (/</.test(label) || [...label].length > FIGURE_TEXT_MAX || label.length === 0) issues.push(`글자 "${label.slice(0, 10)}": 그림 안 글자는 ${FIGURE_TEXT_MAX}자 이하 낱말(이름·짧은 설명)만 씁니다`);
   }
   return issues;
 }

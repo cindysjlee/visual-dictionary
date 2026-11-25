@@ -1,23 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
-<path class="k-soft" d="M72 188H168"/>
-<path class="k-acc" d="M111 179L129 197M129 179L111 197"/>
-<rect class="k-box" x="22" y="168" width="44" height="28" rx="5"/>
-<path class="k-ink" d="M44 196V206M32 206H56"/>
-<text x="44" y="226.5">A</text>
-<path class="k-ink" d="M184 186L178 170M208 186L214 170"/>
-<rect class="k-box" x="172" y="186" width="48" height="18" rx="6"/>
-<circle class="k-fill" cx="184" cy="195" r="2"/>
-<circle class="k-fill" cx="192" cy="195" r="2"/>
-<text x="196" y="226.5">C</text>
-<path class="k-boxa" d="M102 70C102 40 138 40 138 70Z"/>
-<circle class="k-boxa" cx="120" cy="33" r="8"/>
-<text x="120" y="86.5">B</text>
-<path class="k-acc" d="M58 160L97.2 110.6"/>
-<polygon class="k-accf" points="104,102 101.5,114 92.9,107.2"/>
-<circle class="k-box" cx="81" cy="131" r="11"/>
-<text x="81" y="131.5">1</text>
-<path class="k-acc" d="M136 102L175.3 153.3"/>
-<polygon class="k-accf" points="182,162 170.9,156.6 179.7,149.9"/>
-<circle class="k-box" cx="159" cy="132" r="11"/>
-<text x="159" y="132.5">2</text>
+<path class="k-soft" d="M74 160H166"/>
+<path class="k-acc" d="M111 151L129 169M129 151L111 169"/>
+<text class="k-t" x="120" y="182.5">원래 가던 길</text>
+<rect class="k-box" x="22" y="138" width="44" height="28" rx="5"/>
+<path class="k-ink" d="M44 166V176M32 176H56"/>
+<text class="k-t" x="44" y="196.5">내 PC</text>
+<path class="k-ink" d="M184 156L178 140M208 156L214 140"/>
+<rect class="k-box" x="172" y="156" width="48" height="18" rx="6"/>
+<circle class="k-fill" cx="184" cy="165" r="2"/>
+<circle class="k-fill" cx="192" cy="165" r="2"/>
+<text class="k-t" x="196" y="196.5">공유기</text>
+<text class="k-t" x="120" y="8.5">“내가 공유기야”</text>
+<path class="k-boxa" d="M102 68C102 38 138 38 138 68Z"/>
+<circle class="k-boxa" cx="120" cy="31" r="8"/>
+<text class="k-t" x="120" y="84.5">공격자</text>
+<path class="k-acc" d="M56 134L91.5 105"/>
+<polygon class="k-accf" points="100,98 95,109.2 88,100.7"/>
+<circle class="k-box" cx="78" cy="116" r="11"/>
+<text x="78" y="116.5">1</text>
+<path class="k-acc" d="M140 98L175.5 127"/>
+<polygon class="k-accf" points="184,134 172,131.3 179,122.8"/>
+<circle class="k-box" cx="162" cy="116" r="11"/>
+<text x="162" y="116.5">2</text>
+<text class="k-t" x="120" y="226.5">패킷이 공격자를 거쳐 간다</text>
 </svg>

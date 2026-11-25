@@ -5,7 +5,7 @@ import { checkFigureSvg } from "../packages/content-schema/src/figure.ts";
 import { FIGURES, renderSvg } from "./figures/designs.ts";
 
 const FAMILIES = {
-  중립: ["k-ink", "k-soft", "k-box", "k-flow", "k-fill"],
+  중립: ["k-ink", "k-soft", "k-box", "k-flow", "k-fill", "k-t"],
   강조: ["k-acc", "k-accd", "k-accf", "k-boxa"],
   방어: ["k-defl", "k-deff"],
 };

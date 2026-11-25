@@ -2104,11 +2104,16 @@ body {
   stroke: none;
 }
 
+/* 그림 안 글자: 번호·A·B는 15px, 이름·설명 낱말(k-t)은 13px. 그림은 글자 없이도 읽혀야 하므로 사물 이름과 한마디 설명을 그림 안에 직접 쓴다 */
 .la-tfig-svg text {
   fill: var(--la-ink);
   font: 700 15px var(--font-sans);
   text-anchor: middle;
   dominant-baseline: central;
+}
+
+.la-tfig-svg text.k-t {
+  font-size: 13px;
 }
 /* 각주: 풀이가 있는 단어 = 점선 밑줄(사전 느낌), 단어 전체가 풀이 상자의 트리거. 공개 용어로 가는 단어 = 실선 밑줄 + 굵게(점선과 모양이 다르다, 색만으로 구분하지 않는다) */
 .la-fn {
