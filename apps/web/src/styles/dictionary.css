@@ -1123,7 +1123,7 @@ body {
   border-left: 2px solid var(--la-t, var(--la-rule));
 }
 
-.la-path ol a {
+.la-paths .la-path ol li a:not(.la-btn):not(.la-word) {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   align-items: center;
@@ -1153,17 +1153,20 @@ body {
   border-color: transparent;
 }
 
+/* 용어 이름: 본문과 같은 Pretendard 굵게, 글자색은 본문 잉크색(링크 파랑 아님). 링크 단서 = 분야색 밑줄(늘 보임) + 호버에서 굵어짐 + 포커스 윤곽 */
 .la-path-name {
-  font-family: var(--font-title);
+  font-family: var(--font-sans);
   font-weight: 700;
   font-size: var(--fs-md);
   line-height: 1.3;
+  text-decoration: underline;
+  text-decoration-color: var(--la-t, var(--la-ink));
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
 }
 
 .la-path ol a:hover .la-path-name {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+  text-decoration-thickness: 3px;
 }
 
 .la-path-why {
