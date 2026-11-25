@@ -35,6 +35,7 @@ XSS, CSRF 같은 보안 공격과 콜 스택, 데드락 같은 CS 개념을 단�
 9. **동작 줄이기(`prefers-reduced-motion`)를 존중**하고, 자막만 읽어도 개념이 이해되게 쓴다. 재생 컨트롤은 키보드로 조작 가능해야 한다 (NFR-03).
 10. **디자인 토큰은 한 곳에서만 관리한다.** 현재 디자인은 `docs/05-ui-design.md`의 "사전 지면"(라이트 = 낮의 종이 / 다크 = 밤 사전, 토큰 파일 `apps/web/src/styles/tokens.css`의 `--la-*`, 스타일 `styles/dictionary.css`, 공통 부품 `features/dictionary/`)이고, 이것도 출발점일 뿐이며 더 나은 디자인이 있으면 바꿔도 된다. 단, 화면마다 따로 색·글꼴을 정하지 않는다. 바꿀 때는 먼저 사용자에게 제안하고, 승인되면 `docs/05`와 코드의 토큰 파일을 함께 고쳐 전체 화면에 한 번에 적용한다. 공격(위험)과 방어(차단)는 색만이 아니라 명도로도 구분되게 유지한다 (빨강·초록 조합 금지).
 11. **위 구조는 의도한 설계다.** Zod 스키마 공유, 플레이어 3종 분리, 콘텐츠 빌드 파이프라인을 "불필요한 추상화"로 보고 합치거나 없애지 않는다. 코드 최소화 지침(ponytail, karpathy)은 이 구조 안에서 적용한다.
+12. **용어 옆 그림(`figures`)은 직접 그린 SVG만 쓴다.** 외부 이미지·사진·교재나 슬라이드 그림은 쓰지 않는다(저작권, CSP). 파일은 `content/figures/<id>.svg`이고, 색은 속성이 아니라 클래스 `k-*`로만 칠해 사이트 색 토큰(`--la-*`)을 따르게 하며, 그림 안 글자는 A·B·1·2 같은 표식만 쓴다. 캡션은 `직접 그린 그림`으로 끝낸다. 그림 코드와 SVG는 용어 쪽(지연 로드)에만 두고 홈 번들(기준 120KB)에 넣지 않는다(`npm run verify`의 번들 검사). 형식과 검증은 `docs/04` "용어 옆 그림", 배치와 색은 `docs/05`.
 
 ## 기술 스택
 
@@ -78,14 +79,22 @@ docs/                     설계 문서
 8단계 뒤 결과: 고아 기록 정리(OrphanSweepFn, 매일 03:00 서울)와 구글 토큰 범위 축소는 배포됨. 11-24 읽기 전용 조회로 확인: 일정 ENABLED(그룹 `visual-dictionary`, `cron(0 3 * * ? *)` Asia/Seoul), OAuth 범위 email·openid·profile, `check:aws` 67건 통과, 03:00 정기 실행 11-22~24 `done`(자세히는 docs/03 2.5 "배포 상태").
 6단계 결과: 스택 `VisualDictionaryApi`(HTTP API JWT·초당 10/버스트 20, Lambda progress·account·cleanup, `LearningRecord` 삭제 보호·RETAIN, 정리 큐·DLQ·알람), CloudFront `/api/*`와 SPA 라우팅 함수(대체 응답 없음, 없는 파일 404), `services/api/`, `features/progress/`, `/me`, E2E `@progress`, `npm run smoke:progress`. 탈퇴 순서·실패 표·요청 제한·로그는 docs/03 2.5.
 7단계 결과: `RecentView` 테이블·ActivityFn(`/api/activity`), 홈 최근 3개·/me 10개, 관련 용어(SQL 인젝션↔XSS, SSRF↔CSRF), 스택 `VisualDictionaryCi`(GitHub OIDC 역할, `-c githubRepo=…`일 때만), `.github/workflows/deploy.yml`(지금은 수동 실행만), `scripts/ci-gate.ts`, check:aws에 CI 역할 검사(로컬에서만). 자세한 것은 docs/03 2.5·2.6.
-남은 일:
-- CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만).
+남은 일(마감까지, 2026-11-25 기준 순서):
+- **퀴즈**(새 기능): 요구사항(docs/01에 FR 추가) → 설계(docs/02·03·05) → 구현 → 테스트(E2E·단위, docs/09 추적) → 배포 순서로 진행한다. 설명 틀의 부분(정의·비유·과정·이유)과 용어 JSON을 재사용한다.
+- **OG 이미지**: 링크 공유 미리보기용. 직접 그린 것만 쓴다(그림 규칙과 같다).
+- **전체 회귀·보안 점검**: `npm run verify`, `npm run test:e2e`, `npm run test:e2e:drafts`, 보안·접근성 점검(스킬이 없으면 직접 점검해 보고에 적는다), 배포 뒤 smoke·check:aws.
+- **기능 동결**: 마감 4~5일 전. 그 뒤에는 버그 수정·문서·발표 준비만 한다.
+- **발표 준비**.
+- **실제 휴대폰 확인**: 390px 에뮬레이션이 아니라 실제 기기에서 용어 쪽·그림·완독 표시.
+- **운영 로그인(Cognito·구글) 후 /terms 확인**: 배포 뒤 사람이 실제 계정으로 로그인해 용어 색인·완독 표시를 본다(smoke:auth·smoke:progress는 실제 배포에서 돌리기 전에 사용자에게 먼저 묻는다).
+- 우선순위 역전은 draft로 둔다(지금의 장면 어휘로는 개념이 거꾸로 읽혀 보류). 다시 공개하려면 새 어휘를 사용자와 먼저 상의한다.
+- CI E2E는 `--project=main`만(GPU 없는 러너라 실제 속도 2개는 로컬 배포 전 전체 E2E에서만). 스크롤 위치 복원 테스트 1개는 개발 서버(초안 포함 실행)에서 건너뛴다(docs/10).
 - 비회원 기록 이전(FR-PRG-07)은 선택.
 - 디자인 2차(11-23): 랜딩·사이트 전체 "사전 지면", 표제어 한 쪽은 종이색 카드 + 차례, 색인은 괘선 지면, 3D는 종이 장면, 본문 표시 문법(==형광펜==·`코드`, docs/04), 로고 ¶ + "시각화 사전"(docs/05 "로고", `scripts/build-logo.ts`). 비교용 `?scene`·`?style`·`?font` 전환은 모두 지웠다.
+- 용어 쪽(11-25): 설명은 모두 설명 틀(한 줄 정의·쉬운 비유·어떻게·왜, 각주 풀이 사전, docs/04). 완독은 글 끝 버튼으로만 표시하고(자동 완독 없음) 완독한 용어는 제목 줄에 작은 完 도장이 찍힌다(docs/05). 용어 옆 그림(`figures`)은 7개(데드락·콜 스택·경쟁 상태·클릭재킹·SSL 스트리핑·ARP 스푸핑·TCP 핸드셰이크).
 - Cognito 관리형 로그인 화면 로고는 넣지 않았다(사용자 결정: 앱이 구글 화면으로 바로 보내 거의 안 보임). 넣으려면 auth-stack의 `CfnManagedLoginBranding`을 `useCognitoProvidedValues: false` + 로고·파비콘 자산으로 바꾸고, 보안 검토·변경 세트·승인·구글 사람 확인 체크리스트를 다시 한다.
 - 콘텐츠 1차(11-21) 공개: 스택 오버플로(stack), 경쟁 상태(lock), SYN 플러드·SSL 스트리핑·IDOR·클릭재킹(flow). 용어 14개. 새 일반 어휘(칸 선반·여러 봉투·겹친 화면·옆 카메라, 스택 한도·고친 코드 판, 공유 값)는 docs/04·06.
-- 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.
-배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
+- 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
 
