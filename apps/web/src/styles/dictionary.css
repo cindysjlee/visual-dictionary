@@ -1961,6 +1961,7 @@ body {
 
 /* 그림 안 색은 클래스로만 칠한다(SVG 파일에는 색이 없다). 라이트·다크 토큰을 그대로 따라가고, 위험(붉은색)과 방어(파란색)는 점선·실선 모양으로도 구분한다 */
 .la-tfig-svg .k-ink,
+.la-tfig-svg .k-flow,
 .la-tfig-svg .k-soft,
 .la-tfig-svg .k-acc,
 .la-tfig-svg .k-accd,
@@ -1970,9 +1971,16 @@ body {
   stroke-linejoin: round;
 }
 
+/* 선 굵기는 두 가지: 가는 선 2(윤곽·보조선), 굵은 선 3.5(흐름 화살표·강조·방어). 모서리는 큰 상자 8, 작은 부품 3~5 */
 .la-tfig-svg .k-ink {
   stroke: var(--la-ink);
   stroke-width: 2;
+}
+
+/* 정상 흐름의 화살표(중립색, 굵은 선) */
+.la-tfig-svg .k-flow {
+  stroke: var(--la-ink);
+  stroke-width: 3.5;
 }
 
 .la-tfig-svg .k-soft {
@@ -1990,7 +1998,7 @@ body {
 .la-tfig-svg .k-boxa {
   fill: var(--la-paper-deep);
   stroke: var(--la-attack);
-  stroke-width: 3;
+  stroke-width: 3.5;
 }
 
 .la-tfig-svg .k-acc {
@@ -2011,7 +2019,7 @@ body {
 
 .la-tfig-svg .k-defl {
   stroke: var(--la-defense);
-  stroke-width: 4;
+  stroke-width: 3.5;
 }
 
 .la-tfig-svg .k-deff {

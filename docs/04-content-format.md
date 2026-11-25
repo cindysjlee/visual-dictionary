@@ -133,7 +133,10 @@
 | `k-boxa` | 강조 상자(붉은 선) |
 | `k-acc` · `k-accd` · `k-accf` | 강조색 화살표 선 · 점선 · 화살촉(채움) |
 | `k-defl` · `k-deff` | 방어색(파랑) 선 · 채움. 붉은 점선과 파란 실선처럼 색만이 아니라 모양으로도 구분한다 |
+| `k-flow` | 잉크색 굵은 선(정상 흐름 화살표 몸통) |
 | `k-fill` | 잉크색 채움(방향 표시) |
+
+그림 SVG는 `<use>`·`<defs>`를 쓸 수 없어 같은 도형을 파일마다 되풀이해야 한다. 그래서 `content/figures/*.svg`(손으로 그린 `deadlock-intersection.svg` 제외)는 `scripts/figures/shapes.ts`(공통 도형)와 `designs.ts`(그림별 구성)에서 `node scripts/build-figures.ts`로 만들어 커밋한다. 파일이 구성과 어긋나거나 규칙을 어기면 `scripts/build-figures.test.ts`가 실패한다.
 
 검증기는 파일이 없는 `id`, 어떤 용어도 쓰지 않는 SVG 파일, 두 용어가 같은 그림을 쓰는 경우를 오류로 막는다. 빌드(`build-index.ts`)는 내보내는 용어가 쓰는 그림만 `/content/figures/<id>.svg`로 복사한다(draft 용어의 그림은 공개 빌드에 들어가지 않는다). 화면(`features/term/Figure.tsx`)은 용어 쪽에서 SVG를 읽어 요소·속성 허용 목록으로 한 번 더 거른 뒤 인라인으로 넣는다. 홈 묶음에는 들어가지 않는다.
 ### 새 어휘가 필요해 데이터로 나타내지 못한 것 (2차 초안 7개를 쓰며 확인)

@@ -1,18 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
-<path class="k-ink" d="M28 198H172"/>
-<rect class="k-box" x="44" y="146" width="112" height="44" rx="8"/>
-<text x="64" y="168">A</text>
-<path class="k-ink" d="M84 162H122M84 174H110"/>
-<path class="k-ink" d="M134 160H144V176H136M140 172L136 176L140 180"/>
-<rect class="k-box" x="44" y="96" width="112" height="44" rx="8"/>
-<text x="64" y="118">B</text>
-<path class="k-ink" d="M84 112H122M84 124H110"/>
-<path class="k-ink" d="M134 110H144V126H136M140 122L136 126L140 130"/>
-<rect class="k-boxa" x="44" y="46" width="112" height="44" rx="8"/>
-<text x="64" y="68">C</text>
-<path class="k-ink" d="M84 62H122M84 74H110"/>
-<path class="k-ink" d="M134 60H144V76H136M140 72L136 76L140 80"/>
-<polygon class="k-accf" points="22,62 22,80 34,71"/>
-<path class="k-ink" d="M196 180L196 58"/><polygon class="k-fill" points="196,52 201.5,62 190.5,62"/>
-<path class="k-acc" d="M220 52L220 174"/><polygon class="k-accf" points="220,180 214.5,170 225.5,170"/>
+<path class="k-ink" d="M22 199H150"/>
+<rect class="k-soft" x="30" y="47" width="112" height="32" rx="8"/>
+<rect class="k-box" x="30" y="85" width="112" height="32" rx="8"/>
+<text x="48" y="101.5">C</text>
+<path class="k-ink" d="M68 96H106M68 106H94"/>
+<path class="k-ink" d="M118 94H128V108H120M124 104L120 108L124 112"/>
+<polygon class="k-fill" points="12,93 12,109 24,101"/>
+<rect class="k-box" x="30" y="123" width="112" height="32" rx="8"/>
+<text x="48" y="139.5">B</text>
+<path class="k-ink" d="M68 134H106M68 144H94"/>
+<path class="k-ink" d="M118 132H128V146H120M124 142L120 146L124 150"/>
+<rect class="k-box" x="30" y="161" width="112" height="32" rx="8"/>
+<text x="48" y="177.5">A</text>
+<path class="k-ink" d="M68 172H106M68 182H94"/>
+<path class="k-ink" d="M118 170H128V184H120M124 180L120 184L124 188"/>
+<path class="k-flow" d="M178 188L178 67"/>
+<polygon class="k-fill" points="178,56 183.5,67 172.5,67"/>
+<circle class="k-box" cx="178" cy="122" r="11"/>
+<text x="178" y="122.5">1</text>
+<path class="k-flow" d="M212 56L212 177"/>
+<polygon class="k-fill" points="212,188 206.5,177 217.5,177"/>
+<circle class="k-box" cx="212" cy="122" r="11"/>
+<text x="212" y="122.5">2</text>
 </svg>
