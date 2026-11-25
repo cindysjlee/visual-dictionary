@@ -106,9 +106,12 @@ test("뒤로 가기: #term-fig로 연 용어 쪽에서 다른 곳을 거쳐 돌�
   await page.goto(`/terms/${id}#term-fig`);
   await expect(playButton(page)).toBeVisible();
   await expect(page.locator("#term-fig")).toBeInViewport();
-  await page.evaluate(() => window.scrollBy(0, 400)); // 그림 아래로 더 내려 읽다가
+  // 그림 아래로 더 내려 읽다가 푸터 링크를 누른다. 링크를 먼저 화면에 올려 둬야 한다: 화면 밖이면 클릭이 스크롤을 덧붙여 "떠난 위치"가 기록한 값과 달라진다(페이지가 길수록)
+  const privacy = page.getByRole("link", { name: "개인정보처리방침" });
+  await privacy.scrollIntoViewIfNeeded();
   const y = await scrollY(page);
-  await page.getByRole("link", { name: "개인정보처리방침" }).click();
+  expect(y, "그림 위치(해시)보다 아래로 내려온 상태").toBeGreaterThan(0);
+  await privacy.click();
   await expect(page).toHaveURL("/privacy");
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/terms/${id}#term-fig$`));
