@@ -1,6 +1,6 @@
 // 학습 기록 E2E(@progress): 테스트 빌드의 가짜 인증·가짜 기록 API(features/progress/fake.ts) 위에서 화면을 확인한다.
 // 실제 API(권한·탈퇴 순서)는 배포 후 npm run smoke:progress가 확인한다
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const tag = { tag: "@progress" };
 const PW = "abc12345";
@@ -26,6 +26,11 @@ const stored = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getIt
 async function playToEnd(page: Page) {
   await player(page).locator(".stage-play").click();
   await expect(player(page).locator(".play-btn")).toHaveAttribute("aria-label", "재생", { timeout: 60_000 });
+}
+/** 재생을 시작해 `target`이 보일 때까지 간다. 알림은 마지막 단계에 도착하는 순간 뜨고 6초 뒤 사라지는데, 마지막 단계의 연출이 끝나는 시각은 기기 속도(GPU 없는 CI는 훨씬 느리다)에 달려 있으므로 알림을 검사하는 테스트는 playToEnd를 기다리지 말고 이것으로 알림이 뜬 순간부터 잰다 */
+async function playUntil(page: Page, target: Locator) {
+  await player(page).locator(".stage-play").click();
+  await expect(target).toBeVisible({ timeout: 90_000 });
 }
 /** 장면 배속 10×(테스트 빌드 전용)으로 끝까지 빨리 간다 */
 const fast = (page: Page) => page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
@@ -88,8 +93,8 @@ test("③ 찍히면 플레이어 아래에 \"完 도장이 찍혔어요 · 취�
   await fast(page);
   await signedIn(page, "notice@example.com");
   await open(page, "csrf");
-  await playToEnd(page);
   const note = notice(page);
+  await playUntil(page, note.locator(".la-stamp-notice"));
   await expect(note).toHaveAttribute("role", "status");
   await expect(note).toContainText("完 도장이 찍혔어요 ·");
   const cancel = note.getByRole("button", { name: "방금 찍은 도장 취소" });
@@ -115,9 +120,8 @@ test("알림의 취소 버튼에 키보드 포커스가 있는 동안은 6초가
   await fast(page);
   await signedIn(page, "focus@example.com");
   await open(page, "csrf");
-  await playToEnd(page);
   const cancel = notice(page).getByRole("button", { name: "방금 찍은 도장 취소" });
-  await expect(cancel).toBeVisible();
+  await playUntil(page, cancel);
   await cancel.focus();
   await page.waitForTimeout(7000);
   await expect(cancel).toBeFocused();
@@ -221,7 +225,7 @@ test("저장이 실패하면 도장은 되돌아가고 알림이 안내하며, �
   await signedIn(page, "savefail@example.com");
   await open(page, "csrf");
   await page.evaluate(() => localStorage.setItem("fake-progress-fail", "1")); // 불러온 뒤에 장애
-  await playToEnd(page);
+  await playUntil(page, notice(page).getByRole("alert"));
   await expect(notice(page).getByRole("alert")).toContainText("기록을 저장하지 못했어요");
   await expect(stamp(page).getByText("애니메이션을 끝까지 보면 찍혀요")).toBeVisible();
   await expect(page.locator(".step-pos")).toHaveText(/^6 \/ 6/);
@@ -240,8 +244,9 @@ test("⑧ 도장 상태(안 찍힘·찍힘·취소함)와 알림이 떠 있을 �
     await signedIn(page, `axe-${colorScheme}@example.com`);
     await open(page, "csrf");
     bad.push(...(await severe(`${colorScheme} 안 찍힘`)));
-    await playToEnd(page);
+    await playUntil(page, notice(page).locator(".la-stamp-notice"));
     await expect(notice(page)).toContainText("도장이 찍혔어요");
+    await expect(page.locator(".caption > div")).toHaveCSS("opacity", "1"); // 마지막 단계 자막이 다 나타난 뒤(페이드인 중에는 대비가 낮게 잰다). 알림은 6초 떠 있다
     bad.push(...(await severe(`${colorScheme} 찍힘+알림`)));
     await stamp(page).getByRole("button", { name: "완독 취소" }).click();
     await expect(stamp(page).getByRole("button", { name: "다시 찍기" })).toBeVisible();
