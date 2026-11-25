@@ -71,6 +71,7 @@ test("경로 파일이 늦게 와도 색인과 함께 나타나 아래가 밀리
   });
   await page.goto("/terms");
   await expect(page.locator(".la-index-tools")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready); // 글꼴이 늦게 도착해 줄 높이가 바뀌는 것(경로와 무관)은 빼고 잰다
   const before = await page.locator(".la-index-tools").boundingBox();
   await expect(section(page)).toBeVisible(); // 색인 도구가 보이는 순간 경로도 이미 있다
   await page.waitForTimeout(300);
