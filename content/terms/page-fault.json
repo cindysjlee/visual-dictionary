@@ -24,7 +24,7 @@
       "페이지 폴트가 너무 잦으면 프로그램이 느려진다. 메모리를 적게 쓰거나 가까운 곳을 모아서 쓰는 것이 폴트를 줄이는 방법이다."
     ]
   },
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [

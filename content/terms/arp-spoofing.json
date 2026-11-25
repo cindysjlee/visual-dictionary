@@ -24,7 +24,7 @@
       "같은 와이파이나 사무실 네트워크처럼 한 로컬 네트워크 안에서만 가능한 공격이다. HTTPS는 내용을 암호문으로 만들지만 이 공격을 막지는 못한다. 사용자를 HTTP로 접속하게 속이는 [[SSL 스트리핑]]과 함께 쓰이면 이 보호도 약해진다."
     ]
   },
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [

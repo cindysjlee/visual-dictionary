@@ -24,7 +24,7 @@
       "HTTPS 사이트라면 가짜 서버가 진짜 인증서를 내밀 수 없어서 브라우저가 경고한다. 위조가 막히는 것이 아니라 속은 사실이 드러나는 것이다. HTTP 사이트에서는 이 경고도 없다."
     ]
   },
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [

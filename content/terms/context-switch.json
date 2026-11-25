@@ -24,7 +24,7 @@
       "너무 자주 전환하면 이 비용이 커지므로, 운영체제는 시간 조각의 길이를 적당히 정한다."
     ]
   },
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "flow",
     "actors": [

@@ -23,7 +23,7 @@
       "아무도 처리하지 않으면 프로그램은 [[스택 트레이스]](traceback)를 출력하고 멈춘다. 파이썬의 traceback은 가장 최근 호출이 맨 마지막에 오고, 마지막 줄이 예외의 종류와 내용을 알려 준다."
     ]
   },
-  "status": "draft",
+  "status": "published",
   "scenario": {
     "playerType": "stack",
     "code": {
