@@ -104,6 +104,38 @@ describe("termSchema", () => {
     });
   });
 
+  describe("그림(figures)", () => {
+    const fig = { part: "how", id: "csrf-demo", alt: "그림을 말로 설명한다", caption: "캡션이다. 직접 그린 그림" };
+    const withFigures = (figures: unknown) => {
+      const t: any = example("csrf");
+      t.figures = figures;
+      return t;
+    };
+
+    it("없어도 되고(기본값 빈 배열), 올바른 그림은 통과한다", () => {
+      expect(termSchema.parse(example("csrf")).figures).toEqual([]);
+      expect(issuePaths(withFigures([fig]))).toEqual([]);
+      expect(issuePaths(withFigures([fig, { ...fig, id: "csrf-b", part: "analogy" }]))).toEqual([]);
+    });
+
+    it.each([
+      ["한 줄 정의 옆에는 둘 수 없다", { ...fig, part: "definition" }, "figures.0.part"],
+      ["alt가 비어 있다", { ...fig, alt: "" }, "figures.0.alt"],
+      ["캡션이 비어 있다", { ...fig, caption: "" }, "figures.0.caption"],
+      ['캡션이 "직접 그린 그림"으로 끝나지 않는다', { ...fig, caption: "캡션만 있다" }, "figures.0.caption"],
+      ["id 형식이 틀렸다", { ...fig, id: "Bad Id" }, "figures.0.id"],
+      ["모르는 필드", { ...fig, src: "x.png" }, "figures.0"],
+    ])("%s → 오류 위치를 알려준다", (_, bad, path) => {
+      expect(issuePaths(withFigures([bad]))).toContain(path);
+    });
+
+    it("같은 그림 id를 두 번, 한 부분에 두 개를 쓰면 오류이고, 그림은 3개까지", () => {
+      expect(issuePaths(withFigures([fig, { ...fig, part: "why" }]))).toContain("figures.1.id");
+      expect(issuePaths(withFigures([fig, { ...fig, id: "csrf-b" }]))).toContain("figures.1.part");
+      const four = ["a", "b", "c", "d"].map((x, i) => ({ ...fig, id: `csrf-${x}`, part: ["analogy", "how", "why", "how"][i] }));
+      expect(issuePaths(withFigures(four))).toContain("figures");
+    });
+  });
   it("관련 용어에 자기 자신을 넣으면 오류", () => {
     const csrf = example("csrf");
     expect(issuePaths({ ...csrf, related: ["xss", "csrf"] })).toContain("related.1");

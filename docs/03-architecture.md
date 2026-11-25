@@ -98,6 +98,8 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 설명 틀(문자열 또는 4부분 객체)·풀이 사전 항목 | `packages/content-schema/src/index.ts` `explanationSchema`, `descriptionSchema`, `glossaryEntrySchema`, `glossarySchema`, 타입 `Explanation`·`Footnote`·`BuiltTerm`. 규칙 값 `packages/content-schema/src/explain.ts` `EXPLAIN_PARTS`, `partLabel()`, `explanationParagraphs()`, `explanationNoteWords()`, `sentencesOf()`, `DEFINITION_MAX`·`SENTENCE_WARN`·`NOTES_MAX`·`DRAFT_DESCRIPTION` |
 | 각주 `[[단어]]` 표시 | `packages/content-schema/src/marks.ts` `noteWords()`(설명 틀 안에서만 허용) |
 | 풀이 사전 | `content/glossary.json`, 검증 `scripts/validate-content.ts` `loadGlossary()`, 빌드 `scripts/build-index.ts` `withFootnotes()` |
+| 용어 옆 그림(스키마·SVG 규칙·캡션 표기) | `packages/content-schema/src/index.ts` `figureSchema`·`Figure`, `packages/content-schema/src/figure.ts` `checkFigureSvg()`·`captionHasCredit()`·`FIGURE_PARTS`·`FIGURE_CREDIT` |
+| 그림 파일(직접 그린 SVG) 검증·복사 | `content/figures/<id>.svg`, 검증 `scripts/validate-content.ts` `FIGURES_DIR`(`loadTerms()`의 그림 검사), 빌드 `scripts/build-index.ts`(`/content/figures/`로 복사) |
 
 **S1 공통 · S3 탐색 · S4 상세 화면**
 
@@ -117,6 +119,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 사전 지면 공통 부품(첫소리 묶기·분야 버튼·색인 줄·관련 용어·진행률·"6단계 · 방어 2개") | `features/dictionary/Dictionary.tsx` `byInitial()`, `Thumbs`, `IndexColumns`, `SeeAlso`, `Ledger`, `entryMeta()` |
 | 용어 상세 페이지(카드·옆 목차·참고 자료 출처) | `features/term/TermPage.tsx` (플레이어는 동적 import, 라우트는 `main.tsx`에서 lazy로 받아 홈 묶음 120KB 이하를 지킨다), `Toc`, `sourceOf()` |
 | 용어 쪽 머리 영역(제목 줄 `.la-term-titlerow` 오른쪽에 완독한 용어의 작은 도장, 그 아래 설명이 카드 폭 전체, 글 맨 끝 `.la-study-end`) | `features/term/TermPage.tsx` `TermDetail`, 스타일 `styles/dictionary.css` `.la-term-head`, 줄 길이 토큰 `styles/tokens.css` `--measure-ko` |
+| 용어 옆 그림 화면(걸러서 인라인 SVG, 캡션·alt) | `features/term/Figure.tsx` `Figure`·`parseFigureSvg()`, 배치는 `Explanation.tsx`(그림이 있는 부분만 `.la-explain-text` + `.la-tfig`), 스타일 `styles/dictionary.css` `.la-tfig`·`.la-tfig-svg` |
 | 설명 틀 화면(부분 이름표·한 줄 정의·각주 단어·각주 목록) | `features/term/Explanation.tsx` `Explanation`, `features/term/Footnotes.tsx` `FootnoteWord`(풀이 상자)·`FootnoteLink`(공개 용어 링크)·`FootnoteList` |
 | 본문 표시 문법(==형광펜==·`코드`) 파싱·그리기 | `packages/content-schema/src/marks.ts` `parseMarks()`, `plainText()`(검증은 `termSchema`), 화면 `features/dictionary/Marked.tsx` `Marked` |
 | "¶ n단계" → 그 방어 모드의 n단계로 | `TermPage.tsx` `showDefense()`, `players/Player.tsx` `jump`(`PlayerJump`) |

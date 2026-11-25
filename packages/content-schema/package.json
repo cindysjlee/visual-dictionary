@@ -7,7 +7,8 @@
     "./labels": "./src/labels.ts",
     "./scene": "./src/scene.ts",
     "./marks": "./src/marks.ts",
-    "./explain": "./src/explain.ts"
+    "./explain": "./src/explain.ts",
+    "./figure": "./src/figure.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

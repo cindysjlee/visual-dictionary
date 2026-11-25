@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<rect class="k-box" x="86" y="22" width="68" height="38" rx="8"/>
+<text x="120" y="41.5">100</text>
+<rect class="k-box" x="12" y="100" width="56" height="40" rx="8"/>
+<text x="40" y="120.5">A</text>
+<rect class="k-box" x="172" y="100" width="56" height="40" rx="8"/>
+<text x="200" y="120.5">B</text>
+<rect class="k-boxa" x="86" y="180" width="68" height="38" rx="8"/>
+<text x="120" y="199.5">150</text>
+<path class="k-ink" d="M96 62Q50 66 45.1 92.1"/><polygon class="k-fill" points="44,98 40.4,87.2 51.2,89.2"/>
+<path class="k-ink" d="M144 62Q190 66 194.9 92.1"/><polygon class="k-fill" points="196,98 188.8,89.2 199.6,87.2"/>
+<path class="k-acc" d="M44 142Q50 196 78 198.5"/><polygon class="k-accf" points="84,199 73.6,203.6 74.5,192.6"/>
+<path class="k-acc" d="M196 142Q190 196 162 198.5"/><polygon class="k-accf" points="156,199 165.5,192.6 166.4,203.6"/>
+<circle class="k-box" cx="52" cy="74" r="11"/><text x="52" y="74.5">1</text>
+<circle class="k-box" cx="188" cy="74" r="11"/><text x="188" y="74.5">2</text>
+<circle class="k-box" cx="56" cy="180" r="11"/><text x="56" y="180.5">3</text>
+<circle class="k-box" cx="184" cy="180" r="11"/><text x="184" y="180.5">4</text>
+</svg>

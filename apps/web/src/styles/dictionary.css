@@ -1845,6 +1845,132 @@ body {
   line-height: 1.6;
 }
 
+/* ════════ 용어 옆 그림(docs/04 "그림"): 직접 그린 SVG, 색은 사이트 토큰 ════════
+   1440px 이상(카드 1096px): 글(줄 길이 상한 그대로)은 왼쪽, 그림은 그 부분 옆 오른쪽 여백. 그보다 좁으면 그 부분 바로 아래에 한 열 */
+.la-explain.has-figs {
+  max-width: none;
+}
+
+.la-explain-part.has-figure {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+}
+
+.la-explain-text {
+  min-width: 0;
+}
+
+.la-tfig {
+  margin: 0;
+  max-width: 340px;
+}
+
+.la-tfig figcaption {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--la-ink-sub);
+}
+
+.la-tfig-svg {
+  width: 100%;
+  aspect-ratio: 1 / 1; /* 모든 그림은 같은 정사각 캔버스: 불러오는 동안에도 자리를 잡아 밀림이 없다 */
+  border: 1px solid var(--la-card-line);
+  border-radius: 12px;
+  background: var(--la-card);
+  overflow: hidden;
+}
+
+.la-tfig-svg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (min-width: 1440px) {
+  .la-explain-part.has-figure {
+    grid-template-columns: minmax(0, var(--measure-ko)) minmax(0, 1fr);
+    column-gap: var(--sp-5);
+    align-items: start;
+  }
+
+  .la-tfig {
+    max-width: none;
+  }
+}
+
+/* 그림 안 색은 클래스로만 칠한다(SVG 파일에는 색이 없다). 라이트·다크 토큰을 그대로 따라가고, 위험(붉은색)과 방어(파란색)는 점선·실선 모양으로도 구분한다 */
+.la-tfig-svg .k-ink,
+.la-tfig-svg .k-soft,
+.la-tfig-svg .k-acc,
+.la-tfig-svg .k-accd,
+.la-tfig-svg .k-defl {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.la-tfig-svg .k-ink {
+  stroke: var(--la-ink);
+  stroke-width: 2;
+}
+
+.la-tfig-svg .k-soft {
+  stroke: var(--la-ink-sub);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+
+.la-tfig-svg .k-box {
+  fill: var(--la-paper-deep);
+  stroke: var(--la-ink);
+  stroke-width: 2;
+}
+
+.la-tfig-svg .k-boxa {
+  fill: var(--la-paper-deep);
+  stroke: var(--la-attack);
+  stroke-width: 3;
+}
+
+.la-tfig-svg .k-acc {
+  stroke: var(--la-attack);
+  stroke-width: 3.5;
+}
+
+.la-tfig-svg .k-accd {
+  stroke: var(--la-attack);
+  stroke-width: 3.5;
+  stroke-dasharray: 7 6;
+}
+
+.la-tfig-svg .k-accf {
+  fill: var(--la-attack);
+  stroke: none;
+}
+
+.la-tfig-svg .k-defl {
+  stroke: var(--la-defense);
+  stroke-width: 4;
+}
+
+.la-tfig-svg .k-deff {
+  fill: var(--la-defense);
+  stroke: none;
+}
+
+.la-tfig-svg .k-fill {
+  fill: var(--la-ink);
+  stroke: none;
+}
+
+.la-tfig-svg text {
+  fill: var(--la-ink);
+  font: 700 15px var(--font-sans);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
 /* 각주: 풀이가 있는 단어 = 점선 밑줄(사전 느낌), 단어 전체가 풀이 상자의 트리거. 공개 용어로 가는 단어 = 실선 밑줄 + 굵게(점선과 모양이 다르다, 색만으로 구분하지 않는다) */
 .la-fn {
   position: relative;

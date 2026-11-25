@@ -103,5 +103,13 @@
     { "title": "RFC 9293 · Transmission Control Protocol (3.5 Establishing a Connection)", "url": "https://www.rfc-editor.org/rfc/rfc9293#section-3.5" },
     { "title": "MDN · TCP handshake", "url": "https://developer.mozilla.org/en-US/docs/Glossary/TCP_handshake" }
   ],
-  "related": ["syn-flood"]
+  "related": ["syn-flood"],
+  "figures": [
+    {
+      "part": "how",
+      "id": "tcp-handshake-arrows",
+      "alt": "왼쪽 A(클라이언트)와 오른쪽 B(서버)의 세로선 사이에 화살표 세 개가 위에서 아래로 이어진다. 1은 A에서 B로, 2는 B에서 A로, 3은 다시 A에서 B로 간다.",
+      "caption": "A는 클라이언트, B는 서버다. 1은 SYN, 2는 SYN-ACK, 3은 ACK로, 신호 세 번을 위에서 아래로 주고받는다. 직접 그린 그림"
+    }
+  ]
 }

@@ -209,5 +209,13 @@
     { "title": "Java Tutorials · Deadlock", "url": "https://docs.oracle.com/javase/tutorial/essential/concurrency/deadlock.html" },
     { "title": "Operating Systems: Three Easy Pieces · Common Concurrency Problems", "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/threads-bugs.pdf" }
   ],
-  "related": ["race-condition"]
+  "related": ["race-condition"],
+  "figures": [
+    {
+      "part": "how",
+      "id": "deadlock-intersection",
+      "alt": "점선으로 네 칸으로 나눈 사거리 한가운데에 차 A, B, C, D가 한 칸씩 있다. A는 오른쪽, B는 아래, C는 왼쪽, D는 위를 보고 있고, 각 차의 앞에서 다음 차의 칸으로 화살표가 이어져 한 바퀴를 이룬다.",
+      "caption": "사거리 한가운데 네 칸을 차 네 대가 하나씩 차지하고, 저마다 앞 칸의 차가 비켜 주기를 기다린다. 기다림이 한 바퀴 고리를 이루는 순환 대기다. 직접 그린 그림"
+    }
+  ]
 }

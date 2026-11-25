@@ -57,6 +57,7 @@
 | `defenses[].branchAtStep`, `steps` | | `solution`만, 둘은 함께 쓴다. `branchAtStep`(1부터, 기본 `steps` 길이 이하)부터 원래 단계 대신 이 `steps`(대체 흐름, `scenario.steps`와 같은 형식)를 끝까지 재생한다. 없으면 설명만 있는 보조 해결 방법 |
 | `references` | O | 1개 이상 |
 | `related` | | 다른 용어의 `id`. 존재하지 않는 id면 빌드 경고 |
+| `figures` | | 설명 옆 그림(최대 3개, 부분마다 하나). 아래 "용어 옆 그림" |
 
 ### 본문 표시 (`description`, `defenses[].description`)
 
@@ -100,6 +101,41 @@
 - 오류: 본문에 있는데 사전에 없는 단어, 어떤 용어에도 쓰이지 않는 항목, 없는 용어 `id`를 가리키는 `term`, 용어가 자기 자신을 가리키는 `term`, 같은 `word` 중복.
 - 빌드(`build-index.ts` `withFootnotes()`)는 각 `terms/<id>.json`에 `footnotes: [{ word, gloss, link? }]`를 본문에 나온 순서대로 풀어 넣는다. 화면은 사전 파일을 따로 받지 않는다. `link`는 가리키는 용어가 그 빌드의 결과물(개발용은 draft 포함, 배포용은 published만)에 있을 때만 붙는다.
 
+### 용어 옆 그림 (`figures`, 2026-11-25)
+
+설명의 한 부분 옆에 직접 그린 평면 도식을 놓는다. 그림이 없는 용어는 본문만 나온다.
+
+```jsonc
+"figures": [
+  { "part": "how", "id": "deadlock-intersection", "alt": "그림을 말로 설명", "caption": "그림 밖 설명. 직접 그린 그림" }
+]
+```
+
+| 필드 | 규칙 |
+| --- | --- |
+| `part` | `analogy`, `how`, `why` 중 하나(한 줄 정의 옆에는 두지 않는다). 한 부분 옆에는 그림 하나 |
+| `id` | 그림 파일 `content/figures/<id>.svg`. 한 그림은 한 용어만 쓴다 |
+| `alt` | 그림을 말로 설명한다(화면 읽기가 읽는다). 300자 이하 |
+| `caption` | 그림 밖 캡션. **"직접 그린 그림"으로 끝낸다**(끝의 마침표·괄호는 봐준다). 200자 이하 |
+
+**SVG 파일 규칙**(`packages/content-schema/src/figure.ts` `checkFigureSvg()`가 빌드에서 검사, 어기면 빌드 실패):
+- 직접 그린 것만 쓴다. 외부 이미지·사진·교재나 슬라이드 그림은 쓰지 않는다(저작권, CSP).
+- `viewBox="0 0 240 240"` 정사각 캔버스와 `xmlns`가 필요하다. 12KB 이하.
+- 요소는 `svg g path rect circle ellipse line polyline polygon text`만. 스크립트·스타일·이미지·링크(`href`)·애니메이션·그라디언트·`foreignObject`·이벤트 속성·`style` 속성은 없다.
+- **색을 쓰지 않는다**: 색 속성(`fill="#..."` 등)과 색 값은 거부(`fill="none"`·`stroke="none"`만 허용). 색은 클래스 `k-*`로만 칠하고, 스타일은 `styles/dictionary.css`의 `.la-tfig-svg`가 사이트 색 토큰(`--la-ink`·`--la-attack`·`--la-defense` 등)으로 준다. 그래서 라이트·다크 모두에서 읽힌다.
+- 그림 안 글자는 A, B, 1, 2, 100 같은 3자 이하 표식만. 설명은 캡션과 `alt`에 둔다.
+
+| 클래스 | 뜻 |
+| --- | --- |
+| `k-ink` | 잉크색 선(채우기 없음) |
+| `k-soft` | 점선(보조선·투명한 층·칸) |
+| `k-box` | 둥근 상자(종이 바탕 + 잉크 선) |
+| `k-boxa` | 강조 상자(붉은 선) |
+| `k-acc` · `k-accd` · `k-accf` | 강조색 화살표 선 · 점선 · 화살촉(채움) |
+| `k-defl` · `k-deff` | 방어색(파랑) 선 · 채움. 붉은 점선과 파란 실선처럼 색만이 아니라 모양으로도 구분한다 |
+| `k-fill` | 잉크색 채움(방향 표시) |
+
+검증기는 파일이 없는 `id`, 어떤 용어도 쓰지 않는 SVG 파일, 두 용어가 같은 그림을 쓰는 경우를 오류로 막는다. 빌드(`build-index.ts`)는 내보내는 용어가 쓰는 그림만 `/content/figures/<id>.svg`로 복사한다(draft 용어의 그림은 공개 빌드에 들어가지 않는다). 화면(`features/term/Figure.tsx`)은 용어 쪽에서 SVG를 읽어 요소·속성 허용 목록으로 한 번 더 거른 뒤 인라인으로 넣는다. 홈 묶음에는 들어가지 않는다.
 ### 새 어휘가 필요해 데이터로 나타내지 못한 것 (2차 초안 7개를 쓰며 확인)
 
 새 어휘는 사용자와 먼저 상의한다. 아래는 지금 어휘로는 화면에서 표현하지 못해 자막과 화면판 글자로 대신한 것이다.
@@ -214,6 +250,7 @@
 `scripts/build-index`가 `status: "published"`인 파일만 모아 `apps/web/generated/build/content/`에 만든다. 배포 주소에서는 `/content/...`로 제공된다. 화면 경로 `/terms/:id`와 겹치지 않게 하려고 `/content/` 아래에 둔다.
 
 - `/content/index.json`: 목록·검색·진행률 계산용. 용어마다 `id`, `name`, `englishName`, `aliases`, `category`, `summary`, `playerType`, `stepCount`(단계 수), `defenseCount`(차단 단계가 있는 방어 수), `supportCount`(차단 단계 없는 보조 방어 수), `dangerFrom`(처음 `danger: true`인 단계 번호, 없으면 `null`), `blockedAt`(방어들의 `blockedAtStep`을 중복 없이 오름차순)만 담는다. `stepCount`~`supportCount`는 목록 카드의 "흐름형 · 6단계 · 방어 2개"(보조가 있으면 "방어 1 · 보조 1") 표시용이고, `dangerFrom`·`blockedAt`은 랜딩의 단계 막대(공격이 어디서 위험해지고 방어가 어디서 막는지) 표시용이다.
+- `/content/figures/<id>.svg`: 용어 옆 그림(내보내는 용어가 쓰는 것만).
 - `/content/terms/<id>.json`: 상세 페이지용. 스키마 검증을 거쳐 기본값(`aliases: []`, `danger: false` 등)을 채우고, 각주 풀이를 `footnotes`로 풀어 넣은 결과(`BuiltTerm`).
 
 개발 서버(`npm run dev`)용은 `draft`까지 포함해 `apps/web/generated/dev/content/`에 따로 만든다. `vite.config.ts`는 `vite build`일 때 `generated/build`만 publicDir로 쓰므로, `npx vite build`를 직접 실행해도 draft가 배포 결과물에 들어갈 수 없다. `retired`는 어느 쪽에도 포함하지 않는다.
@@ -230,6 +267,7 @@
 - `blockedAtStep`이 단계 수를 넘음, `blockedAtStep`이 있는데 `blockedLabel`/`blockedCaption` 없음
 - 방어(`defense`)에 `branchAtStep`·`steps`, 해결 방법(`solution`)에 `blockedAtStep`, `branchAtStep`과 `steps` 중 하나만 있음, 갈림 단계 이후의 `overrides`
 - 스택형 push·pop·run 순서, 점유형 acquire·wait·release 상태(위 각 절)
+- 그림: 파일 없음, 쓰이지 않는 파일, 두 용어가 같은 그림, SVG 규칙 위반(위 "용어 옆 그림"), `part`·캡션 표기·alt 비어 있음, 같은 부분에 그림 둘
 - 설명 틀: 구조·문단 수·한 줄 정의 길이·각주 4개 초과·같은 단어 반복, 초안이 아닌 용어의 "(설명 준비 중)", 문자열 한 문단(이전 형식), 풀이 사전의 누락·미사용·잘못된 `term`·자기 링크(위 "설명 틀과 각주"). 70자 넘는 문장은 경고
 
 오류가 있으면 파일명과 위치(예: `csrf.json: scenario.steps[4].to`)를 출력하고 빌드를 실패시킨다.

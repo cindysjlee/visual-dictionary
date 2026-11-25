@@ -1,6 +1,7 @@
 // 용어 JSON의 유일한 스키마. 빌드 검증기(scripts)와 프론트엔드(apps/web)가 함께 쓴다. 규칙: docs/04-content-format.md
 import { z } from "zod";
 import { DEFINITION_MAX, DRAFT_DESCRIPTION, NOTES_MAX, explanationParagraphs, sentencesOf } from "./explain.ts";
+import { FIGURE_CREDIT, FIGURE_PARTS, captionHasCredit } from "./figure.ts";
 import { ACTIONS_BY_PLAYER } from "./labels.ts";
 import { markCount, parseMarks, plainText } from "./marks.ts";
 import { checkScene } from "./scene.ts";
@@ -54,6 +55,15 @@ const descriptionSchema = z.unknown().transform((value, ctx): typeof DRAFT_DESCR
   for (const issue of result.error.issues) ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
   return z.NEVER;
 });
+
+/** 용어 옆 그림 하나(docs/04 "그림"): 어느 부분 옆에, 어느 파일(content/figures/<id>.svg)을, 말로는 어떻게(alt), 캡션은 "직접 그린 그림"으로 끝낸다 */
+export const figureSchema = z.strictObject({
+  part: z.enum(FIGURE_PARTS),
+  id,
+  alt: text.max(300),
+  caption: text.max(200).refine(captionHasCredit, `캡션은 "${FIGURE_CREDIT}"으로 끝나야 합니다`),
+});
+export type Figure = z.output<typeof figureSchema>;
 
 /** 각주 풀이 사전 content/glossary.json의 항목(docs/04 "각주"). word는 본문의 [[단어]]와 같아야 한다 */
 export const glossaryEntrySchema = z.strictObject({
@@ -235,11 +245,21 @@ export const termSchema = z
     defenses: z.array(defenseSchema).default([]),
     references: z.array(z.strictObject({ title: text, url: z.url() })).min(1),
     related: z.array(id).default([]),
+    figures: z.array(figureSchema).max(3).default([]),
   })
   .superRefine((term, ctx) => {
     // 관련 용어는 다른 용어여야 한다(자기 자신으로 가는 링크 금지). 없는 id는 검증기가 경고만 낸다(scripts/validate-content.ts)
     term.related.forEach((relatedId, i) => {
       if (relatedId === term.id) ctx.addIssue({ code: "custom", path: ["related", i], message: `자기 자신을 관련 용어로 둘 수 없습니다: ${relatedId}` });
+    });
+    // 그림: 같은 id를 두 번 쓰지 않고, 한 부분 옆에는 그림 하나(파일 존재·SVG 내용은 검증기가 본다)
+    const seenFigureIds = new Set<string>();
+    const seenFigureParts = new Set<string>();
+    term.figures.forEach((fig, i) => {
+      if (seenFigureIds.has(fig.id)) ctx.addIssue({ code: "custom", path: ["figures", i, "id"], message: `같은 그림 id를 두 번 썼습니다: ${fig.id}` });
+      if (seenFigureParts.has(fig.part)) ctx.addIssue({ code: "custom", path: ["figures", i, "part"], message: `한 부분(${fig.part}) 옆에는 그림 하나만 둡니다` });
+      seenFigureIds.add(fig.id);
+      seenFigureParts.add(fig.part);
     });
     // 설명 틀의 각주: 용어당 NOTES_MAX개 이하, 같은 단어는 한 번만(첫 자리에만 표시). 초안 자리 표시는 공개 용어에 남을 수 없다
     if (typeof term.description === "string") {

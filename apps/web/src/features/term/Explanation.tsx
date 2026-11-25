@@ -3,6 +3,7 @@
 import type { BuiltTerm, Explanation as ExplanationData } from "@app/content-schema";
 import { EXPLAIN_PARTS, partLabel } from "@app/content-schema/explain";
 import { Marked } from "../dictionary/Marked.tsx";
+import { Figure } from "./Figure.tsx";
 import { FootnoteLink, FootnoteList, FootnoteWord } from "./Footnotes.tsx";
 
 export function Explanation({ term, data }: { term: BuiltTerm; data: ExplanationData }) {
@@ -16,19 +17,39 @@ export function Explanation({ term, data }: { term: BuiltTerm; data: Explanation
   };
   const paragraphs: Record<(typeof EXPLAIN_PARTS)[number], string[]> = { definition: [data.definition], analogy: data.analogy, how: data.how, why: data.why };
   return (
-    <div className="la-explain">
-      {EXPLAIN_PARTS.map((part) => (
-        <section key={part} className={`la-explain-part is-${part}`} aria-labelledby={`ex-${part}`}>
+    <div className={term.figures.length > 0 ? "la-explain has-figs" : "la-explain"}>
+      {EXPLAIN_PARTS.map((part) => {
+        const label = (
           <h2 id={`ex-${part}`} className="la-explain-label">
             {partLabel(part, term)}
           </h2>
-          {paragraphs[part].map((text, i) => (
-            <p key={i} className="la-term-def term-desc">
-              <Marked text={text} note={note} />
-            </p>
-          ))}
-        </section>
-      ))}
+        );
+        const body = paragraphs[part].map((text, i) => (
+          <p key={i} className="la-term-def term-desc">
+            <Marked text={text} note={note} />
+          </p>
+        ));
+        // 그림이 있는 부분만 글과 그림을 나란히 묶는다(넓은 화면은 글 옆 오른쪽, 좁은 화면은 글 아래). 그림이 없는 부분은 예전과 같은 모양
+        const figure = part === "definition" ? undefined : term.figures.find((f) => f.part === part);
+        return (
+          <section key={part} className={`la-explain-part is-${part}${figure ? " has-figure" : ""}`} aria-labelledby={`ex-${part}`}>
+            {figure ? (
+              <>
+                <div className="la-explain-text">
+                  {label}
+                  {body}
+                </div>
+                <Figure figure={figure} />
+              </>
+            ) : (
+              <>
+                {label}
+                {body}
+              </>
+            )}
+          </section>
+        );
+      })}
       <FootnoteList notes={term.footnotes} />
     </div>
   );

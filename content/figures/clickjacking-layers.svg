@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<rect class="k-box" x="24" y="132" width="160" height="92" rx="8"/>
+<path class="k-ink" d="M40 148H110M40 160H88"/>
+<rect class="k-box" x="62" y="176" width="84" height="30" rx="8"/>
+<text x="104" y="191.5">1</text>
+<rect class="k-soft" x="56" y="22" width="160" height="98" rx="8"/>
+<rect class="k-accd" x="62" y="62" width="84" height="30" rx="8"/>
+<text x="104" y="77.5">2</text>
+<path class="k-soft" d="M104 120V172"/>
+<path class="k-acc" d="M104 2L104 52"/><polygon class="k-accf" points="104,58 98.5,48 109.5,48"/>
+</svg>

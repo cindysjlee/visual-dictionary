@@ -55,6 +55,45 @@ describe("loadTerms", () => {
   });
 });
 
+describe("그림(figures) 파일", () => {
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect class="k-box" x="1" y="1" width="10" height="10"/></svg>';
+  const fig = { part: "how", id: "fig-a", alt: "그림을 말로 설명한다", caption: "캡션이다. 직접 그린 그림" };
+  /** 그림이 하나인 csrf와 그림 폴더를 만든다 */
+  const setup = (svgFiles: Record<string, string>, mutate: (terms: Record<string, any>) => void = () => {}) => {
+    const dir = tempDir();
+    const figuresDir = tempDir();
+    const terms = { csrf: { ...JSON.parse(readFileSync(csrfPath, "utf8")), figures: [fig] } as any };
+    mutate(terms);
+    for (const [id, term] of Object.entries(terms)) writeFileSync(join(dir, `${id}.json`), JSON.stringify(term));
+    for (const [name, text] of Object.entries(svgFiles)) writeFileSync(join(figuresDir, `${name}.svg`), text);
+    return () => loadTerms(dir, undefined, undefined, figuresDir).errors;
+  };
+
+  it("파일이 있고 규칙을 지키면 통과", () => {
+    expect(setup({ "fig-a": SVG })()).toEqual([]);
+  });
+
+  it("그림 파일이 없으면 오류", () => {
+    expect(setup({})()).toEqual(["csrf.json: figures[0].id - 그림 파일이 없습니다: content/figures/fig-a.svg"]);
+  });
+
+  it("어떤 용어도 쓰지 않는 그림 파일은 오류(풀이 사전의 안 쓰는 항목과 같은 규칙)", () => {
+    expect(setup({ "fig-a": SVG, "fig-b": SVG })()).toEqual(["fig-b.svg: 어떤 용어의 figures에서도 쓰이지 않는 그림 파일입니다(쓰지 않는 파일은 지웁니다)"]);
+  });
+
+  it("SVG 규칙을 어기면 파일명과 이유를 알려 준다(스크립트·색 하드코딩)", () => {
+    const errors = setup({ "fig-a": SVG.replace("<rect", '<script/><rect fill="red"') })();
+    expect(errors).toContain("fig-a.svg: 쓸 수 없는 요소: <script>");
+    expect(errors.some((e) => e.startsWith("fig-a.svg: fill=\"red\""))).toBe(true);
+  });
+
+  it("그림 하나를 두 용어가 쓰면 오류(그림 하나는 용어 하나만)", () => {
+    const errors = setup({ "fig-a": SVG }, (terms) => {
+      terms.xsrf = { ...terms.csrf, id: "xsrf" };
+    })();
+    expect(errors).toEqual(['xsrf.json: figures[0].id - 그림 "fig-a"는 이미 csrf.json에서 씁니다(그림 하나는 용어 하나만)']);
+  });
+});
 describe("각주 풀이 사전(glossary.json)", () => {
   /** 각주가 둘인 용어(a: [[가]] [[나]])와 임시 풀이 사전 파일을 만든다 */
   const setup = (entries: unknown, mutate: (term: any) => void = () => {}) => {

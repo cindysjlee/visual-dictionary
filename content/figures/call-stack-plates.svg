@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<path class="k-ink" d="M28 198H172"/>
+<rect class="k-box" x="44" y="146" width="112" height="44" rx="8"/>
+<text x="64" y="168">A</text>
+<path class="k-ink" d="M84 162H122M84 174H110"/>
+<path class="k-ink" d="M134 160H144V176H136M140 172L136 176L140 180"/>
+<rect class="k-box" x="44" y="96" width="112" height="44" rx="8"/>
+<text x="64" y="118">B</text>
+<path class="k-ink" d="M84 112H122M84 124H110"/>
+<path class="k-ink" d="M134 110H144V126H136M140 122L136 126L140 130"/>
+<rect class="k-boxa" x="44" y="46" width="112" height="44" rx="8"/>
+<text x="64" y="68">C</text>
+<path class="k-ink" d="M84 62H122M84 74H110"/>
+<path class="k-ink" d="M134 60H144V76H136M140 72L136 76L140 80"/>
+<polygon class="k-accf" points="22,62 22,80 34,71"/>
+<path class="k-ink" d="M196 180L196 58"/><polygon class="k-fill" points="196,52 201.5,62 190.5,62"/>
+<path class="k-acc" d="M220 52L220 174"/><polygon class="k-accf" points="220,180 214.5,170 225.5,170"/>
+</svg>

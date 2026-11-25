@@ -1,9 +1,10 @@
 // content/terms/*.json을 모두 검증한다. 오류가 있으면 파일명과 위치를 출력하고 exit 1 (FR-CNT-02)
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { glossarySchema, termSchema, type GlossaryEntry, type Term } from "@app/content-schema";
 import { SENTENCE_WARN, explanationNoteWords, explanationParagraphs, sentencesOf } from "@app/content-schema/explain";
+import { checkFigureSvg } from "@app/content-schema/figure";
 
 export const TERMS_DIR = fileURLToPath(new URL("../content/terms/", import.meta.url));
 /** 한 번이라도 공개(published)한 용어 id. 학습 기록의 키라 바꾸거나 지우지 않는다(FR-CNT-05). 용어를 내리려면 status를 retired로 */
@@ -11,6 +12,8 @@ export const PUBLISHED_IDS = fileURLToPath(new URL("../content/published-ids.jso
 const readPublishedIds = () => JSON.parse(readFileSync(PUBLISHED_IDS, "utf8")) as string[];
 /** 각주 풀이 사전(docs/04 "각주"): 본문의 [[단어]]가 이 목록의 word를 가리킨다 */
 export const GLOSSARY_FILE = fileURLToPath(new URL("../content/glossary.json", import.meta.url));
+/** 용어 옆 그림 SVG(docs/04 "그림"): content/figures/<id>.svg. 직접 그린 것만 */
+export const FIGURES_DIR = fileURLToPath(new URL("../content/figures/", import.meta.url));
 
 const formatPath = (path: PropertyKey[]) =>
   path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("").replace(/^\./, "") || "(전체)";
@@ -37,6 +40,7 @@ export function loadTerms(
   dir = TERMS_DIR,
   publishedIds: string[] | undefined = dir === TERMS_DIR ? readPublishedIds() : undefined,
   glossaryFile: string | undefined = dir === TERMS_DIR ? GLOSSARY_FILE : undefined,
+  figuresDir: string | undefined = dir === TERMS_DIR ? FIGURES_DIR : undefined,
 ) {
   const terms: Term[] = [];
   const errors: string[] = [];
@@ -108,6 +112,29 @@ export function loadTerms(
       if (!used.has(e.word)) errors.push(`glossary.json: [${i}].word - "${e.word}"는 어떤 용어의 설명에서도 쓰이지 않습니다(쓰지 않는 항목은 지웁니다)`);
       if (e.term && !fileById.has(e.term)) errors.push(`glossary.json: [${i}].term - 없는 용어 id: ${e.term}`);
     });
+  }
+
+  // 그림: 파일이 있고 규칙(직접 그린 SVG, 색 토큰 클래스만, 표식 글자만)을 지키며, 한 용어만 쓰고, 쓰이지 않는 파일은 없다
+  if (figuresDir) {
+    const owner = new Map<string, string>();
+    for (const term of terms) {
+      term.figures.forEach((fig, i) => {
+        const where = `${fileById.get(term.id)}: figures[${i}]`;
+        const first = owner.get(fig.id);
+        if (first) errors.push(`${where}.id - 그림 "${fig.id}"는 이미 ${first}에서 씁니다(그림 하나는 용어 하나만)`);
+        owner.set(fig.id, fileById.get(term.id)!);
+        const path = join(figuresDir, `${fig.id}.svg`);
+        if (!existsSync(path)) {
+          errors.push(`${where}.id - 그림 파일이 없습니다: content/figures/${fig.id}.svg`);
+          return;
+        }
+        for (const issue of checkFigureSvg(readFileSync(path, "utf8"))) errors.push(`${fig.id}.svg: ${issue}`);
+      });
+    }
+    const files = existsSync(figuresDir) ? readdirSync(figuresDir).filter((f) => f.endsWith(".svg")) : [];
+    for (const f of files) {
+      if (!owner.has(basename(f, ".svg"))) errors.push(`${f}: 어떤 용어의 figures에서도 쓰이지 않는 그림 파일입니다(쓰지 않는 파일은 지웁니다)`);
+    }
   }
 
   for (const term of terms) {

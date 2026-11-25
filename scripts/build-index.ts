@@ -1,4 +1,4 @@
-// 검증을 통과한 용어로 /content/index.json과 /content/terms/<id>.json을 만든다 (FR-CNT-03, 04)
+// 검증을 통과한 용어로 /content/index.json, /content/terms/<id>.json, /content/figures/<id>.svg를 만든다 (FR-CNT-03, 04)
 // 사용: node scripts/build-index.ts [--include-drafts]  (--include-drafts는 개발 서버 전용)
 // 출력: generated/build (published만, vite build의 publicDir) / generated/dev (draft 포함, 개발 서버의 publicDir)
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -8,7 +8,7 @@ import type { BuiltTerm, Footnote, GlossaryEntry, IndexEntry, Term } from "@app/
 import { explanationNoteWords } from "@app/content-schema/explain";
 import { defenseCounts } from "@app/content-schema/scene";
 import { subsetHandFont } from "./subset-hand-font.ts";
-import { loadGlossary, validateOrExit } from "./validate-content.ts";
+import { FIGURES_DIR, loadGlossary, validateOrExit } from "./validate-content.ts";
 
 const outDir = (includeDrafts: boolean) =>
   fileURLToPath(new URL(`../apps/web/generated/${includeDrafts ? "dev" : "build"}/content/`, import.meta.url));
@@ -57,6 +57,9 @@ if (import.meta.main) {
   writeFileSync(join(dir, "index.json"), JSON.stringify(terms.map(toIndexEntry)));
   const { entries: glossary } = loadGlossary();
   for (const term of terms) writeFileSync(join(dir, "terms", `${term.id}.json`), JSON.stringify(withFootnotes(term, glossary, terms)));
+  // 그림 SVG: 내보내는 용어가 쓰는 것만(draft 용어의 그림은 공개 빌드에 들어가지 않는다)
+  mkdirSync(join(dir, "figures"), { recursive: true });
+  for (const fig of terms.flatMap((t) => t.figures)) cpSync(join(FIGURES_DIR, `${fig.id}.svg`), join(dir, "figures", `${fig.id}.svg`));
   // publicDir이 generated/<모드>라서 정적 파일(robots.txt, 파비콘)도 여기로 복사한다
   cpSync(fileURLToPath(new URL("../apps/web/static/", import.meta.url)), join(dir, ".."), { recursive: true });
 

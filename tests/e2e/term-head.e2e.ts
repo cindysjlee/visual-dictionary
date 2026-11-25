@@ -44,6 +44,8 @@ const layout = (page: Page) =>
       body: rect(".la-explain, .la-term-head > .la-term-def"),
       end: rect(".la-study-end"),
       fig: rect(".la-term-fig"),
+      // 설명 문단의 가장 넓은 폭: 그림이 있는 용어는 설명 칸이 카드 폭 전체라서 문단 폭으로 줄 길이 상한을 본다
+      maxPara: Math.max(...[...document.querySelectorAll(".la-term-head p.term-desc")].map((p) => p.getBoundingClientRect().width)),
       lines,
       scrollOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
@@ -89,16 +91,16 @@ for (const term of terms) {
     // 줄 길이 상한(--measure-ko = 48.4rem): 문단 폭이 이 값을 넘지 않는다. 글자 수로는 줄마다 띄어쓰기 포함 52~60자 안팎이다.
     // 글자 수는 영문·숫자가 많은 글에서 달라지므로, 설명 틀로 옮긴 용어(문단이 여러 개라 줄이 충분한 것)에서만 가운데 값을 본다
     const rem = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
-    expect((body.r - body.l) / rem).toBeLessThanOrEqual(48.4 + 0.1);
-    expect((body.r - body.l) / rem).toBeGreaterThanOrEqual(47); // 오른쪽 열에 눌려 좁아지지 않는다
+    expect(wide.maxPara / rem).toBeLessThanOrEqual(48.4 + 0.1);
+    expect(wide.maxPara / rem).toBeGreaterThanOrEqual(47); // 오른쪽 열에 눌려 좁아지지 않는다
     if (typeof term.description !== "string" && wide.lines.length >= 8) {
       const sorted = [...wide.lines].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)]!;
       expect(median).toBeGreaterThanOrEqual(50);
       expect(median).toBeLessThanOrEqual(62);
     }
-    // 설명이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한)
-    expect(body.r).toBeLessThan(head.r - 100);
+    // 설명이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한). 그림이 있는 용어는 설명 칸이 카드 폭 전체(오른쪽에 그림)라 문단 폭으로 본다(위)
+    if (term.figures.length === 0) expect(body.r).toBeLessThan(head.r - 100);
     expect(wide.scrollOver).toBeLessThanOrEqual(0);
     // 로그아웃: 글 끝 블록은 로그인 링크 하나, 도장은 없다
     await expect(page.locator(".la-study-end").getByRole("link", { name: "로그인하고 完 도장 남기기" })).toBeVisible();
