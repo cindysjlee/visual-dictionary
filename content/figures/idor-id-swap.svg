@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<rect class="k-soft" x="38" y="26" width="52" height="28" rx="8"/>
+<text x="64" y="40.5">101</text>
+<path class="k-flow" d="M96 40L133 40"/>
+<polygon class="k-fill" points="144,40 133,45.5 133,34.5"/>
+<rect class="k-boxa" x="150" y="26" width="52" height="28" rx="8"/>
+<text x="176" y="40.5">102</text>
+<circle class="k-box" cx="120" cy="40" r="11"/>
+<text x="120" y="40.5">1</text>
+<path class="k-boxa" d="M18 168C18 138 54 138 54 168Z"/>
+<circle class="k-boxa" cx="36" cy="131" r="8"/>
+<text x="36" y="184.5">A</text>
+<rect class="k-box" x="181" y="126" width="46" height="16" rx="5"/>
+<rect class="k-box" x="181" y="148" width="46" height="16" rx="5"/>
+<circle class="k-fill" cx="190" cy="134" r="2"/>
+<circle class="k-fill" cx="190" cy="156" r="2"/>
+<text x="204" y="184.5">B</text>
+<path class="k-acc" d="M62 118L165 118"/>
+<polygon class="k-accf" points="176,118 165,123.5 165,112.5"/>
+<circle class="k-box" cx="118" cy="118" r="11"/>
+<text x="118" y="118.5">2</text>
+<path class="k-acc" d="M176 172L73 172"/>
+<polygon class="k-accf" points="62,172 73,166.5 73,177.5"/>
+<rect class="k-boxa" x="95" y="156" width="48" height="32" rx="8"/>
+<text x="119" y="172.5">102</text>
+<circle class="k-box" cx="160" cy="172" r="11"/>
+<text x="160" y="172.5">3</text>
+</svg>

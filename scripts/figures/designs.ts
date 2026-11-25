@@ -237,8 +237,14 @@ export const renderSvg = (d: FigureDesign) => `<svg xmlns="http://www.w3.org/200
 export const FIGURES: FigureDesign[] = [
   { id: "tcp-handshake-arrows", parts: tcpHandshake() },
   { id: "call-stack-plates", parts: callStackPlates() },
+  { id: "stack-overflow-limit", parts: stackOverflowLimit() },
   { id: "arp-spoofing-detour", parts: arpDetour() },
   { id: "ssl-stripping-path", parts: sslStrippingPath() },
   { id: "clickjacking-layers", parts: clickjackingLayers() },
   { id: "race-condition-lost-update", parts: raceConditionLostUpdate() },
+  { id: "syn-flood-queue", parts: synFloodQueue() },
+  { id: "session-hijacking-cookie", parts: sessionHijackingCookie() },
+  { id: "page-fault-path", parts: pageFaultPath() },
+  { id: "context-switch-states", parts: contextSwitchStates() },
+  { id: "idor-id-swap", parts: idorIdSwap() },
 ];

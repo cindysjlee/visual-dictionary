@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<path class="k-soft" d="M120 28L120 203"/>
+<polygon class="k-fill" points="120,214 114.5,203 125.5,203"/>
+<rect class="k-box" x="30" y="27" width="52" height="34" rx="8"/>
+<polygon class="k-fill" points="38,38 38,50 47,44"/>
+<text x="64" y="44.5">A</text>
+<rect class="k-soft" x="158" y="27" width="52" height="34" rx="8"/>
+<text x="178" y="44.5">B</text>
+<rect class="k-box" x="191" y="35" width="14" height="18" rx="3"/>
+<path class="k-ink" d="M195 41H201M195 47H199"/>
+<rect class="k-soft" x="30" y="103" width="52" height="34" rx="8"/>
+<text x="50" y="120.5">A</text>
+<rect class="k-box" x="63" y="111" width="14" height="18" rx="3"/>
+<path class="k-ink" d="M67 117H73M67 123H71"/>
+<rect class="k-box" x="158" y="103" width="52" height="34" rx="8"/>
+<polygon class="k-fill" points="166,114 166,126 175,120"/>
+<text x="192" y="120.5">B</text>
+<rect class="k-box" x="30" y="179" width="52" height="34" rx="8"/>
+<polygon class="k-fill" points="38,190 38,202 47,196"/>
+<text x="64" y="196.5">A</text>
+<rect class="k-soft" x="158" y="179" width="52" height="34" rx="8"/>
+<text x="178" y="196.5">B</text>
+<rect class="k-box" x="191" y="187" width="14" height="18" rx="3"/>
+<path class="k-ink" d="M195 193H201M195 199H199"/>
+<path class="k-flow" d="M56 65L56 89"/>
+<polygon class="k-fill" points="56,100 50.5,89 61.5,89"/>
+<path class="k-flow" d="M184 65L184 89"/>
+<polygon class="k-fill" points="184,100 178.5,89 189.5,89"/>
+<path class="k-flow" d="M184 141L184 165"/>
+<polygon class="k-fill" points="184,176 178.5,165 189.5,165"/>
+<path class="k-flow" d="M56 141L56 165"/>
+<polygon class="k-fill" points="56,176 50.5,165 61.5,165"/>
+<circle class="k-box" cx="82" cy="82" r="11"/>
+<text x="82" y="82.5">1</text>
+<circle class="k-box" cx="158" cy="82" r="11"/>
+<text x="158" y="82.5">2</text>
+<circle class="k-box" cx="158" cy="158" r="11"/>
+<text x="158" y="158.5">3</text>
+<circle class="k-box" cx="82" cy="158" r="11"/>
+<text x="82" y="158.5">4</text>
+</svg>

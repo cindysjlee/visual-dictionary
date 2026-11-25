@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<path class="k-ink" d="M22 210H150"/>
+<rect class="k-box" x="30" y="172" width="112" height="32" rx="8"/>
+<path class="k-ink" d="M68 183H106M68 193H94"/>
+<path class="k-ink" d="M118 181H128V195H120M124 191L120 195L124 199"/>
+<rect class="k-box" x="30" y="134" width="112" height="32" rx="8"/>
+<path class="k-ink" d="M68 145H106M68 155H94"/>
+<path class="k-ink" d="M118 143H128V157H120M124 153L120 157L124 161"/>
+<rect class="k-box" x="30" y="96" width="112" height="32" rx="8"/>
+<path class="k-ink" d="M68 107H106M68 117H94"/>
+<path class="k-ink" d="M118 105H128V119H120M124 115L120 119L124 123"/>
+<rect class="k-box" x="30" y="58" width="112" height="32" rx="8"/>
+<path class="k-ink" d="M68 69H106M68 79H94"/>
+<path class="k-ink" d="M118 67H128V81H120M124 77L120 81L124 85"/>
+<path class="k-accd" d="M14 52H226"/>
+<rect class="k-boxa" x="30" y="14" width="112" height="32" rx="8"/>
+<path class="k-ink" d="M68 25H106M68 35H94"/>
+<path class="k-ink" d="M118 23H128V37H120M124 33L120 37L124 41"/>
+<path class="k-acc" d="M177 21L195 39M195 21L177 39"/>
+<path class="k-flow" d="M188 196L188 81"/>
+<polygon class="k-fill" points="188,70 193.5,81 182.5,81"/>
+</svg>

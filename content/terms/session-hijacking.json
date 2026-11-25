@@ -144,5 +144,13 @@
     { "title": "MDN · Set-Cookie의 Secure 속성", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" },
     { "title": "MDN · Strict-Transport-Security (HSTS)", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security" }
   ],
-  "related": ["xss", "csrf", "ssl-stripping"]
+  "related": ["xss", "csrf", "ssl-stripping"],
+  "figures": [
+    {
+      "part": "how",
+      "id": "session-hijacking-cookie",
+      "alt": "위쪽 서버 C에서 왼쪽 아래 사용자 A로 쿠키가 담긴 화살표 1이 간다. A에서 오른쪽 아래 공격자 B로 붉은 쿠키가 담긴 화살표 2가 가고, B에서 서버 C로 붉은 쿠키가 담긴 화살표 3이 간다.",
+      "caption": "서버 C가 사용자 A에게 준 쿠키(1)를 공격자 B가 가로채(2) 서버에 내밀면(3), 서버는 B를 A 본인으로 믿는다."
+    }
+  ]
 }
