@@ -17,7 +17,7 @@ export function Explanation({ term, data }: { term: BuiltTerm; data: Explanation
   };
   const paragraphs: Record<(typeof EXPLAIN_PARTS)[number], string[]> = { definition: [data.definition], analogy: data.analogy, how: data.how, why: data.why };
   return (
-    <div className={term.figures.length > 0 ? "la-explain has-figs" : "la-explain"}>
+    <div className="la-explain">
       {EXPLAIN_PARTS.map((part) => {
         const label = (
           <h2 id={`ex-${part}`} className="la-explain-label">

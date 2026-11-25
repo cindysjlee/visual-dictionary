@@ -150,11 +150,11 @@ for (const term of without) {
     await expect(page.locator(".la-explain")).toBeVisible();
     await expect(page.locator(".la-tfig")).toHaveCount(0);
     await expect(page.locator(".la-explain-part.has-figure")).toHaveCount(0);
-    await expect(page.locator(".la-explain.has-figs")).toHaveCount(0);
     // 부분의 구조는 예전과 같다: 이름표(h2)와 문단이 부분의 바로 아래 자식
     await expect(page.locator(".la-explain-part > .la-explain-label")).toHaveCount(4);
     await expect(page.locator(".la-explain-text")).toHaveCount(0);
-    const w = await page.locator(".la-explain").evaluate((el) => el.getBoundingClientRect().width / parseFloat(getComputedStyle(document.documentElement).fontSize));
+    // 줄 길이 상한은 문단에 있다(틀 전체는 카드 폭, 구분선이 카드 폭 전체를 쓴다)
+    const w = await page.locator(".la-explain .term-desc").evaluateAll((ps) => Math.max(...ps.map((p) => p.getBoundingClientRect().width)) / parseFloat(getComputedStyle(document.documentElement).fontSize));
     expect(w).toBeLessThanOrEqual(48.4 + 0.1);
   });
 }

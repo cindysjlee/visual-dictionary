@@ -47,6 +47,7 @@ const layout = (page: Page) =>
       body: rect(".la-explain, .la-term-head > .la-term-def"),
       fig: rect(".la-term-fig"),
       // 설명 문단의 가장 넓은 폭: 그림이 있는 용어는 설명 칸이 카드 폭 전체라서 문단 폭으로 줄 길이 상한을 본다
+      paraRight: Math.max(...[...document.querySelectorAll(".la-term-head p.term-desc")].map((p) => p.getBoundingClientRect().right)),
       sealWidth: parseFloat(getComputedStyle(document.querySelector(".la-term-stamp .la-seal") ?? document.body).width),
       maxPara: Math.max(...[...document.querySelectorAll(".la-term-head p.term-desc")].map((p) => p.getBoundingClientRect().width)),
       lines,
@@ -100,8 +101,8 @@ for (const term of terms) {
       expect(median).toBeGreaterThanOrEqual(50);
       expect(median).toBeLessThanOrEqual(62);
     }
-    // 설명이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한). 그림이 있는 용어는 설명 칸이 카드 폭 전체(오른쪽에 그림)라 문단 폭으로 본다(위)
-    if (term.figures.length === 0) expect(body.r).toBeLessThan(head.r - 100);
+    // 문단이 카드 오른쪽 끝까지 늘어나지 않는다(줄 길이 상한). 설명 틀 자체는 카드 폭 전체라(구분선이 카드 폭을 쓴다) 문단의 오른쪽 끝으로 본다
+    expect(wide.paraRight).toBeLessThan(head.r - 100);
     expect(wide.scrollOver).toBeLessThanOrEqual(0);
     // 로그아웃: 제목 옆 도장은 없고, 플레이어 아래에 로그인 안내가 있다
     await expect(page.locator(".la-term-stamp")).toHaveCount(0);
@@ -155,6 +156,8 @@ for (const term of terms) {
     expect(date!.y).toBeGreaterThan(box.t + 80);
     expect(cancel!.y).toBeGreaterThanOrEqual(date!.y + date!.height - 1);
     await expect(stamp.locator(".la-seal-date")).toHaveText("2026.11.24");
+    // 버튼이 실제로 눌린다: 뒤따르는 설명 틀(카드 폭 전체)이 버튼 위를 덮지 않는다(trial = 누르지 않고 누를 수 있는지만 확인)
+    await stamp.getByRole("button", { name: "완독 취소" }).click({ trial: true });
     await expect(stamp.getByRole("img")).toHaveAttribute("aria-label", "완독함, 2026년 11월 24일");
 
     // 취소함: 흐린 윤곽 + 다시 찍기
@@ -162,6 +165,7 @@ for (const term of terms) {
     await page.reload();
     await expect(stamp.getByRole("button", { name: "다시 찍기" })).toBeVisible();
     await expect(stamp.locator(".la-seal.is-ghost")).toBeVisible();
+    await stamp.getByRole("button", { name: "다시 찍기" }).click({ trial: true });
 
     // 좁은 화면(390px): 도장 약 56px, 제목 오른쪽 열, 겹침·가로 스크롤 없음. 날짜·취소 버튼은 도장 아래
     await markRecord(page, term.id, true);
@@ -179,10 +183,55 @@ for (const term of terms) {
     const c2 = await stamp.getByRole("button", { name: "완독 취소" }).boundingBox();
     expect(d2!.y).toBeGreaterThan(nr.seal.t + 50);
     expect(c2!.y).toBeGreaterThanOrEqual(d2!.y + d2!.height - 1);
+    await stamp.getByRole("button", { name: "완독 취소" }).click({ trial: true });
     expect(narrow.scrollOver).toBeLessThanOrEqual(0);
   });
-}
 
+  test(`${term.id} · 구분선 폭: 부분 사이 선과 각주 위 선이 모두 카드 안쪽 폭 전체이고(라이트·다크, 1440·390px), 각주 목록 글은 본문 폭 제한을 유지한다`, { tag: ["@explore", `@${term.id}`] }, async ({ page }) => {
+    if (typeof term.description === "string") {
+      // 초안 자리 표시 설명(문단 하나)은 설명 틀이 없어 구분선도 없다
+      await page.goto(`/terms/${term.id}`);
+      await expect(page.locator(".la-term-head p.term-desc")).toBeVisible();
+      await expect(page.locator(".la-explain")).toHaveCount(0);
+      return;
+    }
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`/terms/${term.id}`);
+        await expect(page.locator(".la-explain")).toBeVisible();
+        await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
+        const m = await page.evaluate(() => {
+          const card = document.querySelector(".la-term-head")!;
+          const cs = getComputedStyle(card);
+          const cr = card.getBoundingClientRect();
+          const inner = { l: cr.left + parseFloat(cs.paddingLeft), r: cr.right - parseFloat(cs.paddingRight) };
+          // 카드 안에서 위·아래 한쪽에만 테두리 선이 있는 요소 = 구분선(부분 사이 선, 각주 위 선). 풀이 상자(.la-fn-box)와 그림 틀(.la-tfig-svg)은 네 면 테두리라 아니다
+          const rules = [...card.querySelectorAll("*")]
+            .filter((el) => {
+              const c = getComputedStyle(el);
+              return parseFloat(c.borderTopWidth) > 0 && c.borderTopStyle !== "none" && !(parseFloat(c.borderBottomWidth) > 0) && !(parseFloat(c.borderLeftWidth) > 0);
+            })
+            .map((el) => {
+              const r = el.getBoundingClientRect();
+              return { name: `${el.tagName.toLowerCase()}.${el.className}`, l: r.left, r: r.right };
+            });
+          const list = document.querySelector(".la-footnotes ul")?.getBoundingClientRect();
+          return { inner, rules, listWidth: list?.width, rem: parseFloat(getComputedStyle(document.documentElement).fontSize), scrollOver: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        const tag = `${colorScheme} ${width}px`;
+        expect(m.rules.length, `${tag}: 구분선이 있어야 한다(부분 3개 + 각주)`).toBeGreaterThanOrEqual(3);
+        for (const r of m.rules) {
+          expect(Math.abs(r.l - m.inner.l), `${tag} ${r.name} 왼쪽`).toBeLessThanOrEqual(2);
+          expect(Math.abs(r.r - m.inner.r), `${tag} ${r.name} 오른쪽(선 끝 ${Math.round(r.r)}, 카드 안쪽 끝 ${Math.round(m.inner.r)})`).toBeLessThanOrEqual(2);
+        }
+        if (m.listWidth !== undefined) expect(m.listWidth / m.rem, `${tag}: 각주 목록 본문 폭 제한`).toBeLessThanOrEqual(48.4 + 0.1);
+        expect(m.scrollOver).toBeLessThanOrEqual(0);
+      }
+    }
+  });
+}
 test("Tab 순서(문서 순서): 완독 취소 → 본문(각주 단어) → 플레이어 (넓은 화면·좁은 화면)", { tag: ["@explore", "@ssrf"] }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signIn(page);

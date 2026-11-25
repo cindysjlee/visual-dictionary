@@ -1111,6 +1111,8 @@ body {
 }
 
 .la-term-stamp {
+  position: relative;
+  z-index: 1; /* 아래로 넘친 날짜·버튼이 뒤따르는 설명 틀(카드 폭 전체) 위에 놓여 눌린다 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1863,11 +1865,11 @@ body {
 
 /* ════════ 설명 틀과 각주(2026-11-24): 한 줄 정의 → 쉬운 비유 → 어떻게 일어나나 → 왜 위험한가(왜 중요한가) → 각주 ════════
    부분마다 위 괘선 + 이름표로 갈린다. 색은 기존 토큰만(새 색 없음) */
+/* 구분선(부분 사이의 위 괘선·각주 위 괘선)은 카드 안쪽 폭 전체다. 줄 길이 상한은 이 틀이 아니라 문단(.la-term-def)과 각주 목록에만 건다 */
 .la-explain {
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
-  max-width: var(--measure-ko);
 }
 
 .la-explain-part {
@@ -1907,9 +1909,6 @@ body {
 
 /* ════════ 용어 옆 그림(docs/04 "그림"): 직접 그린 SVG, 색은 사이트 토큰 ════════
    1440px 이상(카드 1096px): 글(줄 길이 상한 그대로)은 왼쪽, 그림은 그 부분 옆 오른쪽 여백. 그보다 좁으면 그 부분 바로 아래에 한 열 */
-.la-explain.has-figs {
-  max-width: none;
-}
 
 .la-explain-part.has-figure {
   display: grid;
@@ -2130,6 +2129,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  max-width: var(--measure-ko);
   margin: var(--sp-2) 0 0;
   padding-left: 0;
   list-style: none;
