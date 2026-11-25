@@ -92,7 +92,7 @@
 | FR-DEP-02 SPA 라우팅 | docs/03 2.5(6단계) | `web-stack.ts` SPA 라우팅 함수 | 인 `web-stack.test.ts`, S smoke:prod, C check:aws | 완료 | docs/01을 구현(CloudFront Function, 없는 파일 404)에 맞춤(CH-26, CH-46) |
 | FR-DEP-03 학습 진행 API | docs/03 2.5 | `infra/lib/api-stack.ts`, `services/api/src/handlers.ts` | 단 `api.test.ts`, 인 `api-stack.test.ts`, S smoke:progress(경로 전수), C check:aws | 완료 | |
 | FR-DEP-04 보안 응답 헤더 | docs/03 2.4 | `web-stack.ts`, `infra/lib/csp.ts` | 인 `web-stack.test.ts`, S smoke:prod·smoke:auth(CSP 위반 없음), C check:aws | 완료 | |
-| FR-DEP-05 자동 배포 | docs/03 2.6 | `.github/workflows/deploy.yml`, `scripts/ci-gate.ts`·`ci-gate-rules.ts`, `infra/lib/ci-stack.ts` | 단 `ci-gate-rules.test.ts`, 인 `ci-stack.test.ts`, CI 실행, C check:aws(CI 역할) | 완료 | docs/01을 관문 방식에 맞춤(CH-31, CH-46). CI의 첫 실제 배포는 DF-51로 실패한 뒤 CI 44896046840에서 성공(docs/10 4절) |
+| FR-DEP-05 자동 배포 | docs/03 2.6 | `.github/workflows/deploy.yml`(verify → 5개 shard e2e → deploy), `scripts/e2e-shard.ts`, `scripts/ci-gate.ts`·`ci-gate-rules.ts`, `infra/lib/ci-stack.ts` | 단 `ci-gate-rules.test.ts`·`e2e-shard.test.ts`, 인 `ci-stack.test.ts`, CI 실행, C check:aws(CI 역할) | 완료 | docs/01을 관문 방식에 맞춤(CH-31, CH-46). CI의 첫 실제 배포는 DF-51로 실패한 뒤 CI 44896046840에서 성공(docs/10 4절) |
 
 ## 8. 비기능·설계 제약(NFR, DC)
 

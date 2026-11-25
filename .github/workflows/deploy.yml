@@ -1,6 +1,7 @@
 # 자동 배포(FR-DEP-05, docs/03 2.6). AWS 키는 저장하지 않고 OIDC로 역할을 맡는다(신뢰: 이 저장소 main 브랜치만).
-# job 두 개(DF-49): verify(검증·E2E, OIDC 토큰 권한 없음) → deploy(id-token: write는 여기만, 설치 스크립트 없이 설치)
+# job 셋(DF-49, CH-69): verify(검증·테스트용 빌드, OIDC 토큰 권한 없음) → e2e(5개 shard 병렬, OIDC 토큰 권한 없음) → deploy(id-token: write는 여기만, 설치 스크립트 없이 설치)
 #   deploy: 보안 관문(권한 확장이면 멈춤) → 변경 관문(삭제·교체면 멈춤) → 같은 변경 세트 실행 → smoke:prod → check:aws
+#   deploy는 verify와 e2e의 모든 shard가 성공해야만 돈다(needs). 한 shard라도 실패·취소되면 deploy는 건너뛴다
 # 의존성 코드가 실행되는 단계(npm ci 설치 스크립트, 빌드·E2E)는 OIDC 토큰을 받을 수 없다. 공개 저장소라 pull_request_target은 쓰지 않는다. 외부 액션은 커밋 해시로 고정한다
 name: deploy
 
@@ -22,7 +23,7 @@ jobs:
   verify:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -41,18 +42,68 @@ jobs:
       - name: verify(콘텐츠 검증·단위 테스트·빌드·묶음 검사)
         run: npm run verify
 
+      # E2E용 빌드(--mode e2e: 가짜 인증·가짜 API·장면 기록이 들어간 테스트 전용 빌드)는 여기서 한 번만 만들어 shard들이 내려받는다.
+      # 이 산출물은 e2e job에서만 쓰고 배포에는 쓰지 않는다(deploy job이 같은 커밋으로 운영 빌드를 따로 만든다)
+      - name: E2E용 빌드
+        run: npm run build:e2e -w apps/web
+
+      - name: E2E용 빌드 올리기
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-build
+          path: apps/web/dist-e2e
+          if-no-files-found: error
+          retention-days: 1
+
+  # E2E 5개 shard 병렬(CH-69). shard 수는 아래 matrix.shard 목록 길이 하나로 정해진다(번호 % 전체 수로 나눠 무거운 테스트가 고르게 퍼진다, scripts/e2e-shard.ts).
+  # 각 shard는 별도 러너라 파일·포트·브라우저 저장소를 공유하지 않는다
+  e2e:
+    needs: verify
+    name: E2E shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    strategy:
+      # 한 shard가 실패해도 나머지를 끝까지 돌려 실패를 한 번에 본다(true면 나머지가 취소돼 어느 shard가 더 실패했는지 모른다)
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 설치
+        run: npm ci
+
+      - name: E2E용 빌드 내려받기
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: e2e-build
+          path: apps/web/dist-e2e
+
+      # Chrome은 apt로 시스템에 설치되어(`<system>`) 캐시할 브라우저 폴더가 없다. 약 30초
       - name: Chrome 설치(E2E는 설치된 Chrome 채널을 쓴다)
         run: npx playwright install --with-deps chrome
 
       # 실제 속도 테스트(realtime 프로젝트 2개)는 뺀다: GPU 없는 러너는 WebGL을 CPU로 그려 10fps가 안 되고, 장면 시간이 프레임당 0.1초로 묶여 실제 시간보다 느리다.
-      # 그 2개는 로컬의 배포 전 전체 E2E에서 돌린다(CLAUDE.md)
-      - name: E2E(workers 2, 실제 속도 테스트 제외)
-        run: npm run test:e2e -- --project=main
+      # 그 2개는 로컬의 배포 전 전체 E2E에서 돌린다(CLAUDE.md). playwright.config.ts의 전체 제한(globalTimeout)은 CI에서 25분: shard 하나 기준
+      - name: E2E(shard, workers 2, 실제 속도 테스트 제외)
+        run: node scripts/e2e-shard.ts "$SHARD" "$SHARDS"
         env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
           E2E_WORKERS: "2"
 
   deploy:
-    needs: verify
+    # verify와 e2e(5개 shard 모두)가 성공해야 돈다. 하나라도 실패·취소·건너뜀이면 건너뛴다(if 조건에 always()를 쓰지 않는다)
+    needs: [verify, e2e]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:

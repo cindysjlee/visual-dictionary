@@ -12,14 +12,14 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | 특정 용어·플레이어·화면을 고칠 때 | 태그 E2E(`npm run test:e2e -- --grep @<id>` 등) | 태그: 용어 ID, `@auth`, `@progress`, `@activity`, `@google`, `@explore`, `@explain`, `@scroll`, `@narrow`, `@wide`, `@perf` |
 | push·배포 직전 | 전체 E2E(`npm run test:e2e`, draft가 있으면 `test:e2e:drafts`) | 실제 속도 테스트 2개 포함 |
 | 배포 뒤 | `smoke:prod`, `smoke:auth`, `smoke:progress`, `check:aws` | 인증 코드를 바꿨을 때만 `smoke:auth:signup`(인증 메일 1통) |
-| main push마다(CI) | `verify` job: verify → E2E(실제 속도 제외) / `deploy` job(OIDC 권한은 여기만, DF-49): 설치 스크립트 없이 설치 → 빌드 → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
+| main push마다(CI) | `verify` job: verify → 테스트용 빌드 올리기 / `e2e` job: **5개 shard 병렬**(`scripts/e2e-shard.ts`, 번호 % 5로 나눔, 실제 속도 제외, CH-69) / `deploy` job(OIDC 권한은 여기만, DF-49, `verify`·`e2e` 모두 성공해야 실행): 설치 스크립트 없이 설치 → 빌드 → 보안 관문 → 변경 관문 → 배포 → smoke:prod → check:aws | CI가 실제 배포하면 로컬에서 smoke:auth·smoke:progress |
 | 구글 로그인 관련 변경 뒤 | 사람 확인 체크리스트 6단계(docs/03 2.4) | 구글은 자동화된 로그인을 막는다 |
 
 ## 2. 수준별 요약
 
 | 수준 | 대상과 목적 | 테스트 수 | 최근 결과 | 실행 시간 |
 | --- | --- | --- | --- | --- |
-| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증·본문 표시 문법·설명 틀, 모든 용어×모드 시뮬레이션, 인증·로그인 분기·진행률·책갈피 규칙, 랜딩 그림 상태, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 344(파일 25개) | 통과 344 / 실패 0 (인프라 32와 함께 `vitest run` 376 통과, 로컬) | verify 전체 약 30~60초(빌드 포함, 인프라 테스트 포함 376) |
+| 단위(Vitest) | 재생 엔진, 콘텐츠 스키마·장면 검증·본문 표시 문법·설명 틀, 모든 용어×모드 시뮬레이션, 인증·로그인 분기·진행률·책갈피 규칙, 랜딩 그림 상태, API 핸들러(가짜 저장소), 고아 정리, CI 관문 판단, 스크립트 인자 | 361(파일 26개) | 통과 361 / 실패 0 (인프라 32와 함께 `vitest run` 393 통과, 로컬) | verify 전체 약 30~60초(빌드 포함, 인프라 테스트 포함 393) |
 | 인프라(CDK assertions) | S3·CloudFront·헤더·캐시, Cognito·OAuth, API·Lambda 권한·일정, CI 역할 신뢰·권한, 템플릿 비ASCII·메일 해시 | 32(파일 4개) | 통과 32 / 실패 0 (11-24) | verify에 포함 |
 | E2E(Playwright, 데스크톱 1440×900. `@narrow` 360×800, `@wide` 1920×1080) | 화면 흐름(가짜 인증·가짜 API), 탐색·상세 구성, 장면 기록(연출이 실제로 일어나는지), 겹침·화면 안, axe 접근성(라이트·다크), 360px·1920px 레이아웃, LCP·CLS | 513(main 511 + 실제 속도 2, 용어 20개, 파일 15개. 초안 포함 실행은 525) | 통과 513 / 실패 0 (11-26, 로컬 8.9분, 용어 20개). 초안 포함(개발 서버)은 통과 524 / 건너뜀 1 / 실패 0(13.6분). 건너뜀 1개는 개발 서버에서만 건너뛰는 스크롤 복원 테스트(빌드 실행에서는 돈다). 이전 기준 260개(용어 14개)는 통과 260 / 실패 0 (11-24) | 로컬 5.5~6.5분(workers 4), CI 약 14~22분(workers 2, 제한 35분, DF-52) |
 | smoke:prod | 운영 보안 헤더·CSP, SPA 라우팅·404, published 용어 상세·JSON, `/config.json`, 캐시 헤더 | 47 | 통과 47 / 실패 0 (11-24) | 2~3초 |
@@ -36,7 +36,7 @@ CLAUDE.md "작업 방식"의 테스트 실행 규칙을 따른다.
 | --- | --- |
 | 화면·플레이어 | `auth.test.ts`(21, 저장된 로그인 판정 포함), `recent.test.ts`(2), `summary.test.ts`(3), `bookmarks.test.ts`(5, 책갈피 규칙), `engine.test.ts`(18), `simulate.test.ts`(69, draft 7개 포함), `speedStore.test.ts`(2), `lockState.test.ts`(5), `three/pure.test.ts`(16), `stackState.test.ts`(5), `reloadOnStaleChunk.test.ts`(2), `theme.test.ts`(2), 랜딩 `sketchScene.test.ts`(3)·`josa.test.ts`(2) |
 | 콘텐츠 스키마 | `index.test.ts`(36, 설명 틀·풀이 사전 항목·이전 형식 거부·방어 설명 각주 금지·그림 필드 포함), `figure.test.ts`(19, 그림 SVG 규칙·캡션 표기), `scene.test.ts`(34), `marks.test.ts`(15, 본문 표시 문법·각주 표시), `explain.test.ts`(3, 설명 틀 규칙) |
-| 스크립트 | `validate-content.test.ts`(22, 풀이 사전·각주 규칙·그림 파일 검사 포함), `no-shell.test.ts`(19: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `subset-hand-font.test.ts`(1), `ci-gate-rules.test.ts`(6, Lambda 호출 권한 예외 4개 추가), `changeset-prepare.test.ts`(3) |
+| 스크립트 | `validate-content.test.ts`(22, 풀이 사전·각주 규칙·그림 파일 검사 포함), `no-shell.test.ts`(20: 규칙 1 + scripts 파일마다 1, 셸 실행 금지), `e2e-shard.test.ts`(14, CI E2E 분배: 합치면 전체·겹침 없음·무거운 연속 구간이 고르게 퍼짐·목록 형식·인자), `subset-hand-font.test.ts`(1), `ci-gate-rules.test.ts`(6, Lambda 호출 권한 예외 4개 추가), `changeset-prepare.test.ts`(3) |
 | API | `api.test.ts`(33, 액세스 토큰만 받기 DF-50) |
 | 인프라 | `web-stack.test.ts`(9), `auth-stack.test.ts`(7), `api-stack.test.ts`(8), `ci-stack.test.ts`(8) |
 

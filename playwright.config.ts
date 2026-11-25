@@ -14,8 +14,9 @@ export default defineConfig({
   timeout: 120_000,
   // 16코어 데스크톱에서 잰 값: 6이면 3D 페이지가 몰려 테스트마다 2~5배 느려진다. CI(4코어 러너)는 E2E_WORKERS=2
   workers: Number(process.env.E2E_WORKERS ?? 4),
-  // 브라우저가 닫히지 않고 멈춰도 전체 실행을 끊는다. CI(workers 2)는 평소 14~22분이라 20분이면 느린 러너에서 끊겨(DF-52) 35분(job 제한 60분)
-  globalTimeout: (process.env.CI ? 35 : 20) * 60_000,
+  // 브라우저가 닫히지 않고 멈춰도 전체 실행을 끊는다. CI는 E2E를 5개 shard로 나눠(scripts/e2e-shard.ts, CH-69) shard 하나가 약 10분(workers 2)이다.
+  // 한 job으로 돌리던 때(14~22분, 용어 20개에서 35분 초과)의 제한이 아니라 shard 하나 기준이다: 25분(job 제한 35분). 늘려서 가리지 말고, 넘으면 shard 수를 늘린다
+  globalTimeout: (process.env.CI ? 25 : 20) * 60_000,
   fullyParallel: true, // 같은 파일의 테스트도 나눠 돈다(테스트마다 새 페이지라 서로 독립)
   reporter: [["list"], ["./tests/e2e/progress-reporter.ts"]], // 진단 리포터: 끊기면 돌던 테스트·마지막 단계를 남긴다
   // 실제 속도로 재는 두 테스트는 나머지가 다 끝난 뒤 따로 돈다(병렬 부하로 프레임이 떨어지면 장면 시간이 느려져 배속 비율이 틀어진다)
