@@ -98,7 +98,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 설명 틀(문자열 또는 4부분 객체)·풀이 사전 항목 | `packages/content-schema/src/index.ts` `explanationSchema`, `descriptionSchema`, `glossaryEntrySchema`, `glossarySchema`, 타입 `Explanation`·`Footnote`·`BuiltTerm`. 규칙 값 `packages/content-schema/src/explain.ts` `EXPLAIN_PARTS`, `partLabel()`, `explanationParagraphs()`, `explanationNoteWords()`, `sentencesOf()`, `DEFINITION_MAX`·`SENTENCE_WARN`·`NOTES_MAX`·`DRAFT_DESCRIPTION` |
 | 각주 `[[단어]]` 표시 | `packages/content-schema/src/marks.ts` `noteWords()`(설명 틀 안에서만 허용) |
 | 풀이 사전 | `content/glossary.json`, 검증 `scripts/validate-content.ts` `loadGlossary()`, 빌드 `scripts/build-index.ts` `withFootnotes()` |
-| 용어 옆 그림(스키마·SVG 규칙·캡션 표기) | `packages/content-schema/src/index.ts` `figureSchema`·`Figure`, `packages/content-schema/src/figure.ts` `checkFigureSvg()`·`captionHasCredit()`·`FIGURE_PARTS`·`FIGURE_CREDIT` |
+| 용어 옆 그림(스키마·SVG 규칙) | `packages/content-schema/src/index.ts` `figureSchema`·`Figure`, `packages/content-schema/src/figure.ts` `checkFigureSvg()`·`FIGURE_PARTS` |
 | 그림 파일(직접 그린 SVG) 검증·복사 | `content/figures/<id>.svg`, 검증 `scripts/validate-content.ts` `FIGURES_DIR`(`loadTerms()`의 그림 검사), 빌드 `scripts/build-index.ts`(`/content/figures/`로 복사) |
 
 **S1 공통 · S3 탐색 · S4 상세 화면**

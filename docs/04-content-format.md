@@ -107,7 +107,7 @@
 
 ```jsonc
 "figures": [
-  { "part": "how", "id": "deadlock-intersection", "alt": "그림을 말로 설명", "caption": "그림 밖 설명. 직접 그린 그림" }
+  { "part": "how", "id": "deadlock-intersection", "alt": "그림을 말로 설명", "caption": "그림 밖 설명" }
 ]
 ```
 
@@ -116,7 +116,7 @@
 | `part` | `analogy`, `how`, `why` 중 하나(한 줄 정의 옆에는 두지 않는다). 한 부분 옆에는 그림 하나 |
 | `id` | 그림 파일 `content/figures/<id>.svg`. 한 그림은 한 용어만 쓴다 |
 | `alt` | 그림을 말로 설명한다(화면 읽기가 읽는다). 300자 이하 |
-| `caption` | 그림 밖 캡션. **"직접 그린 그림"으로 끝낸다**(끝의 마침표·괄호는 봐준다). 200자 이하 |
+| `caption` | 그림 밖 캡션. 200자 이하 |
 
 **SVG 파일 규칙**(`packages/content-schema/src/figure.ts` `checkFigureSvg()`가 빌드에서 검사, 어기면 빌드 실패):
 - 직접 그린 것만 쓴다. 외부 이미지·사진·교재나 슬라이드 그림은 쓰지 않는다(저작권, CSP).

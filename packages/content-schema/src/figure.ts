@@ -1,12 +1,10 @@
-﻿// 용어 옆 그림(figures, docs/04 "그림"): 직접 그린 SVG 파일만 쓴다(외부 이미지·사진·교재 그림 금지, 저작권·CSP).
+// 용어 옆 그림(figures, docs/04 "그림"): 직접 그린 SVG 파일만 쓴다(외부 이미지·사진·교재 그림 금지, 저작권·CSP).
 // 색은 사이트 색 토큰을 따라가야 하므로 SVG 안에 색을 쓰지 않고 클래스(k-*)로만 칠한다(스타일은 dictionary.css의 .la-fig-svg).
 // 이 파일은 DOM 없이 글자만 검사하는 순수 함수라, 빌드 검증기(scripts)와 단위 테스트가 쓴다. 화면은 읽은 SVG를 한 번 더 걸러서 넣는다(features/term/Figure.tsx)
 
 /** 그림이 붙을 수 있는 설명의 부분(한 줄 정의 옆에는 두지 않는다) */
 export const FIGURE_PARTS = ["analogy", "how", "why"] as const;
 export type FigurePart = (typeof FIGURE_PARTS)[number];
-/** 캡션 끝에 반드시 붙이는 표기 */
-export const FIGURE_CREDIT = "직접 그린 그림";
 /** 모든 그림은 같은 정사각 캔버스(자리를 미리 잡아 불러오는 동안 밀림이 없다) */
 export const FIGURE_VIEWBOX = "0 0 240 240";
 /** 그림 안 글자는 A, B, 1, 2 같은 표식만 */
@@ -46,6 +44,3 @@ export function checkFigureSvg(svg: string): string[] {
   }
   return issues;
 }
-
-/** 캡션이 "직접 그린 그림"으로 끝나는지(끝의 마침표·괄호는 봐준다) */
-export const captionHasCredit = (caption: string) => caption.trim().replace(/[.)\]」』]+$/, "").endsWith(FIGURE_CREDIT);

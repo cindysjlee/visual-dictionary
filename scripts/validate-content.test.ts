@@ -57,7 +57,7 @@ describe("loadTerms", () => {
 
 describe("그림(figures) 파일", () => {
   const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect class="k-box" x="1" y="1" width="10" height="10"/></svg>';
-  const fig = { part: "how", id: "fig-a", alt: "그림을 말로 설명한다", caption: "캡션이다. 직접 그린 그림" };
+  const fig = { part: "how", id: "fig-a", alt: "그림을 말로 설명한다", caption: "캡션이다." };
   /** 그림이 하나인 csrf와 그림 폴더를 만든다 */
   const setup = (svgFiles: Record<string, string>, mutate: (terms: Record<string, any>) => void = () => {}) => {
     const dir = tempDir();

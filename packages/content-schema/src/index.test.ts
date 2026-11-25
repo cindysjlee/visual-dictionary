@@ -105,7 +105,7 @@ describe("termSchema", () => {
   });
 
   describe("그림(figures)", () => {
-    const fig = { part: "how", id: "csrf-demo", alt: "그림을 말로 설명한다", caption: "캡션이다. 직접 그린 그림" };
+    const fig = { part: "how", id: "csrf-demo", alt: "그림을 말로 설명한다", caption: "캡션이다." };
     const withFigures = (figures: unknown) => {
       const t: any = example("csrf");
       t.figures = figures;
@@ -122,7 +122,6 @@ describe("termSchema", () => {
       ["한 줄 정의 옆에는 둘 수 없다", { ...fig, part: "definition" }, "figures.0.part"],
       ["alt가 비어 있다", { ...fig, alt: "" }, "figures.0.alt"],
       ["캡션이 비어 있다", { ...fig, caption: "" }, "figures.0.caption"],
-      ['캡션이 "직접 그린 그림"으로 끝나지 않는다', { ...fig, caption: "캡션만 있다" }, "figures.0.caption"],
       ["id 형식이 틀렸다", { ...fig, id: "Bad Id" }, "figures.0.id"],
       ["모르는 필드", { ...fig, src: "x.png" }, "figures.0"],
     ])("%s → 오류 위치를 알려준다", (_, bad, path) => {

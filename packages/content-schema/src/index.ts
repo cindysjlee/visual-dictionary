@@ -1,7 +1,7 @@
 // 용어 JSON의 유일한 스키마. 빌드 검증기(scripts)와 프론트엔드(apps/web)가 함께 쓴다. 규칙: docs/04-content-format.md
 import { z } from "zod";
 import { DEFINITION_MAX, DRAFT_DESCRIPTION, NOTES_MAX, explanationParagraphs, sentencesOf } from "./explain.ts";
-import { FIGURE_CREDIT, FIGURE_PARTS, captionHasCredit } from "./figure.ts";
+import { FIGURE_PARTS } from "./figure.ts";
 import { ACTIONS_BY_PLAYER } from "./labels.ts";
 import { markCount, parseMarks, plainText } from "./marks.ts";
 import { checkScene } from "./scene.ts";
@@ -56,12 +56,12 @@ const descriptionSchema = z.unknown().transform((value, ctx): typeof DRAFT_DESCR
   return z.NEVER;
 });
 
-/** 용어 옆 그림 하나(docs/04 "그림"): 어느 부분 옆에, 어느 파일(content/figures/<id>.svg)을, 말로는 어떻게(alt), 캡션은 "직접 그린 그림"으로 끝낸다 */
+/** 용어 옆 그림 하나(docs/04 "그림"): 어느 부분 옆에, 어느 파일(content/figures/<id>.svg)을, 말로는 어떻게(alt), 캡션은 그림 밖 설명 */
 export const figureSchema = z.strictObject({
   part: z.enum(FIGURE_PARTS),
   id,
   alt: text.max(300),
-  caption: text.max(200).refine(captionHasCredit, `캡션은 "${FIGURE_CREDIT}"으로 끝나야 합니다`),
+  caption: text.max(200),
 });
 export type Figure = z.output<typeof figureSchema>;
 

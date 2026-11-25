@@ -1,6 +1,6 @@
-﻿// 용어 옆 그림(figures) 단위 테스트: SVG 규칙(직접 그린 것만, 색은 클래스로만, 표식 글자만)과 캡션 표기
+// 용어 옆 그림(figures) 단위 테스트: SVG 규칙(직접 그린 것만, 색은 클래스로만, 표식 글자만)과 캡션 표기
 import { describe, expect, it } from "vitest";
-import { FIGURE_VIEWBOX, captionHasCredit, checkFigureSvg } from "./figure.ts";
+import { FIGURE_VIEWBOX, checkFigureSvg } from "./figure.ts";
 
 const svg = (inner: string, attrs = `xmlns="http://www.w3.org/2000/svg" viewBox="${FIGURE_VIEWBOX}"`) => `<svg ${attrs}>${inner}</svg>`;
 const OK = svg('<rect class="k-box" x="1" y="1" width="10" height="10" rx="2"/><path class="k-acc" d="M0 0L5 5"/><text x="5" y="5">A</text>');
@@ -38,12 +38,3 @@ describe("checkFigureSvg", () => {
   });
 });
 
-describe("captionHasCredit", () => {
-  it('"직접 그린 그림"으로 끝나야 한다(끝의 마침표·괄호는 봐준다)', () => {
-    expect(captionHasCredit("설명이다. 직접 그린 그림")).toBe(true);
-    expect(captionHasCredit("설명이다. (직접 그린 그림)")).toBe(true);
-    expect(captionHasCredit("직접 그린 그림. ")).toBe(true);
-    expect(captionHasCredit("직접 그린 그림이 아니다")).toBe(false);
-    expect(captionHasCredit("설명만 있다")).toBe(false);
-  });
-});

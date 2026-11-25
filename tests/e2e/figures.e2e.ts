@@ -1,6 +1,6 @@
 // 용어 옆 그림(@figures): 직접 그린 SVG를 설명의 한 부분 옆에 놓는다.
 // ① 1440px: 그림은 그 부분 글 오른쪽, 글 줄 길이 상한(48.4rem)은 그대로 ② 390px: 그 부분 글 바로 아래 한 열, 가로 스크롤 없음
-// ③ 라이트·다크: 그림 색은 사이트 색 토큰을 따르고 카드 바탕과 구분됨(색을 하드코딩한 속성 없음) ④ alt(읽어 주는 이름)와 캡션("직접 그린 그림"으로 끝)이 보임
+// ③ 라이트·다크: 그림 색은 사이트 색 토큰을 따르고 카드 바탕과 구분됨(색을 하드코딩한 속성 없음) ④ alt(읽어 주는 이름)와 캡션이 보임
 // ⑤ 그림이 없는 용어는 레이아웃 그대로. 대상 용어는 content/terms의 figures에서 자동으로 늘어난다
 import { expect, test, type Page } from "@playwright/test";
 import { terms } from "./terms.ts";
@@ -66,7 +66,6 @@ for (const term of withFigures) {
       const fig = page.locator(`.la-tfig[data-figure="${f.id}"]`);
       await expect(fig.getByRole("img", { name: f.alt })).toBeVisible();
       await expect(fig.locator("figcaption")).toHaveText(f.caption);
-      await expect(fig.locator("figcaption")).toContainText(/직접 그린 그림$/);
       // 이 그림의 부분(part) 안에 있다
       await expect(page.locator(`.la-explain-part.is-${f.part} .la-tfig[data-figure="${f.id}"]`)).toHaveCount(1);
       // SVG는 걸러 낸 인라인 요소: 스크립트·스타일·링크가 없다
