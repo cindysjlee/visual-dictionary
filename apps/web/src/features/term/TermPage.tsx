@@ -1,4 +1,4 @@
-// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 머리 영역 한 줄(표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 | 완독 메모: 完 도장 + 완독한 날, 학습 상태) → 그 아래 카드 폭 전체에 설명(설명 틀)
+// 표제어 한 쪽(/terms/:id): 쪽 머리(색인으로) → 머리 영역(표제어 + 원어 표기 + 「분야」 〔단계, 방어〕 | 오른쪽에 큰 完 도장: 날짜·완독 취소) → 그 아래 카드 폭 전체에 설명(설명 틀)
 // → [그림 1] 3D 플레이어 → 방어(해결) 방법 → 참고 문헌 → "→ 참조" 관련 표제어.
 // 본문은 표시 문법(==형광펜==·`코드`)을 Marked로 그린다. 내용 묶음은 종이색 카드, 넓은 화면에서는 옆에 차례(TOC)
 import { Link, useLocation, useNavigationType, useParams } from "react-router";
@@ -10,7 +10,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useState } from "react";
 import { useAuth } from "../auth/store.ts";
 import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
 import { Marked } from "../dictionary/Marked.tsx";
-import { StudyEnd, TitleStamp } from "../progress/StudyMark.tsx";
+import { StampNote, TitleStamp, useStudy } from "../progress/StudyMark.tsx";
 import { Explanation } from "./Explanation.tsx";
 import { progress } from "../progress/store.ts";
 import type { PlayerJump } from "../../players/Player.tsx"; // 타입만이라 묶음에 들어가지 않는다
@@ -75,6 +75,7 @@ function TermDetail({ term }: { term: BuiltTerm }) {
   const related = index.state === "ok" ? term.related.flatMap((id) => index.data.find((t) => t.id === id) ?? []) : [];
   const isSecurity = term.category === "web-security";
   const auth = useAuth();
+  const study = useStudy(term.id); // 플레이어가 마지막 단계에 도착하면 도장이 자동으로 찍힌다
   const { hash } = useLocation();
   const navType = useNavigationType();
   // 용어 쪽은 늘 맨 위(용어 이름)에서 시작한다(Layout의 ScrollRestoration). 주소에 #term-fig처럼 가리키는 곳이 있을 때만 거기서 시작한다.
@@ -125,22 +126,22 @@ function TermDetail({ term }: { term: BuiltTerm }) {
         <Toc items={toc} />
         <article className="la-term-page" aria-labelledby="term-hw">
           <div id="term-def" className="la-term-head la-card">
-            {/* 머리 영역: 제목(오른쪽 위에 완독한 용어의 작은 도장) → 바로 아래 설명 → 글 맨 끝 완독 블록. Tab 순서: 본문(각주) → 완독 버튼 → 플레이어 */}
-            <div className="la-term-title">
-              <div className="la-term-titlerow">
+            {/* 머리 영역: 제목 블록 | 오른쪽 큰 도장(제목과 원어 두 줄 높이) → 바로 아래 설명. Tab 순서(문서 순서): 완독 취소 → 본문(각주) → 플레이어 → 도장 알림의 취소 */}
+            <div className="la-term-top">
+              <div className="la-term-title">
                 <h1 id="term-hw" className="la-headword term-title">
                   {term.name}
                 </h1>
-                <TitleStamp termId={term.id} />
-              </div>
-              {original && (
-                <p className="la-hanja term-sub" lang={term.englishName ? "en" : undefined}>
-                  {original}
+                {original && (
+                  <p className="la-hanja term-sub" lang={term.englishName ? "en" : undefined}>
+                    {original}
+                  </p>
+                )}
+                <p className="la-pos">
+                  <Field category={term.category} /> <span className="la-num">{meta}</span>
                 </p>
-              )}
-              <p className="la-pos">
-                <Field category={term.category} /> <span className="la-num">{meta}</span>
-              </p>
+              </div>
+              <TitleStamp study={study} />
             </div>
             {typeof term.description === "string" ? (
               // 초안 자리 표시("(설명 준비 중)", draft만): 문단 하나
@@ -150,13 +151,13 @@ function TermDetail({ term }: { term: BuiltTerm }) {
             ) : (
               <Explanation term={term} data={term.description} />
             )}
-            <StudyEnd termId={term.id} />
           </div>
 
           <figure id="term-fig" className="la-term-fig la-card" aria-labelledby="term-fig-cap">
             <Suspense fallback={<PlayerSkeleton />}>
-              <Player term={term} jump={jump} />
+              <Player term={term} jump={jump} onComplete={study.onComplete} />
             </Suspense>
+            <StampNote study={study} />
             <figcaption id="term-fig-cap">
               <b>그림 1.</b> {term.name}의 단계별 장면. 무대를 끌면 돌려 볼 수 있다.
             </figcaption>

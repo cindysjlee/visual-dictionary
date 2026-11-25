@@ -1085,7 +1085,7 @@ body {
   align-items: start;
 }
 
-/* 용어 쪽 머리: 한 열. 제목 바로 아래에 설명이 붙고(줄 길이는 --measure-ko로 제한), 완독 표시는 제목 오른쪽 위의 작은 도장 + 글 맨 끝 한 줄 블록 */
+/* 용어 쪽 머리: 한 열. 제목 바로 아래에 설명이 붙고(줄 길이는 --measure-ko로 제한), 완독 도장은 제목 블록 오른쪽 열 */
 .la-term .la-term-head {
   grid-template-columns: minmax(0, 1fr);
   row-gap: var(--sp-3);
@@ -1095,70 +1095,130 @@ body {
   margin: 0;
 }
 
-/* 제목 줄: 제목 | (완독한 용어만) 작은 完 도장 + 날짜. 도장은 한 줄(32px)이라 제목 줄 높이를 늘리지 않는다 */
-.la-term-titlerow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
+/* 제목 줄(CH-67): 제목 블록(제목·원어·분야) | 오른쪽 큰 完 도장 + 날짜 + 완독 취소. 도장은 제목과 원어 두 줄 높이(넓은 화면 92px, 약 -6도).
+   날짜·버튼까지 합친 도장 열이 제목 블록보다 조금 길면 넘치는 만큼은 정의 오른쪽 빈자리로 내려가게 해(margin-bottom) 제목과 정의 사이를 벌리지 않는다 */
+.la-term-top {
+  --stamp: 92px;
+  --seal-tilt: -6deg;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--sp-5);
+  align-items: start;
 }
 
-.la-term-titlerow .la-headword {
+.la-term-title {
   min-width: 0;
 }
 
 .la-term-stamp {
-  flex: none;
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  width: 7rem;
+  margin-bottom: -4rem;
   color: var(--la-seal);
+  text-align: center;
+}
+
+.la-stamp-img {
+  display: block;
+  line-height: 0;
 }
 
 .la-term-stamp .la-seal {
-  transform: rotate(-10deg);
+  width: var(--stamp);
+  height: var(--stamp);
+  transform: rotate(var(--seal-tilt));
 }
 
 .la-term-stamp .la-seal-date {
   margin: 0;
   white-space: nowrap;
 }
-/* 글 맨 끝 한 줄 블록: 완독 표시·취소·로그인 안내 */
-.la-study-end {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2) var(--sp-3);
-  max-width: var(--measure-ko);
-  padding-top: var(--sp-4);
-  border-top: 1px solid var(--la-rule);
-  font-size: var(--fs-sm);
-}
 
-.la-study-end p {
+/* 아직 안 찍힘·취소함: 흐린 윤곽 도장. 눌리지 않고, 안내 글은 본문 보조색 */
+.la-stamp-text {
   margin: 0;
+  max-width: 7rem;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--la-ink-sub);
+  text-wrap: balance;
 }
 
-.la-study-date {
-  font-family: var(--font-title);
-  font-weight: 700;
-  color: var(--la-seal);
-}
-
-/* 글자처럼 보이는 단추·링크(누르는 영역은 24px 이상) */
-.la-study-undo,
-.la-study-login {
+/* 글자처럼 보이는 작은 단추(누르는 영역은 24px 이상) */
+.la-stamp-btn {
   min-height: 24px;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border: 0;
   background: none;
   color: var(--la-ink);
   font: inherit;
+  font-size: var(--fs-xs);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
+.la-stamp-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 플레이어 아래: 비로그인 안내와 찍힘·취소 알림(role=status). 둘 다 없으면 높이를 차지하지 않는다 */
+.la-stamp-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.la-stamp-note:not(:has(.la-stamp-hint, .la-stamp-notice)) {
+  height: 0;
+  margin-top: calc(var(--sp-2) * -1);
+}
+
+.la-stamp-hint,
+.la-stamp-notice {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.la-stamp-hint {
+  color: var(--la-ink-sub);
+}
+
+.la-stamp-link {
+  color: var(--la-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.la-stamp-notice {
+  padding: 2px 0 2px var(--sp-3);
+  border-left: 3px solid var(--la-seal);
+}
+
+@media (max-width: 900px) {
+  .la-term-top {
+    --stamp: 56px;
+    column-gap: var(--sp-3);
+  }
+
+  .la-term-stamp {
+    width: 5.5rem;
+    margin-bottom: 0;
+  }
+
+  .la-term-stamp .la-seal-date {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.04em;
+  }
+
+  .la-stamp-text {
+    max-width: 5.5rem;
+  }
+}
 .la-term .la-headword,
 .la-me .la-headword {
   margin: 0;
@@ -1721,7 +1781,7 @@ body {
 }
 
 /* ════════ 다 읽음 = 完 인주 도장(2026-11-24, docs/05 "다 읽음 표시") ════════
-   인주색 --la-seal, 비스듬히 -10도. 용어 쪽은 제목 줄 오른쪽 위의 작은 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
+   인주색 --la-seal, 비스듬히 -10도. 용어 쪽은 제목 줄 오른쪽의 큰 도장(-6도) + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
 .la-seal {
   display: block;
   color: var(--la-seal);
@@ -1758,7 +1818,7 @@ body {
 
   100% {
     opacity: 1;
-    transform: scale(1) rotate(-10deg);
+    transform: scale(1) rotate(var(--seal-tilt, -10deg));
   }
 }
 

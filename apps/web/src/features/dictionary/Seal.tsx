@@ -14,8 +14,20 @@ export function sealDate(iso: string) {
 export const sealLabel = (at?: string) => (at ? `완독, ${sealDate(at).long}` : "완독");
 
 /** 完 도장 그림. light = 작은 크기(색인·목록·장부)용: 잔 얼룩 없이 가장자리 번짐만(작으면 얼룩이 "完"을 뭉갠다) */
-export function Seal({ size, light = false }: { size: number; light?: boolean }) {
+/** ghost = 아직 안 찍힌(또는 취소한) 자리의 흐린 윤곽: 점선 원과 옅은 完, 인주 질감 없음. 장식이며 눌리지 않는다 */
+export function Seal({ size, light = false, ghost = false }: { size: number; light?: boolean; ghost?: boolean }) {
   const id = `seal${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  if (ghost) {
+    return (
+      <svg className="la-seal is-ghost" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <g opacity="0.45">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="2 5" strokeLinecap="round" />
+          <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d={SEAL_WAN} fill="currentColor" opacity="0.45" />
+        </g>
+      </svg>
+    );
+  }
   return (
     <svg className="la-seal" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
       <filter id={id} x="-10%" y="-10%" width="120%" height="120%">

@@ -65,8 +65,8 @@
 
 | ID | 설계 | 코드 | 테스트 | 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| FR-PRG-01 완독 기록(글 끝 버튼, 자동 기록 없음) | docs/03 2.5, docs/05 완독 표시 | `TermPage.tsx`, `progress/store.ts`(`readAt()`), `StudyMark.tsx`(`TitleStamp`·`StudyEnd`)·`Seal.tsx`(完 도장·날짜), `progress.ts` | 단 `api.test.ts`, E `progress.e2e.ts`(글 끝 버튼으로 표시하면 제목 줄 도장·날짜·화면 읽기 이름·찍히는 움직임, 끝까지 재생해도 자동 완독 없음), E `term-head.e2e.ts`(도장 위치·제목 줄 높이), S smoke:progress | 완료 | "읽음" → "완독"(CH-53·54), 자동 기록 → 직접 표시(CH-63) |
-| FR-PRG-02 완독 직접 변경 | docs/02 규칙, docs/05 완독 표시 | `StudyMark.tsx` `StudyEnd`([다 읽었으면 完 도장 찍기]/[완독 취소]) | E `progress.e2e.ts`(read:false로 남김, aria-pressed 없음), E `auth.e2e.ts`, E `term-head.e2e.ts`(머리 영역 오른쪽 위, 좁은 화면은 설명 앞) | 완료 | CH-55, CH-61 |
+| FR-PRG-01 완독 기록(애니메이션 끝에서 자동, 취소한 용어는 자동 재기록 없음) | docs/03 2.5, docs/05 완독 표시 | `TermPage.tsx`, `progress/store.ts`(`readAt()`), `StudyMark.tsx`(`useStudy`·`TitleStamp`·`StampNote`)·`Seal.tsx`(完 도장·날짜), 엔진 `engine.ts`(`completed` 이벤트), `progress.ts` | 단 `api.test.ts`·`engine.test.ts`(순서대로 도착만 완료, 건너뛰기는 이벤트 없음), E `progress.e2e.ts`(끝에서 자동 찍힘·건너뛰기 제외·방어 모드 제외·알림·취소·다시 열어도 자동 재기록 없음·비로그인 기록 안 함), E `term-head.e2e.ts`(도장 크기·제목과 설명 사이), S smoke:progress | 완료 | "읽음" → "완독"(CH-53·54), 자동 → 직접(CH-63) → 다시 자동(CH-67) |
+| FR-PRG-02 완독 직접 변경 | docs/02 규칙, docs/05 완독 표시 | `StudyMark.tsx` `TitleStamp`([완독 취소]/[다시 찍기])·`StampNote`(알림의 [취소]) | E `progress.e2e.ts`(read:false·manual로 남김, 다시 찍기, 알림 6초·포커스 유지), E `auth.e2e.ts`, E `term-head.e2e.ts`(도장 열 위치·390px 겹침 없음·Tab 순서) | 완료 | CH-55, CH-61, CH-67 |
 | FR-PRG-03 목록 상태 표시 | docs/05 완독 표시 | `Dictionary.tsx` `IndexColumns`(줄 끝 完 도장), `HomePage.tsx` | E `progress.e2e.ts`(도장·title·화면 읽기 "완독, 날짜") | 완료 | |
 | FR-PRG-04 읽음 필터 | docs/05 | `summary.ts`, `HomePage.tsx` | 단 `summary.test.ts`, E `progress.e2e.ts` | 완료 | |
 | FR-PRG-05 진행률 | docs/02 규칙, docs/05 완독 표시 | `summary.ts`, `Dictionary.tsx` `Ledger`("n / m 완독", 분야별 "n/m 완독") | 단 `summary.test.ts`, E `progress.e2e.ts`, S smoke:progress(다른 브라우저 같은 진행률 "1 / 14 완독") | 완료 | |
@@ -112,7 +112,7 @@
 
 **미구현(이번 과제 범위 제외)**
 - FR-PRG-07 비회원 기록 이전(선택). 구현하지 않는 이유:
-  - 전제가 되는 "비회원 읽음 기록의 브라우저 저장"이 지금 없다. 비회원은 글 끝에서 로그인 링크만 받는다(FR-PRG-01). 이전 기능을 넣으려면 그 저장부터 새로 만들어야 한다.
+  - 전제가 되는 "비회원 읽음 기록의 브라우저 저장"이 지금 없다. 비회원은 플레이어 아래에서 로그인 링크만 받는다(FR-PRG-01). 이전 기능을 넣으려면 그 저장부터 새로 만들어야 한다.
   - 옮길 때 서버 기록과 부딪히는 경우(서버에는 직접 "안 읽음", 브라우저에는 "읽음")의 규칙과 여러 건을 한 번에 쓰는 API가 더 필요해, 선택 요구사항에 비해 범위가 크다.
   - 핵심 가치(시각화)와 필수 요구사항을 먼저 끝내기로 한 범위 결정(docs/01 7절 "범위 위험")을 따른다.
 
