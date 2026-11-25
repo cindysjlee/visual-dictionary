@@ -93,7 +93,7 @@ docs/                     설계 문서
 - 디자인 2차(11-23): 랜딩·사이트 전체 "사전 지면", 표제어 한 쪽은 종이색 카드 + 차례, 색인은 괘선 지면, 3D는 종이 장면, 본문 표시 문법(==형광펜==·`코드`, docs/04), 로고 ¶ + "시각화 사전"(docs/05 "로고", `scripts/build-logo.ts`). 비교용 `?scene`·`?style`·`?font` 전환은 모두 지웠다.
 - 용어 쪽(11-25): 설명은 모두 설명 틀(한 줄 정의·쉬운 비유·어떻게·왜, 각주 풀이 사전, docs/04). 완독은 애니메이션을 마지막 단계까지 순서대로 보면 자동으로 기록되고(건너뛰기 제외, 취소한 용어는 자동 재기록 없음, 기록은 기존 `read`·`source`만 씀) 제목 줄 오른쪽에 큰 完 도장이 찍힌다(docs/05). 용어 옆 그림(`figures`)은 7개(데드락·콜 스택·경쟁 상태·클릭재킹·SSL 스트리핑·ARP 스푸핑·TCP 핸드셰이크).
 - Cognito 관리형 로그인 화면 로고는 넣지 않았다(사용자 결정: 앱이 구글 화면으로 바로 보내 거의 안 보임). 넣으려면 auth-stack의 `CfnManagedLoginBranding`을 `useCognitoProvidedValues: false` + 로고·파비콘 자산으로 바꾸고, 보안 검토·변경 세트·승인·구글 사람 확인 체크리스트를 다시 한다.
-- 콘텐츠 1차(11-21) 공개: 스택 오버플로(stack), 경쟁 상태(lock), SYN 플러드·SSL 스트리핑·IDOR·클릭재킹(flow). 용어 14개. 콘텐츠 2차(11-25) 공개: DNS 스푸핑·ARP 스푸핑·TLS 핸드셰이크·컨텍스트 스위칭·페이지 폴트(flow), 예외 전파(stack)로 **공개 용어는 20개**(네트워크 6, 운영체제 4, 런타임 3, 웹 보안 7). 아직 배포 전이다(배포 때 API의 `TERM_IDS`도 바뀐다, docs/03). 새 일반 어휘(칸 선반·여러 봉투·겹친 화면·옆 카메라, 스택 한도·고친 코드 판, 공유 값)는 docs/04·06.
+- 콘텐츠 1차(11-21) 공개: 스택 오버플로(stack), 경쟁 상태(lock), SYN 플러드·SSL 스트리핑·IDOR·클릭재킹(flow). 용어 14개. 콘텐츠 2차(11-25) 공개: DNS 스푸핑·ARP 스푸핑·TLS 핸드셰이크·컨텍스트 스위칭·페이지 폴트(flow), 예외 전파(stack)로 **공개 용어는 20개**(네트워크 6, 운영체제 4, 런타임 3, 웹 보안 7). 20개 모두 CI 45615789172(커밋 `19cd0bd`)에서 배포됐다(API의 `TERM_IDS`도 그때 바뀜, docs/03). 새 일반 어휘(칸 선반·여러 봉투·겹친 화면·옆 카메라, 스택 한도·고친 코드 판, 공유 값)는 docs/04·06.
 - 배포에 IAM·보안 그룹 변경이 있으면 `npm run deploy`가 승인을 묻다가 터미널이 없으면 멈춘다. 그때는 아래 "작업 방식"의 배포 승인 규칙을 따른다.배포 주소: https://d1y3rvak3nd08u.cloudfront.net (`npm run deploy`, 스택 VisualDictionaryWeb). 6단계부터 SPA 라우팅은 CloudFront Function(확장자 없는 화면 주소만 index.html)이라 없는 `/assets/`·`/content/` 파일은 진짜 404이고, `/api/*`는 API Gateway로 간다(개발 서버 Vite는 여전히 없는 파일에 index.html을 주므로 상세 페이지는 404와 JSON 아님을 모두 "없는 용어"로 처리한다). CSP가 `'self'`만 허용하므로 인라인 스크립트·`<style>`·data: 글꼴을 쓰지 말 것(JS로 넣는 스타일, 즉 React `style` prop·Motion은 CSSOM이라 허용됨).
 
 초기 용어 8개: XSS, CSRF, SQL 인젝션, 세션 하이재킹, SSRF (flow) / TCP 3-way 핸드셰이크 (flow) / 콜 스택 (stack) / 데드락 (lock)
@@ -101,6 +101,10 @@ docs/                     설계 문서
 ## 작업 방식
 
 - 사용자와는 한국어로 대화한다.
+- **프롬프트에 나온 작업만 한다.** 요청에 없는 파일·코드·문서는 고치지 않는다. 고칠 만한 것을 발견하면 보고에 적고 사용자에게 묻는다.
+- **push는 사용자가 "push"라고 할 때만 한다.** 커밋은 작업 단위마다 하되(커밋하지 말라는 지시가 있으면 하지 않는다), main push는 곧 CI 배포이므로 사용자의 "push" 없이 하지 않는다.
+- **실제 배포(운영)를 대상으로 `smoke:auth`·`smoke:progress`를 돌리기 전에는 사용자에게 먼저 묻는다**(운영 Cognito에 테스트 사용자를 만들고 지운다). `smoke:prod`·`check:aws`(읽기 전용)는 묻지 않아도 된다.
+- **PowerShell로 명령을 실행할 때:** 명령 연결은 `&&` 대신 `;`를 쓰고, 성공 여부는 바로 다음에 `$LASTEXITCODE`로 확인한다(예: `npm run verify; "exit: $LASTEXITCODE"`). 출력 필터(`| Select-String`, `| Select-Object -Last` 등)와 `2>&1`은 쓰지 않는다(진행 출력이 가려지고, 5.1에서는 네이티브 명령의 stderr가 오류로 바뀌어 종료 코드를 잘못 읽는다).
 - 사용자 개발 환경은 **데스크톱 Windows 11** (Node 24, npm). 설치 명령은 Windows 기준(winget, npm)으로 안내한다. 패키지 관리자는 npm workspaces.
 - Node로 바로 실행하는 스크립트(`scripts/`, 그리고 스크립트가 import하는 `packages/`)는 Node의 타입 지우기로 실행되므로 `enum`, `namespace`, 생성자 매개변수 속성처럼 JS로 바꿔야 하는 TS 문법을 쓰지 않는다. import 경로에는 `.ts` 확장자를 붙인다.
 - AWS 설정을 안내할 때는 콘솔 경로(메뉴 → 탭 → 버튼)를 함께 적는다.
@@ -118,7 +122,7 @@ docs/                     설계 문서
 - **리소스의 정체를 바꾸는 변경(이름·그룹·논리 ID·만든 뒤 못 바꾸는 속성)은 승인을 요청하기 전에 변경 세트로 교체 여부를 확인한다.** `cdk diff`가 제자리 수정(`[~]`)으로 보여도 실제로는 교체가 필요하거나 실패할 수 있다(8단계 뒤: Scheduler 일정의 그룹 변경을 제자리 수정으로 했다가 NotFound로 실패·롤백). `npm run changeset:prepare -- <스택> [이름]`(`scripts/changeset-prepare.ts`)으로 변경 세트만 만들어 `Action`·`Replacement` 표를 승인 요청에 적고, 쓰지 않은 변경 세트는 지운다(`delete-change-set`, 스택 리소스는 바뀌지 않는다).
   - **예외: `--require-approval never`는 이 스크립트로 변경 세트를 만드는 경우에 한해 확인 없이 쓸 수 있다**(스크립트 안에 `--method=prepare-change-set`과 함께 고정, 실행 옵션은 받지 않음. IAM 변경이 섞이면 prepare도 확인을 요구하기 때문). **`--require-approval never`를 명령에 직접 입력하는 것은 계속 금지**다.
   - 확인이 끝난 변경 세트의 실행(`cdk deploy <스택> --exclusively --method=execute-change-set --change-set-name <이름>`)은 사용자 "승인" 뒤에만 한다.
-- **자동 배포(GitHub Actions, docs/03 2.6):** main push마다 워크플로가 돈다(7단계에 사용자 확인으로 켬). push 전에 그 커밋이 그대로 배포돼도 되는 상태인지 확인한다. **로컬 배포는 진행 중인 CI 실행이 없을 때만 하고, 배포한 커밋을 곧바로 push한다**(예전 커밋으로 도는 CI가 로컬 배포를 되돌리는 변경 세트를 만들 수 있다). 승인이 필요한 변경(보안 등)은 승인과 로컬 배포 전에는 push하지 않는다(IAM이 없는 변경은 CI 관문이 멈추지 않는다). **CI가 스택을 실제로 배포한 경우(배포 단계가 건너뜀이 아님), 로컬에서 `npm run smoke:auth`와 `npm run smoke:progress`를 돌려 확인한다**(CI 역할에는 Cognito 관리자 권한이 없어 CI에서 못 돈다). CI가 보안 관문(권한 확장)이나 변경 관문(리소스 삭제·교체)에서 멈추면, 로컬에서 `cdk diff`의 해당 변경을 보여 주고 사용자 "승인"을 받은 뒤 로컬에서 배포한다. CI 역할(`VisualDictionaryCi`)은 `-c githubRepo=…`를 줄 때만 앱에 들어가며, 바꿀 때도 같은 승인 절차를 따른다. CI 역할 승인 체크리스트에는 "신뢰 정책 sub가 GitHub가 실제로 보내는 값과 같은지"를 넣는다(`gh api repos/<소유자>/<저장소>/actions/oidc/customization/sub`의 `sub_claim_prefix` + `:ref:refs/heads/main`과 합성 템플릿의 sub를 비교. 이 저장소는 변하지 않는 sub라 `소유자@ID/저장소@ID` 형태다). 워크플로의 외부 액션은 커밋 해시로 고정하고 `pull_request_target`은 쓰지 않는다.
+- **자동 배포(GitHub Actions, docs/03 2.6):** main push마다 워크플로가 돈다(7단계에 사용자 확인으로 켬). push 전에 그 커밋이 그대로 배포돼도 되는 상태인지 확인한다. **로컬 배포는 진행 중인 CI 실행이 없을 때만 하고, 배포한 커밋을 곧바로 push한다**(예전 커밋으로 도는 CI가 로컬 배포를 되돌리는 변경 세트를 만들 수 있다). 승인이 필요한 변경(보안 등)은 승인과 로컬 배포 전에는 push하지 않는다(IAM이 없는 변경은 CI 관문이 멈추지 않는다). **CI가 스택을 실제로 배포한 경우(배포 단계가 건너뜀이 아님), 사용자에게 먼저 묻고 승인되면 로컬에서 `npm run smoke:auth`와 `npm run smoke:progress`를 돌려 확인한다**(CI 역할에는 Cognito 관리자 권한이 없어 CI에서 못 돈다). CI가 보안 관문(권한 확장)이나 변경 관문(리소스 삭제·교체)에서 멈추면, 로컬에서 `cdk diff`의 해당 변경을 보여 주고 사용자 "승인"을 받은 뒤 로컬에서 배포한다. CI 역할(`VisualDictionaryCi`)은 `-c githubRepo=…`를 줄 때만 앱에 들어가며, 바꿀 때도 같은 승인 절차를 따른다. CI 역할 승인 체크리스트에는 "신뢰 정책 sub가 GitHub가 실제로 보내는 값과 같은지"를 넣는다(`gh api repos/<소유자>/<저장소>/actions/oidc/customization/sub`의 `sub_claim_prefix` + `:ref:refs/heads/main`과 합성 템플릿의 sub를 비교. 이 저장소는 변하지 않는 sub라 `소유자@ID/저장소@ID` 형태다). 워크플로의 외부 액션은 커밋 해시로 고정하고 `pull_request_target`은 쓰지 않는다.
 - **운영 리소스의 데이터를 지우거나 바꾸는 명령은 매번 먼저 묻는다.** DynamoDB 항목 삭제·수정, Cognito 사용자 삭제·수정, S3 객체 삭제, SQS 메시지 삭제·다시 보내기 등이 해당한다. 예외는 smoke 스크립트가 자기가 만든 테스트 데이터(예약 도메인 테스트 사용자와 그 기록)를 지우는 경우뿐이다. 스크립트 밖에서 남은 테스트 데이터를 지우는 것도 먼저 묻는다. 확인용 조회(describe·get·list·query·scan)는 묻지 않아도 된다.
 - 커밋 전에는 최소 `npm run verify`(콘텐츠 검증·단위 테스트·빌드·홈 묶음 검사)가 통과해야 한다.
 - **스킬은 "그 수준으로 검토했다"로 대신하지 않고 Skill 도구로 실제로 호출한다.**
@@ -131,13 +135,13 @@ docs/                     설계 문서
   - push·배포 직전에만: 전체 E2E 한 번. draft가 있으면 `npm run test:e2e:drafts`만 돌린다(published를 포함하므로 `test:e2e`와 중복). draft가 없으면 `npm run test:e2e`.
   - 장면 기록·겹침 검사는 테스트 빌드 전용 장면 배속(`__sceneSpeed` 10×, 타임라인·카메라)으로 돌고, 겹침 검사는 연출 없이 단계 결과 상태(동작 줄이기 경로)에서 잰다. 실제 속도로 끝까지 보는 건 "CSRF 공격 흐름 1×"와 "재생 속도 2×" 두 테스트뿐이다.
 - 테스트 진행이 사용자에게 보이게 한다. verify·test:e2e·test:e2e:drafts 같은 테스트는 백그라운드가 아니라 앞에서 실행해 진행 출력이 대화창에 보이게 하고, Playwright는 테스트마다 결과가 찍히는 list 리포터를 쓴다. 시작할 때 "무엇을 돌리는지, 테스트 몇 개, 예상 시간"을 한 줄로, 끝나면 "통과 n / 실패 n / 걸린 시간"을 한 줄로 알린다. 실패하면 실패한 테스트 이름과 이유를 먼저 보인다. 꼭 백그라운드로 돌려야 하면 이유를 말하고, 끝날 때까지 다른 작업을 시작하지 않는다.
-- 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지·`/config.json`)와 `npm run smoke:auth`(실제 Cognito: 메일 없는 테스트 사용자로 로그인·새로고침 유지·로그아웃, 끝나면 사용자 삭제), `npm run smoke:progress`(사용자 A·B로 API 권한·다른 브라우저 진행률·화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건, 끝나면 사용자 삭제)를 돌린다.
+- 배포 후에는 `npm run smoke:prod`(보안 헤더·SPA 대체 응답·robots.txt·상세 페이지·`/config.json`)와 `npm run smoke:auth`(실제 Cognito: 메일 없는 테스트 사용자로 로그인·새로고침 유지·로그아웃, 끝나면 사용자 삭제), `npm run smoke:progress`(사용자 A·B로 API 권한·다른 브라우저 진행률·화면 탈퇴와 그 뒤 예전 토큰 거부·테이블 0건, 끝나면 사용자 삭제)를 돌린다. `smoke:auth`·`smoke:progress`는 돌리기 전에 사용자에게 먼저 묻는다.
 - **AWS 리소스 설명은 영어로 쓴다**(경보 `alarmDescription`, `CfnOutput` description, CloudFront 함수 comment, IAM 역할 description 등). CloudFormation이 저장된 템플릿을 돌려줄 때 비ASCII를 `?`로 바꿔 `cdk diff`가 배포마다 "비ASCII 생략" 변경을 내고, IAM 설명은 한글을 아예 거부한다. 화면·docs·코드 주석, 사용자가 받는 Cognito 인증 메일은 한글 그대로.
 - **새 API는 운영 smoke에서 실제 호출을 확인하기 전에는 완료로 보지 않는다.** 단위 테스트(가짜 저장소)와 E2E(개발 서버 가짜 API)는 IAM 권한 누락을 잡지 못한다(7단계 `GET /api/activity` 500). 라우트를 추가하면 `scripts/smoke-progress.ts`의 `ROUTE_CALLS`에 실제 호출을 넣는다. smoke는 배포된 API Gateway 라우트를 조회해 목록에 없는 경로가 있거나 5xx가 나오면 실패한다.
 - 배포 후에는 smoke와 함께 `npm run check:aws`(읽기 전용 명령만으로 배포된 리소스 설정을 기대값과 비교: API 라우트·JWT 인가·요청 제한, 테이블, 정리 큐·DLQ·경보, Lambda 권한·로그 보존, CloudFront 동작·함수·오류 페이지·CSP, Cognito 설정)도 돌린다. 콘솔 확인 대신 이것을 쓴다.
 - 인증 관련 코드(`apps/web/src/features/auth/`, `infra/lib/auth-stack.ts`, CSP)를 바꿔 배포했을 때만 `npm run smoke:auth:signup`(운영 화면에서 실제 가입 → 관리자 API로 UNCONFIRMED 확인 → 삭제)을 돌린다. 인증 메일을 1통 쓰므로(계정 전체 하루 50통) 배포마다 돌리지 않는다. 개발 서버(localhost)는 가짜 인증이라 거기서 가입하면 Cognito에 아무것도 생기지 않는다(화면에 "개발용 가짜 인증" 안내가 뜬다).
 - skill은 ecc 플러그인 이름(`ecc:e2e-testing`, `ecc:tdd-workflow`, `ecc:verification-loop`, `ecc:security-review` 등)으로 부른다.
-- 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고, 커밋한 뒤 push한다.
+- 단계가 끝나면 CLAUDE.md의 현재 단계를 갱신하고 커밋한다(push는 사용자가 "push"라고 할 때만).
 - 여러 파일에 걸친 변경, 영향 범위 확인, "이건 어디서 쓰이나" 같은 구조 질문은 `graphify-out/GRAPH_REPORT.md`를 먼저 읽고, 필요하면 `graphify query`/`path`/`explain`(영향 범위는 `affected`)을 터미널에서 실행해서 답한다.
 - 그래프는 참고용이고 설계 기준은 `docs/`다. 둘이 다르면 docs를 따르고, 그래프가 오래됐으면 갱신한다. 범위는 `.graphifyignore`(apps/web/src, packages, scripts, docs). 커밋 훅은 코드만 AST로 갱신(LLM 사용 없음)하므로, 문서가 바뀌면 사용자가 필요할 때 `/graphify . --update`로 갱신한다.
 - 질문은 코드 이름(함수·파일명)으로 하거나 `--seed`로 시작점을 지정한다. 문서 개념 이름은 `docs/03` 1.5절 대응표로 코드 이름을 찾는다.
