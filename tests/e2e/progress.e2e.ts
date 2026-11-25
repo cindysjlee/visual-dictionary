@@ -17,50 +17,64 @@ async function signedIn(page: Page, email: string) {
   );
 }
 
-const card = (page: Page) => page.locator(".study-card");
+/** 글 맨 끝의 완독 블록과 제목 줄 오른쪽 위의 작은 도장 */
+const end = (page: Page) => page.locator(".la-study-end");
+const stamp = (page: Page) => page.locator(".la-term-stamp");
 
 async function playToEnd(page: Page) {
   await page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".stage-play").click();
   await expect(page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".play-btn")).toHaveAttribute("aria-label", "재생", { timeout: 60_000 });
 }
 
-test("끝까지 보면 완독으로 저장되어 옆 칸에 完 도장이 찍히고(날짜·화면 읽기 이름), 새로고침해도 유지되며, 직접 취소할 수 있다(read:false로 남음)", tag, async ({ page }) => {
-  await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
+test("글 끝 버튼으로 완독을 표시하면 제목 줄에 작은 完 도장(날짜만, 읽어 주는 이름 \"완독함, 날짜\")이 찍히고, 새로고침해도 유지되며, 직접 취소할 수 있다(read:false, manual)", tag, async ({ page }) => {
   await signedIn(page, "reader@example.com");
   await page.goto("/terms/csrf");
-  await expect(card(page)).toContainText("아직 안 읽음");
-  await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
-  // 상태는 버튼 글자가 알린다(aria-pressed를 함께 쓰면 상태가 두 번 읽힌다)
-  await expect(card(page).getByRole("button", { name: "완독으로 표시" })).not.toHaveAttribute("aria-pressed");
-  await playToEnd(page);
-  await expect(card(page)).not.toContainText("아직 안 읽음");
-  // 보는 동안 완독이 되면 옆 칸(완독 메모)에 도장이 찍힌다(움직임 클래스), 아래에 오늘 날짜
-  const stamp = card(page).locator(".la-seal-stamp");
-  await expect(stamp).toHaveClass(/is-press/);
-  await expect(stamp.locator(".la-seal-date")).toHaveText(/^\d{4}\.\d{2}\.\d{2}$/);
-  await expect(stamp.locator(".visually-hidden")).toHaveText(/^완독, \d{4}년 \d{1,2}월 \d{1,2}일$/);
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
+  await expect(stamp(page)).toHaveCount(0); // 완독 전에는 도장·문구가 없다
+  await expect(page.locator(".study-card")).toHaveCount(0); // 오른쪽 세로 열(옛 완독 칸)은 없다
+  await end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" }).click();
+
+  // 제목 줄 도장: 날짜만, 읽어 주는 이름 "완독함, N년 N월 N일"
+  await expect(stamp(page)).toBeVisible();
+  await expect(stamp(page)).toHaveAttribute("role", "img");
+  await expect(stamp(page)).toHaveAttribute("aria-label", /^완독함, \d{4}년 \d{1,2}월 \d{1,2}일$/);
+  await expect(stamp(page).locator(".la-seal-date")).toHaveText(/^\d{4}\.\d{2}\.\d{2}$/);
+  await expect(stamp(page)).toHaveClass(/is-press/); // 이 쪽에서 안 읽음 → 완독이 되면 쾅 찍힌다
+  // 글 끝 블록: "完 날짜 · 완독 취소"
+  await expect(end(page)).toContainText(/^完 \d{4}\.\d{2}\.\d{2} ·\s*완독 취소$/);
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toHaveCount(0);
 
   await page.reload();
-  await expect(card(page).locator(".la-seal-stamp")).toBeVisible();
-  await expect(card(page).locator(".la-seal-stamp")).not.toHaveClass(/is-press/); // 이미 완독한 쪽을 열 때는 그대로
-  await expect(card(page)).toContainText("다시 읽고 싶으면 완독을 취소할 수 있어요.");
-  const undo = card(page).getByRole("button", { name: "완독 취소" });
+  await expect(stamp(page)).toBeVisible();
+  await expect(stamp(page)).not.toHaveClass(/is-press/); // 이미 완독한 쪽을 열 때는 그대로
+  const undo = end(page).getByRole("button", { name: "완독 취소" });
   await expect(undo).not.toHaveAttribute("aria-pressed");
   await undo.click();
-  await expect(card(page)).toContainText("아직 안 읽음");
-  await expect(page.locator(".la-seal-stamp")).toHaveCount(0);
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
+  await expect(stamp(page)).toHaveCount(0);
   await page.reload();
-  await expect(card(page)).toContainText("아직 안 읽음");
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("fake-progress") ?? "{}"));
   expect(stored["reader@example.com"].csrf).toMatchObject({ read: false, source: "manual" });
 });
 
-test("기록 API가 실패해도 재생은 끝까지 가고, 저장 실패만 알린다(NFR-02)", tag, async ({ page }) => {
+test("끝까지 재생하거나 스크롤해도 자동으로 완독이 되지 않는다(버튼으로만)", tag, async ({ page }) => {
+  await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
+  await signedIn(page, "manual@example.com");
+  await page.goto("/terms/csrf");
+  await playToEnd(page);
+  await end(page).scrollIntoViewIfNeeded();
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
+  await expect(stamp(page)).toHaveCount(0);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("fake-progress") ?? "{}"));
+  expect(stored["manual@example.com"]?.csrf).toBeUndefined();
+});
+test("기록 API가 실패해도 재생은 끝까지 가고, 글 끝 블록이 안내만 한다(NFR-02)", tag, async ({ page }) => {
   await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
   await signedIn(page, "offline@example.com");
   await page.evaluate(() => localStorage.setItem("fake-progress-fail", "1"));
   await page.goto("/terms/csrf");
-  await expect(card(page)).toContainText("기록을 불러오지 못했어요");
+  await expect(end(page)).toContainText("기록을 불러오지 못했어요");
   await playToEnd(page);
   await expect(page.locator(".step-pos")).toHaveText(/^6 \/ 6/);
   await expect(page.locator(".steps2d")).toHaveCount(0); // 3D 그대로
@@ -180,7 +194,7 @@ test("상세를 열면 최근 본 용어에 남고, 색인은 읽다 만 용어�
   await signedIn(page, "recent@example.com");
   for (const id of ["csrf", "deadlock", "xss"]) {
     await page.goto(`/terms/${id}`);
-    await expect(page.locator(".study-card")).toContainText("아직 안 읽음"); // 로그인 상태로 상세가 뜬 뒤
+    await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible(); // 로그인 상태로 상세가 뜬 뒤
   }
   await page.goto("/terms");
   // 책갈피: 최근 본 것 중 아직 안 읽은 가장 최근 용어
@@ -212,21 +226,21 @@ test("책갈피 규칙: 완독하면 책갈피가 사라지고, 완독을 취소
   };
 
   await page.goto("/terms/xss");
-  await expect(card(page)).toContainText("아직 안 읽음");
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
   await expectMarked(true); // 열어 보고 완독하지 않음 → 책갈피
 
   await page.goto("/terms/xss");
-  await card(page).getByRole("button", { name: "완독으로 표시" }).click();
-  await expect(card(page).locator(".la-seal-stamp")).toBeVisible();
+  await end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" }).click();
+  await expect(stamp(page)).toBeVisible();
   await expectMarked(false); // 완독 → 책갈피 사라짐
 
   await page.goto("/terms/xss");
-  await card(page).getByRole("button", { name: "완독 취소" }).click(); // 연 뒤에 취소: 취소 시각이 마지막으로 본 시각보다 늦다
-  await expect(card(page)).toContainText("아직 안 읽음");
+  await end(page).getByRole("button", { name: "완독 취소" }).click(); // 연 뒤에 취소: 취소 시각이 마지막으로 본 시각보다 늦다
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
   await expectMarked(false); // 완독 취소 → 책갈피 없음(자동으로 되살리지 않음)
 
   await page.goto("/terms/xss"); // 다시 열기
-  await expect(card(page)).toContainText("아직 안 읽음");
+  await expect(end(page).getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
   await expectMarked(true); // 다시 열면 평소 규칙대로 책갈피
 });
 

@@ -1085,18 +1085,78 @@ body {
   align-items: start;
 }
 
-/* 용어 쪽 머리: 제목 | 완독 칸은 맨 위 한 줄만 차지하고, 설명은 그 아래 카드 폭 전체(줄 길이는 --measure-ko로 제한)를 쓴다 */
+/* 용어 쪽 머리: 한 열. 제목 바로 아래에 설명이 붙고(줄 길이는 --measure-ko로 제한), 완독 표시는 제목 오른쪽 위의 작은 도장 + 글 맨 끝 한 줄 블록 */
 .la-term .la-term-head {
-  row-gap: var(--sp-4);
-}
-
-.la-term-head > .la-explain,
-.la-term-head > .la-term-def {
-  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--sp-3);
 }
 
 .la-term-head > .la-term-def {
   margin: 0;
+}
+
+/* 제목 줄: 제목 | (완독한 용어만) 작은 完 도장 + 날짜. 도장은 한 줄(32px)이라 제목 줄 높이를 늘리지 않는다 */
+.la-term-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.la-term-titlerow .la-headword {
+  min-width: 0;
+}
+
+.la-term-stamp {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--la-seal);
+}
+
+.la-term-stamp .la-seal {
+  transform: rotate(-10deg);
+}
+
+.la-term-stamp .la-seal-date {
+  margin: 0;
+  white-space: nowrap;
+}
+/* 글 맨 끝 한 줄 블록: 완독 표시·취소·로그인 안내 */
+.la-study-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  max-width: var(--measure-ko);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--la-rule);
+  font-size: var(--fs-sm);
+}
+
+.la-study-end p {
+  margin: 0;
+}
+
+.la-study-date {
+  font-family: var(--font-title);
+  font-weight: 700;
+  color: var(--la-seal);
+}
+
+/* 글자처럼 보이는 단추·링크(누르는 영역은 24px 이상) */
+.la-study-undo,
+.la-study-login {
+  min-height: 24px;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--la-ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 .la-term .la-headword,
@@ -1122,38 +1182,6 @@ body {
   font-size: var(--fs-md);
   line-height: 1.85;
   text-wrap: pretty;
-}
-
-/* 다 읽음 메모(학습 상태): 표제어 옆 여백에 붙인 쪽지 */
-.la-margin {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-4);
-  border: 1px solid var(--la-rule);
-  border-top: 3px double var(--la-ink);
-  background: var(--la-paper-deep);
-  font-size: var(--fs-sm);
-}
-
-.la-margin h2 {
-  margin: 0;
-  font-family: var(--font-title);
-  font-size: var(--fs-md);
-  font-weight: 700;
-}
-
-.la-margin .study-status {
-  font-weight: 700;
-  color: var(--la-ink);
-}
-
-.la-margin .study-status.is-read {
-  color: var(--la-seal);
-}
-
-.la-margin .la-btn {
-  align-self: flex-start;
 }
 
 .la-term-fig {
@@ -1594,14 +1622,6 @@ body {
   padding: 0;
 }
 
-/* 다 읽음 메모: 카드 속 카드가 아니라 여백의 쪽지(왼쪽 괘선만) */
-.la-term .la-card .la-margin {
-  padding: var(--sp-1) 0 var(--sp-1) var(--sp-4);
-  border: 0;
-  border-left: 1px solid var(--la-rule);
-  background: none;
-}
-
 /* "¶ n단계에서 막힌다" = 방어 모드의 그 단계로 가는 단추 */
 .la-defense-jump {
   padding: 0;
@@ -1701,25 +1721,14 @@ body {
 }
 
 /* ════════ 다 읽음 = 完 인주 도장(2026-11-24, docs/05 "다 읽음 표시") ════════
-   인주색 --la-seal, 비스듬히 -10도. 용어 쪽은 옆 칸에 큰 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
+   인주색 --la-seal, 비스듬히 -10도. 용어 쪽은 제목 줄 오른쪽 위의 작은 도장 + 날짜, 색인·목록은 줄 끝 작은 도장(날짜는 화면 읽기·title로) */
 .la-seal {
   display: block;
   color: var(--la-seal);
   overflow: visible;
 }
 
-/* 용어 쪽 옆 칸(완독 메모)의 큰 도장 + 아래 작은 날짜 */
-.la-seal-stamp {
-  align-self: flex-start;
-  margin: var(--sp-1) 0 0 var(--sp-2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: var(--la-seal);
-  transform: rotate(-10deg);
-}
-
-/* 날짜: 같은 인주색·기울기, 질감은 아주 약하게(숫자가 뭉개지지 않게) */
+/* 날짜: 같은 인주색·기울기, 질감은 아주 약하게(숫자가 뭉개지지 않게). 제목 도장 아래에 쓴다 */
 .la-seal-date {
   margin-top: -2px;
   font-family: var(--font-title);
@@ -1732,7 +1741,7 @@ body {
 
 /* 보는 동안 다 읽음이 되면 쾅 찍힌다(장식이라 CSS: 상태는 버튼·글자가 이미 알린다. 동작 줄이기면 처음부터 찍힌 상태) */
 @media (prefers-reduced-motion: no-preference) {
-  .la-seal-stamp.is-press {
+  .la-term-stamp.is-press .la-seal {
     animation: la-press 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
   }
 }

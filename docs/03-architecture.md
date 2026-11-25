@@ -43,7 +43,7 @@ flowchart TB
 | S3 탐색 | `LandingPage`(`DictionaryPage`·`SketchFigure`), `HomePage`(용어 색인: 분야·검색·읽음 필터), 사전 지면 부품(`features/dictionary/`) | 없음(손글씨 글꼴 조각은 빌드 때 생성) | `index.json` 읽기 |
 | S4 시각화 | `TermPage`, `Explanation`·`Footnotes`(설명 틀), `PlaybackEngine`(`engine.ts`), `PlayerShell`, `FlowScene`·`StackScene`·`LockScene`, `StepList2D` | 없음 | `terms/{id}.json` 읽기 |
 | S5 인증 | `LoginPage`·`SignupPage`·`ConfirmPage`·`ResetPage`·`CallbackPage`, 인증 저장소(`auth/store.ts`), `PrivacyPage` | Cognito 사용자 풀(Essentials, 로그인 도메인, Google IdP), Account API(탈퇴, 재인증 5분) | Cognito 사용자 저장소, Secrets Manager(Google 클라이언트) |
-| S6 학습 진행 | `StudyCard`(完 도장)·`Ledger`(진행률)·`MePage`, 책갈피 규칙(`bookmarks.ts`), 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
+| S6 학습 진행 | `StudyMark`(제목 줄 完 도장·글 끝 완독 블록)·`Ledger`(진행률)·`MePage`, 책갈피 규칙(`bookmarks.ts`), 기록 저장소(`useSyncExternalStore`) | Progress API·Activity API, 정리 Lambda(SQS), 고아 정리 Lambda(Scheduler) | `LearningRecord`(탈퇴 표시 포함)·`RecentView`(TTL 30일) |
 
 예전 제출본 그림은 1.6절에 있다.
 
@@ -116,7 +116,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | 용어 색인(목록)·검색·분야 거르기·읽음 필터 | `features/explore/HomePage.tsx` `HomePage`, `matches()`, `features/progress/summary.ts` `passesReadFilter()` |
 | 사전 지면 공통 부품(첫소리 묶기·분야 버튼·색인 줄·관련 용어·진행률·"6단계 · 방어 2개") | `features/dictionary/Dictionary.tsx` `byInitial()`, `Thumbs`, `IndexColumns`, `SeeAlso`, `Ledger`, `entryMeta()` |
 | 용어 상세 페이지(카드·옆 목차·참고 자료 출처) | `features/term/TermPage.tsx` (플레이어는 동적 import, 라우트는 `main.tsx`에서 lazy로 받아 홈 묶음 120KB 이하를 지킨다), `Toc`, `sourceOf()` |
-| 용어 쪽 머리 영역(제목 `.la-term-title`과 완독 칸 `.study-card`가 한 줄, 그 아래 설명이 카드 폭 전체) | `features/term/TermPage.tsx` `TermDetail`, 스타일 `styles/dictionary.css` `.la-term-head`, 줄 길이 토큰 `styles/tokens.css` `--measure-ko` |
+| 용어 쪽 머리 영역(제목 줄 `.la-term-titlerow` 오른쪽에 완독한 용어의 작은 도장, 그 아래 설명이 카드 폭 전체, 글 맨 끝 `.la-study-end`) | `features/term/TermPage.tsx` `TermDetail`, 스타일 `styles/dictionary.css` `.la-term-head`, 줄 길이 토큰 `styles/tokens.css` `--measure-ko` |
 | 설명 틀 화면(부분 이름표·한 줄 정의·각주 단어·각주 목록) | `features/term/Explanation.tsx` `Explanation`, `features/term/Footnotes.tsx` `FootnoteWord`(풀이 상자)·`FootnoteLink`(공개 용어 링크)·`FootnoteList` |
 | 본문 표시 문법(==형광펜==·`코드`) 파싱·그리기 | `packages/content-schema/src/marks.ts` `parseMarks()`, `plainText()`(검증은 `termSchema`), 화면 `features/dictionary/Marked.tsx` `Marked` |
 | "¶ n단계" → 그 방어 모드의 n단계로 | `TermPage.tsx` `showDefense()`, `players/Player.tsx` `jump`(`PlayerJump`) |
@@ -184,7 +184,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | CloudFront `/api/*`·SPA 라우팅 함수 | `infra/lib/web-stack.ts` `SPA_ROUTER_CODE`, `additionalBehaviors` |
 | 브라우저 기록 상태(실제 `/api`·가짜) | `features/progress/store.ts` `useProgress()`, `progress`, `features/progress/http.ts`, `features/progress/fake.ts` |
 | 진행률 계산 | `features/progress/summary.ts` `summarize()` |
-| 상세 완독 메모(完 도장·날짜·완독으로 표시/취소, 찍히는 움직임) | `features/progress/StudyCard.tsx` `StudyCard`(`press`), 도장 `features/dictionary/Seal.tsx` `Seal`·`sealDate()`·`sealLabel()`, "完" 윤곽 `logo/logoPaths.ts` `SEAL_WAN` |
+| 상세 완독 표시(제목 줄 작은 完 도장·날짜와 찍히는 움직임, 글 끝의 "다 읽었으면 完 도장 찍기"/"완독 취소"/로그인 링크) | `features/progress/StudyMark.tsx` `TitleStamp`·`StudyEnd`, 도장 `features/dictionary/Seal.tsx` `Seal`·`sealDate()`·`sealLabel()`, "完" 윤곽 `logo/logoPaths.ts` `SEAL_WAN` |
 | 완독한 날(기록 저장 시각 `updatedAt`) | `features/progress/store.ts` `readAt()` |
 | 진행률(색인 "내 진행률", 내 단어장 "분야별 진행률") | `features/dictionary/Dictionary.tsx` `Ledger`, 계산 `features/progress/summary.ts` `summarize()` |
 | 내 단어장(/me) | `features/progress/MePage.tsx` |
@@ -220,7 +220,7 @@ S3, S4가 S6을 사용하는 부분은 로그인한 경우에만 동작하는 �
 | S4 Frontend | FlowPlayer·StackPlayer·LockPlayer(SVG), DefenseToggle | 3D 장면 `FlowScene`·`StackScene`·`LockScene`(R3F), 방어·해결 모드 탭, 재생 속도, 2D 대체 화면 | CH-08, CH-18, CH-21 |
 | S5 Frontend | AuthProvider(토큰 관리) | 인증 저장소(`auth/store.ts`, Amplify는 동적 import), Google 콜백, 개인정보처리방침 | CH-35, CH-38 |
 | S5 Backend | Cognito User Pool, Account API | Cognito(Essentials, 로그인 도메인, Google IdP), Account API가 재인증(`auth_time` 5분)을 검사 | CH-35, CH-36, CH-37 |
-| S6 Frontend | ReadToggle·ReadFilter·ProgressSummary·RecentList·progressApi | `StudyCard`(完 도장)·`Ledger`(진행률)·`MePage`, 책갈피 규칙 `bookmarks.ts`, 학습 기록 저장소(`useSyncExternalStore`, TanStack Query 아님) | CH-25, CH-53, CH-54 |
+| S6 Frontend | ReadToggle·ReadFilter·ProgressSummary·RecentList·progressApi | `StudyMark`(제목 줄 完 도장·글 끝 완독 블록)·`Ledger`(진행률)·`MePage`, 책갈피 규칙 `bookmarks.ts`, 학습 기록 저장소(`useSyncExternalStore`, TanStack Query 아님) | CH-25, CH-53, CH-54 |
 | S6 Backend | Progress API, Activity API, 탈퇴 이벤트 처리 | 탈퇴 이벤트 처리 → SQS 정리 큐와 정리 Lambda 하나, 고아 기록 정리(Scheduler) 추가 | CH-29, CH-39 |
 | S2 | content-schema, validate-content, build-index | 같음. 개발용(draft 포함)·배포용 콘텐츠를 폴더로 나눔 | CH-03 |
 

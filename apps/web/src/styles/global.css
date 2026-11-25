@@ -1052,18 +1052,6 @@ button:disabled {
   align-self: flex-start;
 }
 
-.complete-notice {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.complete-notice p {
-  margin: 0;
-}
-
 @media (max-width: 639px) {
   .account-email {
     display: none;
@@ -1093,17 +1081,6 @@ button:disabled {
 }
 
 /* ---------- 학습 기록(6단계) ---------- */
-.study-status {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-sub);
-}
-
-.study-status.is-read {
-  color: var(--la-seal);
-}
-
 .filters {
   gap: 12px;
 }

@@ -156,17 +156,20 @@ for (const next of ["//evil.com", "/\\evil.com", "https://evil.com", "javascript
   });
 }
 
-test("상세: 로그아웃 상태로 끝까지 보면 로그인 안내 → 로그인하면 그 용어로 돌아온다", tag, async ({ page }) => {
+test("상세: 로그아웃 상태면 글 끝에 로그인 링크가 있고(끝까지 봐도 자동 안내·저장 없음) → 로그인하면 그 용어로 돌아와 완독 버튼이 보인다", tag, async ({ page }) => {
   await page.addInitScript(() => Object.assign(globalThis, { __sceneSpeed: 10 }));
   await seedUser(page, "viewer@example.com");
   await page.goto("/terms/csrf");
+  const end = page.locator(".la-study-end");
+  await expect(end.getByRole("link", { name: "로그인하고 完 도장 남기기" })).toBeVisible();
+  await expect(page.locator(".la-term-stamp")).toHaveCount(0);
   await page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".stage-play").click();
-  const notice = page.locator(".complete-notice");
-  await expect(notice).toContainText("끝까지 봤어요", { timeout: 60_000 });
-  await notice.getByRole("link", { name: "로그인하고 저장하기" }).click();
+  await expect(page.getByRole("region", { name: "애니메이션 플레이어" }).locator(".play-btn")).toHaveAttribute("aria-label", "재생", { timeout: 60_000 });
+  await expect(page.locator(".complete-notice")).toHaveCount(0); // 끝까지 봐도 따로 알림이 뜨지 않는다
+  await end.getByRole("link", { name: "로그인하고 完 도장 남기기" }).click();
   await expect(page).toHaveURL(/\/auth\/login\?next=%2Fterms%2Fcsrf$/);
   await login(page, "viewer@example.com");
   await expect(page).toHaveURL(/\/terms\/csrf$/);
-  // 로그인하면 학습 상태 카드가 기록 상태와 직접 전환 버튼을 보인다(6단계)
-  await expect(page.locator(".study-card").getByRole("button", { name: "완독으로 표시" })).toBeVisible();
+  // 로그인하면 글 끝 블록이 기록 상태에 맞게 직접 표시 버튼을 보인다
+  await expect(page.locator(".la-study-end").getByRole("button", { name: "다 읽었으면 完 도장 찍기" })).toBeVisible();
 });

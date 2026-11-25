@@ -6,14 +6,13 @@ import type { BuiltTerm, IndexEntry } from "@app/content-schema";
 import { defenseCounts } from "@app/content-schema/scene";
 import NotFoundPage from "../../NotFoundPage.tsx";
 import { useJson } from "../../useJson.ts";
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { loginPath } from "../auth/safeNext.ts";
+import { Suspense, lazy, useEffect, useLayoutEffect, useState } from "react";
 import { useAuth } from "../auth/store.ts";
 import { entryMeta, Field, SeeAlso } from "../dictionary/Dictionary.tsx";
 import { Marked } from "../dictionary/Marked.tsx";
-import { SAVE_FAILED, StudyCard } from "../progress/StudyCard.tsx";
+import { StudyEnd, TitleStamp } from "../progress/StudyMark.tsx";
 import { Explanation } from "./Explanation.tsx";
-import { isRead, progress, useProgress } from "../progress/store.ts";
+import { progress } from "../progress/store.ts";
 import type { PlayerJump } from "../../players/Player.tsx"; // 타입만이라 묶음에 들어가지 않는다
 
 // 플레이어(Motion 포함)는 상세 페이지에서만 받는다. 홈 묶음을 가볍게 유지
@@ -76,17 +75,7 @@ function TermDetail({ term }: { term: BuiltTerm }) {
   const related = index.state === "ok" ? term.related.flatMap((id) => index.data.find((t) => t.id === id) ?? []) : [];
   const isSecurity = term.category === "web-security";
   const auth = useAuth();
-  const state = useProgress();
-  const read = auth.status === "user" && isRead(state, term.id);
-  // 이 쪽을 보는 동안 안 읽음 → 다 읽음이 되면(끝까지 봄·직접 표시) 도장이 쾅 찍힌다. 이미 다 읽은 쪽을 열 때는 그대로
-  const wasRead = useRef<boolean>(undefined);
-  const [press, setPress] = useState(false);
-  useEffect(() => {
-    if (state.status !== "ready" || auth.status !== "user") return;
-    if (wasRead.current === false && read) setPress(true);
-    wasRead.current = read;
-  }, [read, state.status, auth.status]);
-  const { pathname, hash } = useLocation();
+  const { hash } = useLocation();
   const navType = useNavigationType();
   // 용어 쪽은 늘 맨 위(용어 이름)에서 시작한다(Layout의 ScrollRestoration). 주소에 #term-fig처럼 가리키는 곳이 있을 때만 거기서 시작한다.
   // 내용이 늦게 도착한 첫 방문은 라우터가 그 자리를 아직 모르므로 여기서 한 번 옮긴다. 뒤로 가기(POP)는 라우터가 먼저 떠난 위치를 복원하므로(앞선 형제 효과),
@@ -100,21 +89,10 @@ function TermDetail({ term }: { term: BuiltTerm }) {
     }
     // 처음 그려질 때만: 쪽 안 차례 링크로 해시가 바뀌는 것은 라우터가 처리한다
   }, []);
-  // 끝까지 봄(FR-PRG-01): 로그인 상태면 읽음으로 저장, 아니면 로그인 안내. 저장이 실패해도 재생은 그대로(NFR-02)
-  const [completed, setCompleted] = useState(false);
-  const [saveError, setSaveError] = useState<string>();
-  const signedIn = useRef(false);
-  useEffect(() => {
-    signedIn.current = auth.status === "user";
-  }, [auth.status]);
   // 최근 본 용어(FR-PRG-06): 로그인 상태로 상세를 열면 한 번 기록한다. 실패해도 화면은 그대로
   useEffect(() => {
     if (auth.status === "user") progress.recordView(term.id);
   }, [auth.status, term.id]);
-  const onComplete = useCallback(() => {
-    setCompleted(true);
-    if (signedIn.current) progress.setRead(term.id, true, "completed").catch(() => setSaveError(SAVE_FAILED));
-  }, [term.id]);
   const meta = entryMeta({ stepCount: term.scenario.steps.length, defenseCount: defenseCounts(term).defenseCount, category: term.category });
   const original = [term.englishName, ...term.aliases].filter(Boolean).join(" · ");
   // "¶ n단계"를 누르면 그림 1로 올라가 그 방어 모드의 n단계를 보인다
@@ -147,11 +125,14 @@ function TermDetail({ term }: { term: BuiltTerm }) {
         <Toc items={toc} />
         <article className="la-term-page" aria-labelledby="term-hw">
           <div id="term-def" className="la-term-head la-card">
-            {/* 머리 영역: 제목 | 완독 칸. 본문(설명)은 그 아래 카드 폭 전체를 쓴다. DOM·Tab 순서: 제목 → 완독 → 본문 → 플레이어 */}
+            {/* 머리 영역: 제목(오른쪽 위에 완독한 용어의 작은 도장) → 바로 아래 설명 → 글 맨 끝 완독 블록. Tab 순서: 본문(각주) → 완독 버튼 → 플레이어 */}
             <div className="la-term-title">
-              <h1 id="term-hw" className="la-headword term-title">
-                {term.name}
-              </h1>
+              <div className="la-term-titlerow">
+                <h1 id="term-hw" className="la-headword term-title">
+                  {term.name}
+                </h1>
+                <TitleStamp termId={term.id} />
+              </div>
               {original && (
                 <p className="la-hanja term-sub" lang={term.englishName ? "en" : undefined}>
                   {original}
@@ -161,7 +142,6 @@ function TermDetail({ term }: { term: BuiltTerm }) {
                 <Field category={term.category} /> <span className="la-num">{meta}</span>
               </p>
             </div>
-            <StudyCard termId={term.id} saveError={saveError} press={press} />
             {typeof term.description === "string" ? (
               // 초안 자리 표시("(설명 준비 중)", draft만): 문단 하나
               <p className="la-term-def term-desc">
@@ -170,27 +150,17 @@ function TermDetail({ term }: { term: BuiltTerm }) {
             ) : (
               <Explanation term={term} data={term.description} />
             )}
+            <StudyEnd termId={term.id} />
           </div>
 
           <figure id="term-fig" className="la-term-fig la-card" aria-labelledby="term-fig-cap">
             <Suspense fallback={<PlayerSkeleton />}>
-              <Player term={term} onComplete={onComplete} jump={jump} />
+              <Player term={term} jump={jump} />
             </Suspense>
             <figcaption id="term-fig-cap">
               <b>그림 1.</b> {term.name}의 단계별 장면. 무대를 끌면 돌려 볼 수 있다.
             </figcaption>
           </figure>
-          {completed && auth.status !== "user" && (
-            <section className="la-note complete-notice" role="status">
-              <p>
-                <strong>끝까지 봤어요.</strong> 로그인하면 이 용어에 完 도장이 찍히고, 다른 기기에서도 이어서 볼 수 있어요.
-              </p>
-              <Link to={loginPath(pathname)} className="la-btn la-btn-mark">
-                로그인하고 저장하기
-              </Link>
-            </section>
-          )}
-
           {term.defenses.length > 0 && (
             <section id="term-defense" className="la-term-sec la-card la-card-defense" aria-labelledby="term-def-h">
               <h2 id="term-def-h">{isSecurity ? "방어 방법" : "해결 방법"}</h2>
