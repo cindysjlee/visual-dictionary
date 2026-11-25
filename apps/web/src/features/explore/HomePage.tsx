@@ -2,7 +2,7 @@
 // 다 읽은 표제어에는 줄 끝에 完 도장, 읽다 만 표제어(최근 본 것 중 안 읽은 것)에는 책갈피. 검색어(?q=)와 분야(?field=)는 주소에 남는다
 import { useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
-import type { Category, IndexEntry } from "@app/content-schema";
+import type { Category, IndexEntry, LearningPath } from "@app/content-schema";
 import { CATEGORY_LABELS } from "@app/content-schema/labels";
 import { useJson } from "../../useJson.ts";
 import { loginPath } from "../auth/safeNext.ts";
@@ -12,6 +12,7 @@ import { bookmarkIds } from "../progress/bookmarks.ts";
 import { recentTerms } from "../progress/recent.ts";
 import { isRead, progress, readAt, useProgress, useRecent } from "../progress/store.ts";
 import { passesReadFilter, type ReadFilter } from "../progress/summary.ts";
+import { LearningPaths } from "./LearningPaths.tsx";
 
 const READ_FILTERS: [ReadFilter, string][] = [
   ["all", "전체"],
@@ -56,6 +57,7 @@ function takeHandedNotice(): string | undefined {
 
 export default function HomePage() {
   const load = useJson<IndexEntry[]>("/content/index.json");
+  const pathsLoad = useJson<LearningPath[]>("/content/paths.json"); // 덤이라 못 읽으면 경로만 뺀다
   const [params, setParams] = useSearchParams();
   // 랜딩 찾아보기(/terms?q=)와 분야(?field=)를 처음 값으로 읽고, 바뀌면 주소에도 남긴다(새로고침·뒤로 가기·공유)
   const [query, setQuery] = useState(() => params.get("q") ?? "");
@@ -80,7 +82,7 @@ export default function HomePage() {
   // 책갈피: 최근 본 것 중 아직 다 읽지 않은 표제어(로그인했을 때만)
   const resumeId = state.status === "ready" ? bookmarkIds(state.records, recent).find((id) => byId.has(id)) : undefined;
 
-  if (load.state === "loading") return <p className="la-loading">불러오는 중…</p>;
+  if (load.state === "loading" || pathsLoad.state === "loading") return <p className="la-loading">불러오는 중…</p>;
   if (!terms) return <p role="alert">용어 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>;
 
   const sync = (q: string, c: Category | "all") => {
@@ -137,6 +139,7 @@ export default function HomePage() {
             가나다순 <span className="la-num">{terms.length}</span>개.{" "}
             {records ? "完 도장은 완독한 용어, 책갈피는 읽다 만 용어다." : "모두 로그인 없이 볼 수 있다."}
           </p>
+          {pathsLoad.state === "ok" && <LearningPaths paths={pathsLoad.data} byId={byId} lined={lined} readAt={(id) => readAt(state, id)} />}
         </div>
         <aside className="la-mine" aria-label="내 진행률">
           {user.status !== "user" ? (

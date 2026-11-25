@@ -23,6 +23,7 @@
 | FR-EXP-05 상세 진입·고유 URL | docs/03 1.1, 1.5 "화면 이동 스크롤" | `main.tsx` 라우트, `features/term/TermPage.tsx`, `Layout.tsx` `ScrollRestoration`, `useJson.ts` | E `player.e2e.ts`(모든 용어 `/terms/<id>` 직접 열기), E `scroll.e2e.ts` @scroll(색인을 내려 둔 채 열어도 맨 위, 뒤로 가기는 떠난 위치, `#term-fig`·랜딩 "3D로 자세히 보기"만 플레이어에서 시작, 색인 필터는 튀지 않음), S smoke:prod(published 전부 200) | 완료 | CH-58, DF-53 |
 | FR-EXP-06 첫 화면(랜딩) | docs/05 랜딩, docs/03 1.5 | `features/landing/LandingPage.tsx`·`DictionaryPage.tsx`·`SketchFigure.tsx` | 단 `sketchScene.test.ts`·`josa.test.ts`, E `a11y.e2e.ts`(`/` 라이트·다크), E `perf.e2e.ts`(랜딩 LCP·CLS), E `viewport.e2e.ts`(360·1920) | 완료 | CH-56 |
 | FR-EXP-07 로그인 분기 | docs/03 1.5 | `features/auth/session.ts` `hasStoredSession()`, `main.tsx` index `loader` | 단 `auth.test.ts`(저장된 로그인 판정 5가지), E `auth.e2e.ts`(로그인 뒤 `/` → 색인) | 완료 | CH-56. 토큰이 만료됐으면 색인이 비로그인으로 보인다 |
+| FR-EXP-08 추천 학습 경로 | docs/04 "추천 학습 경로", docs/05 색인 | `content/paths.json`, `pathsSchema`(`packages/content-schema`), `scripts/validate-content.ts` `loadPaths()`, `features/explore/LearningPaths.tsx`, `HomePage.tsx` | 단 `validate-content.test.ts`(경로 검증), E `paths.e2e.ts`(경로 3개·순서·링크·完 도장·늦은 응답·넓은/좁은 배치·axe 라이트/다크) | 완료 | CH-72. 홈 묶음에는 경로 데이터가 없다(지연 로드) |
 
 ## 2. 상세(FR-DTL)
 

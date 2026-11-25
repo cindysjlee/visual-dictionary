@@ -139,6 +139,18 @@
 그림 SVG는 `<use>`·`<defs>`를 쓸 수 없어 같은 도형을 파일마다 되풀이해야 한다. 그래서 `content/figures/*.svg`(손으로 그린 `deadlock-intersection.svg` 제외)는 `scripts/figures/shapes.ts`(공통 도형)와 `designs.ts`(그림별 구성)에서 `node scripts/build-figures.ts`로 만들어 커밋한다. 파일이 구성과 어긋나거나 규칙을 어기면 `scripts/build-figures.test.ts`가 실패한다.
 
 검증기는 파일이 없는 `id`, 어떤 용어도 쓰지 않는 SVG 파일, 두 용어가 같은 그림을 쓰는 경우를 오류로 막는다. 빌드(`build-index.ts`)는 내보내는 용어가 쓰는 그림만 `/content/figures/<id>.svg`로 복사한다(draft 용어의 그림은 공개 빌드에 들어가지 않는다). 화면(`features/term/Figure.tsx`)은 용어 쪽에서 SVG를 읽어 요소·속성 허용 목록으로 한 번 더 거른 뒤 인라인으로 넣는다. 홈 묶음에는 들어가지 않는다.
+### 추천 학습 경로 (`content/paths.json`, 2026-11-26)
+
+용어 색인 제목 아래 "처음이라면 이 순서로"에 나오는 읽는 순서다(FR-EXP-08). 용어 JSON이 아니라 한 파일에 모은다.
+
+```json
+[{ "id": "network", "title": "네트워크", "why": "이 순서인 이유 한 줄", "steps": ["tcp-handshake", "syn-flood", "ssl-stripping"] }]
+```
+
+- `id` 소문자·하이픈, 경로끼리 중복 없음. `title` 20자 이하, `why` 100자 이하. `steps`는 2~5개이고 한 경로 안에서 겹치지 않는다.
+- `steps`의 id는 **공개(published)된 용어**여야 한다. 없는 id나 draft·retired 용어면 검증이 실패한다(공개 빌드에 초안이 새지 않게).
+- 스키마는 `packages/content-schema`의 `pathsSchema`, 검증은 `loadPaths()`. 빌드가 `/content/paths.json`으로 내보내고 화면은 지연 로드한다.
+
 ### 새 어휘가 필요해 데이터로 나타내지 못한 것 (2차 초안 7개를 쓰며 확인)
 
 새 어휘는 사용자와 먼저 상의한다. 아래는 지금 어휘로는 화면에서 표현하지 못해 자막과 화면판 글자로 대신한 것이다.
@@ -254,6 +266,7 @@
 
 - `/content/index.json`: 목록·검색·진행률 계산용. 용어마다 `id`, `name`, `englishName`, `aliases`, `category`, `summary`, `playerType`, `stepCount`(단계 수), `defenseCount`(차단 단계가 있는 방어 수), `supportCount`(차단 단계 없는 보조 방어 수), `dangerFrom`(처음 `danger: true`인 단계 번호, 없으면 `null`), `blockedAt`(방어들의 `blockedAtStep`을 중복 없이 오름차순)만 담는다. `stepCount`~`supportCount`는 목록 카드의 "흐름형 · 6단계 · 방어 2개"(보조가 있으면 "방어 1 · 보조 1") 표시용이고, `dangerFrom`·`blockedAt`은 랜딩의 단계 막대(공격이 어디서 위험해지고 방어가 어디서 막는지) 표시용이다.
 - `/content/figures/<id>.svg`: 용어 옆 그림(내보내는 용어가 쓰는 것만).
+- `/content/paths.json`: 추천 학습 경로(위 "추천 학습 경로").
 - `/content/terms/<id>.json`: 상세 페이지용. 스키마 검증을 거쳐 기본값(`aliases: []`, `danger: false` 등)을 채우고, 각주 풀이를 `footnotes`로 풀어 넣은 결과(`BuiltTerm`).
 
 개발 서버(`npm run dev`)용은 `draft`까지 포함해 `apps/web/generated/dev/content/`에 따로 만든다. `vite.config.ts`는 `vite build`일 때 `generated/build`만 publicDir로 쓰므로, `npx vite build`를 직접 실행해도 draft가 배포 결과물에 들어갈 수 없다. `retired`는 어느 쪽에도 포함하지 않는다.

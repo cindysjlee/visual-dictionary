@@ -4,11 +4,33 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { termSchema } from "@app/content-schema";
 import { DRAFT_DESCRIPTION } from "@app/content-schema/explain";
-import { loadTerms } from "./validate-content.ts";
+import { loadPaths, loadTerms } from "./validate-content.ts";
 import { selectTerms, toIndexEntry, withFootnotes } from "./build-index.ts";
 
 const csrfPath = new URL("../content/terms/csrf.json", import.meta.url);
 const tempDir = () => mkdtempSync(join(tmpdir(), "terms-"));
+
+describe("추천 학습 경로 검증", () => {
+  it("공개되지 않은(없는·draft) 용어를 가리키면 오류", () => {
+    const dir = tempDir();
+    const csrf = JSON.parse(readFileSync(csrfPath, "utf8"));
+    writeFileSync(join(dir, "csrf.json"), JSON.stringify(csrf));
+    writeFileSync(join(dir, "wip.json"), JSON.stringify({ ...csrf, id: "wip", status: "draft" }));
+    const file = join(dir, "..", `paths-${Date.now()}.json`);
+    writeFileSync(file, JSON.stringify([{ id: "p", title: "경로", why: "이유", steps: ["csrf", "wip", "nothing"] }]));
+    expect(loadTerms(dir, undefined, undefined, undefined, file).errors).toEqual([
+      "paths.json: [0].steps[1] - 공개된(published) 용어가 아닙니다: wip",
+      "paths.json: [0].steps[2] - 공개된(published) 용어가 아닙니다: nothing",
+    ]);
+  });
+
+  it("같은 용어가 두 번 들어 있거나 단계가 1개면 형식 오류", () => {
+    const dir = tempDir();
+    const file = join(dir, "p.json");
+    writeFileSync(file, JSON.stringify([{ id: "p", title: "경로", why: "이유", steps: ["a", "a"] }, { id: "q", title: "경로", why: "이유", steps: ["a"] }]));
+    expect(loadPaths(file).errors.length).toBeGreaterThan(0);
+  });
+});
 
 describe("loadTerms", () => {
   it("실제 content/terms는 오류가 없다", () => {

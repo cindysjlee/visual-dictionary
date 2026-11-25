@@ -92,6 +92,24 @@ export const glossarySchema = z.array(glossaryEntrySchema).superRefine((entries,
 });
 export type GlossaryEntry = z.output<typeof glossaryEntrySchema>;
 
+/** 추천 학습 경로 content/paths.json (docs/04 "추천 학습 경로"): 처음 배우는 사람을 위한 읽는 순서. steps는 공개된 용어 id */
+export const pathSchema = z.strictObject({
+  id,
+  title: text.max(20),
+  /** 이 순서인 이유 한 줄 */
+  why: text.max(100),
+  steps: z.array(id).min(2).max(5),
+});
+export type LearningPath = z.output<typeof pathSchema>;
+export const pathsSchema = z.array(pathSchema).superRefine((paths, ctx) => {
+  const seen = new Set<string>();
+  paths.forEach((p, i) => {
+    if (seen.has(p.id)) ctx.addIssue({ code: "custom", path: [i, "id"], message: `중복된 경로 id: ${p.id}` });
+    seen.add(p.id);
+    if (new Set(p.steps).size !== p.steps.length) ctx.addIssue({ code: "custom", path: [i, "steps"], message: "같은 용어가 두 번 들어 있습니다" });
+  });
+});
+
 /* ---------- 3D 장면 어휘 (docs/06, 모두 선택 항목) ---------- */
 export const ACTOR_KINDS = ["browser", "tab", "frame", "cookieJar", "server", "database", "network", "attacker", "person", "thread", "resource"] as const;
 export const ZONES = ["client", "between", "server", "internal", "outside"] as const;

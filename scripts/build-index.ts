@@ -8,7 +8,7 @@ import type { BuiltTerm, Footnote, GlossaryEntry, IndexEntry, Term } from "@app/
 import { explanationNoteWords } from "@app/content-schema/explain";
 import { defenseCounts } from "@app/content-schema/scene";
 import { subsetHandFont } from "./subset-hand-font.ts";
-import { FIGURES_DIR, loadGlossary, validateOrExit } from "./validate-content.ts";
+import { FIGURES_DIR, loadGlossary, loadPaths, validateOrExit } from "./validate-content.ts";
 
 const outDir = (includeDrafts: boolean) =>
   fileURLToPath(new URL(`../apps/web/generated/${includeDrafts ? "dev" : "build"}/content/`, import.meta.url));
@@ -60,6 +60,8 @@ if (import.meta.main) {
   // 그림 SVG: 내보내는 용어가 쓰는 것만(draft 용어의 그림은 공개 빌드에 들어가지 않는다)
   mkdirSync(join(dir, "figures"), { recursive: true });
   for (const fig of terms.flatMap((t) => t.figures)) cpSync(join(FIGURES_DIR, `${fig.id}.svg`), join(dir, "figures", `${fig.id}.svg`));
+  // 추천 학습 경로: 검증기가 단계가 모두 published임을 확인했다(draft가 섞이지 않는다)
+  writeFileSync(join(dir, "paths.json"), JSON.stringify(loadPaths().paths));
   // publicDir이 generated/<모드>라서 정적 파일(robots.txt, 파비콘)도 여기로 복사한다
   cpSync(fileURLToPath(new URL("../apps/web/static/", import.meta.url)), join(dir, ".."), { recursive: true });
 

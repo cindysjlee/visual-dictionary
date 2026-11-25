@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { glossarySchema, termSchema, type GlossaryEntry, type Term } from "@app/content-schema";
+import { glossarySchema, pathsSchema, termSchema, type GlossaryEntry, type LearningPath, type Term } from "@app/content-schema";
 import { SENTENCE_WARN, explanationNoteWords, explanationParagraphs, sentencesOf } from "@app/content-schema/explain";
 import { checkFigureSvg } from "@app/content-schema/figure";
 
@@ -14,6 +14,9 @@ const readPublishedIds = () => JSON.parse(readFileSync(PUBLISHED_IDS, "utf8")) a
 export const GLOSSARY_FILE = fileURLToPath(new URL("../content/glossary.json", import.meta.url));
 /** 용어 옆 그림 SVG(docs/04 "그림"): content/figures/<id>.svg. 직접 그린 것만 */
 export const FIGURES_DIR = fileURLToPath(new URL("../content/figures/", import.meta.url));
+
+/** 추천 학습 경로(docs/04): 처음 배우는 사람을 위한 읽는 순서 */
+export const PATHS_FILE = fileURLToPath(new URL("../content/paths.json", import.meta.url));
 
 const formatPath = (path: PropertyKey[]) =>
   path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("").replace(/^\./, "") || "(전체)";
@@ -32,6 +35,20 @@ export function loadGlossary(file = GLOSSARY_FILE): { entries: GlossaryEntry[]; 
   return { entries: result.data, errors: [] };
 }
 
+/** 경로 파일을 읽고 형식을 검사한다. 파일이 없으면 오류 */
+export function loadPaths(file = PATHS_FILE): { paths: LearningPath[]; errors: string[] } {
+  const name = basename(file);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(file, "utf8").replace(/^﻿/, ""));
+  } catch (e) {
+    return { paths: [], errors: [`${name}: 읽을 수 없습니다 - ${(e as Error).message}`] };
+  }
+  const result = pathsSchema.safeParse(raw);
+  if (!result.success) return { paths: [], errors: result.error.issues.map((i) => `${name}: ${formatPath(i.path)} - ${i.message}`) };
+  return { paths: result.data, errors: [] };
+}
+
 /**
  * glossaryFile을 주면(실제 content/terms는 항상) 각주 단어를 풀이 사전과 맞춰 본다:
  * 사전에 없는 단어, 어느 용어에서도 안 쓰이는 사전 항목, 없는 용어를 가리키는 term, 자기 자신으로 가는 각주는 오류
@@ -41,6 +58,7 @@ export function loadTerms(
   publishedIds: string[] | undefined = dir === TERMS_DIR ? readPublishedIds() : undefined,
   glossaryFile: string | undefined = dir === TERMS_DIR ? GLOSSARY_FILE : undefined,
   figuresDir: string | undefined = dir === TERMS_DIR ? FIGURES_DIR : undefined,
+  pathsFile: string | undefined = dir === TERMS_DIR ? PATHS_FILE : undefined,
 ) {
   const terms: Term[] = [];
   const errors: string[] = [];
@@ -135,6 +153,18 @@ export function loadTerms(
     for (const f of files) {
       if (!owner.has(basename(f, ".svg"))) errors.push(`${f}: 어떤 용어의 figures에서도 쓰이지 않는 그림 파일입니다(쓰지 않는 파일은 지웁니다)`);
     }
+  }
+
+  // 추천 학습 경로: 단계는 공개(published)된 용어만(초안·내린 용어가 공개 빌드에 새지 않게)
+  if (pathsFile) {
+    const { paths, errors: pathErrors } = loadPaths(pathsFile);
+    errors.push(...pathErrors);
+    const status = new Map(terms.map((t) => [t.id, t.status]));
+    paths.forEach((p, i) =>
+      p.steps.forEach((stepId, j) => {
+        if (status.get(stepId) !== "published") errors.push(`paths.json: [${i}].steps[${j}] - 공개된(published) 용어가 아닙니다: ${stepId}`);
+      }),
+    );
   }
 
   for (const term of terms) {

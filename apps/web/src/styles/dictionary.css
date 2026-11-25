@@ -1034,6 +1034,78 @@ body {
   color: var(--la-ink-sub);
 }
 
+/* 추천 학습 경로(색인 왼쪽): 경로 하나 = 이름 + 읽는 순서(ol) + 이 순서인 이유 한 줄 */
+.la-paths {
+  width: 100%;
+  margin-top: var(--sp-4);
+}
+
+.la-paths h2 {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.la-paths ul,
+.la-paths ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.la-path {
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--la-rule);
+}
+
+.la-path h3 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--la-ink-sub);
+}
+
+.la-path ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+  counter-reset: step;
+}
+
+.la-path ol li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  counter-increment: step;
+}
+
+.la-path ol li::before {
+  content: counter(step);
+  color: var(--la-ink-sub);
+  font-size: var(--fs-sm);
+}
+
+/* 단계 사이 화살표: 장식이라 읽어 주지 않는다(번호와 ol이 순서를 말한다) */
+.la-path ol li:not(:last-child)::after {
+  content: "→" / "";
+  margin-left: var(--sp-2);
+  color: var(--la-ink-sub);
+}
+
+.la-path .la-seal-mark {
+  float: none;
+  display: inline-flex;
+  margin: 0;
+}
+
+.la-path-why {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--la-ink-sub);
+}
+
 .la-mine .la-ledger {
   margin: 0;
 }

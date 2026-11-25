@@ -1,0 +1,20 @@
+[
+  {
+    "id": "network",
+    "title": "네트워크",
+    "why": "연결이 어떻게 맺어지는지 먼저 보고, 그 연결을 꽉 채워 막는 공격과 암호화를 벗기는 공격으로 넘어간다.",
+    "steps": ["tcp-handshake", "syn-flood", "ssl-stripping"]
+  },
+  {
+    "id": "web",
+    "title": "웹 공격",
+    "why": "스크립트 삽입으로 시작해, 훔친 쿠키로 행세하는 공격을 거쳐, 쿠키가 자동으로 실려 가는 점을 노리는 공격까지 이어진다.",
+    "steps": ["xss", "session-hijacking", "csrf"]
+  },
+  {
+    "id": "os",
+    "title": "운영체제",
+    "why": "프로세스가 번갈아 도는 방식을 알아야, 그 사이에서 생기는 경쟁 상태와 서로 기다리는 데드락이 이해된다.",
+    "steps": ["context-switch", "race-condition", "deadlock"]
+  }
+]
